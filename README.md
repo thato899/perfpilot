@@ -123,6 +123,8 @@ Full rationale for this layout — in particular why it's optimized for four peo
 | Local development | [docs/development/local-development.md](docs/development/local-development.md) |
 | Team workflow & ownership | [docs/development/team-workflow.md](docs/development/team-workflow.md) |
 | Phase 1 next steps (per developer) | [docs/development/next-steps.md](docs/development/next-steps.md) |
+| Coding standards & AI-assisted workflow rules | [docs/development/coding-standards.md](docs/development/coding-standards.md) |
+| Task board (status per task) | [GitHub Issues](https://github.com/thato899/perfpilot/issues) |
 | Testing strategy | [docs/testing/testing-strategy.md](docs/testing/testing-strategy.md) |
 | Architecture Decision Records | [docs/decisions/](docs/decisions/) |
 | Demo scenario | [docs/demo-scenario.md](docs/demo-scenario.md) |

@@ -2,6 +2,8 @@
 
 Phase 0 (documentation and contracts) is done — see the [Phase 0 definition of done](../../README.md#phase-0-definition-of-done) in the README, all checked off. This document is the practical "what do I do Monday morning" companion to [team-workflow.md](team-workflow.md) (ownership map, git flow) and [roadmap.md](../roadmap.md) (Phase 1 scope). Read those two first if you haven't — this doc doesn't repeat their content, it turns it into a checklist.
 
+Every checklist item below is also tracked as an issue on the [task board](https://github.com/thato899/perfpilot/issues) (`Phase 1 — thin vertical slice` milestone), labeled by owner (`dev:thatayaone`/`dev:govenor`/`dev:kamogelo`/`dev:thato`) and status (`status:todo` → `status:in-progress` → `status:done`, or `status:blocked`). **The board is the live source of truth for status** — this file is the plan, the board is what's actually done. See [coding-standards.md](coding-standards.md) for how to use it and the rules for working across four different AI assistants on one codebase.
+
 ## Everyone, before writing code
 
 1. Re-read [CONTRIBUTING.md](../../CONTRIBUTING.md#before-you-write-code) — in particular, don't invent a local data shape if it should live in `packages/schemas`.
