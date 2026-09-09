@@ -16,45 +16,21 @@
 // ---------------------------------------------------------------------------
 
 export type TestType =
-  | "load"
-  | "stress"
-  | "spike"
-  | "endurance"
-  | "capacity"
-  | "baseline"
-  | "regression";
+  "load" | "stress" | "spike" | "endurance" | "capacity" | "baseline" | "regression";
 
 export type TestPlanStatus = "proposed" | "approved" | "superseded";
 
-export type TestRunStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "aborted_over_limit";
+export type TestRunStatus = "queued" | "running" | "succeeded" | "failed" | "aborted_over_limit";
 
 export type InvestigationObjective =
-  | "determine_capacity"
-  | "diagnose_regression"
-  | "validate_fix"
-  | "baseline";
+  "determine_capacity" | "diagnose_regression" | "validate_fix" | "baseline";
 
 export type InvestigationStatus =
-  | "planning"
-  | "running"
-  | "investigating"
-  | "experimenting"
-  | "reporting"
-  | "complete"
-  | "failed";
+  "planning" | "running" | "investigating" | "experimenting" | "reporting" | "complete" | "failed";
 
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 
-export type HypothesisStatus =
-  | "proposed"
-  | "testing"
-  | "supported"
-  | "rejected";
+export type HypothesisStatus = "proposed" | "testing" | "supported" | "rejected";
 
 // ---------------------------------------------------------------------------
 // Core entities — docs/database/database-design.md

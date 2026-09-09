@@ -18,6 +18,17 @@ Phase 0 (this commit) is documentation only. Before implementing anything, read:
 
 If something you need isn't in `packages/schemas` yet, propose the addition there first (see "Changing a shared contract" below) rather than inventing a local shape that only your module understands.
 
+## Claim a task before you start
+
+The issue board only works if two people never work the same task at once. Before you start:
+
+1. Check the issue's **Depends on** note and confirm it's actually satisfied (or fixture-able — see [team-workflow.md's dependency table](docs/development/team-workflow.md#who-depends-on-whom)).
+2. **Claim it by self-assigning it** (GitHub *Assignees*, top right of the issue). That's the claim — not a comment, not a message in chat.
+3. Assigning yourself automatically flips the label from `status:todo` to `status:in-progress` ([.github/workflows/issue-automation.yml](.github/workflows/issue-automation.yml)) — you don't need to move it by hand.
+4. If you unassign yourself without finishing, the label flips back to `status:todo` the same way, so it's visibly free again.
+
+When you open a PR with `Closes #<n>` in the body, [.github/workflows/claim-check.yml](.github/workflows/claim-check.yml) checks that issue is actually assigned to you and flags it (informationally — it doesn't block merge, there's no branch protection) if it isn't. If you want someone else's already-claimed task, ask them first — don't just start a competing branch.
+
 ## Branching
 
 ```text
@@ -49,6 +60,7 @@ Don't bundle unrelated changes into one commit — a reviewer should be able to 
 ## Pull requests
 
 - Open a PR into `develop` as soon as the branch is in reviewable shape — don't sit on a huge branch.
+- Update [STATUS.md](STATUS.md) before you open the PR — what you did, what's next. It's the first thing an AI assistant (yours or a teammate's) reads in a fresh session; if it's stale, that session starts blind. The PR template checklist reminds you.
 - Describe *what* changed and *why*, and link the doc section the change implements if applicable.
 - At least one other developer approves before merge. For changes touching a **shared** path (see below), get a review from an owner of the other side of that contract, not just anyone.
 - Keep PRs scoped to one concern. If you notice unrelated cleanup while working, put it in a separate PR.

@@ -4,6 +4,10 @@ Each developer on this project uses a different AI coding assistant. None of tho
 
 This extends [CONTRIBUTING.md](../../CONTRIBUTING.md) and [team-workflow.md](team-workflow.md) — read those first. This doc is the "how we actually work" layer on top of "who owns what."
 
+## 0. Start every session with STATUS.md
+
+Before you (or your AI assistant) touch anything: read [STATUS.md](../../STATUS.md) — it's the live "what's currently being worked on, what's blocked, what's next" for all four developers, and [PLANNING.md](../../PLANNING.md) for the dated plan behind it. Before you end a session, update your section and add a log line. A stale STATUS.md defeats the entire reason it exists — the next AI session (yours next time, or a teammate's) has no other way to know what changed since the docs were written.
+
 ## 1. Code and docs move together
 
 A PR that changes behavior and doesn't touch the corresponding doc is incomplete, not just under-documented — the next person (human or AI) reading `docs/agents/load-engineer.md` to understand the Load Engineer will be reading something that no longer describes the code.
@@ -37,7 +41,7 @@ Additional rules for working with an AI assistant specifically:
 
 Tracked as [GitHub Issues](https://github.com/thato899/perfpilot/issues) on the **Phase 1 — thin vertical slice** milestone, one issue per task from [next-steps.md](next-steps.md).
 
-- **Status labels:** `status:todo` → `status:in-progress` → `status:done`, plus `status:blocked` for anything waiting on another owner (see §4). Move the label yourself when your status changes — don't wait for someone else to notice.
+- **Status labels:** `status:todo` → `status:in-progress` → `status:done`, plus `status:blocked` for anything waiting on another owner (see §4). The `status:todo` ↔ `status:in-progress` move now happens automatically when you self-assign/unassign the issue ([.github/workflows/issue-automation.yml](../../.github/workflows/issue-automation.yml) — see [CONTRIBUTING.md#claim-a-task-before-you-start](../../CONTRIBUTING.md#claim-a-task-before-you-start)). `status:blocked` and `status:done` are still yours to set by hand — don't wait for someone else to notice.
 - **Owner labels:** `dev:thatayaone`, `dev:govenor`, `dev:kamogelo`, `dev:thato`.
 - Before starting a task, check its issue for a **Depends on** note and confirm that dependency is actually satisfied (or fixture-able — most are, per the [dependency table](team-workflow.md#who-depends-on-whom)).
 - Close the issue in the same PR that finishes the task (`Closes #<n>` in the PR description), so the board and the code stay in sync automatically.

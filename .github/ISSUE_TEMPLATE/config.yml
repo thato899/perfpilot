@@ -1,0 +1,8 @@
+blank_issues_enabled: true # keep true — not everything is a task (e.g. issue #9, an open design question, doesn't fit the Task form)
+contact_links:
+  - name: Team workflow & ownership
+    url: https://github.com/thato899/perfpilot/blob/main/docs/development/team-workflow.md
+    about: Read this before filing a task, to confirm who owns the area.
+  - name: Current project status
+    url: https://github.com/thato899/perfpilot/blob/main/STATUS.md
+    about: Check what's already in progress before filing something that might be a duplicate.

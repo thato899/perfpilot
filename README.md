@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 0 — architecture and documentation foundation. No application code has been implemented yet. See [Definition of Done](#phase-0-definition-of-done) below.
+**Status:** Phase 0 (documentation foundation) is done; Phase 1 (thin vertical slice) is underway. See [PLANNING.md](PLANNING.md) for the dated timeline and [STATUS.md](STATUS.md) for what's happening right now. Phase 0's own checklist is preserved below.
 
 ---
 
@@ -113,6 +113,8 @@ Full rationale for this layout — in particular why it's optimized for four peo
 
 | Area | Document |
 |---|---|
+| **Live status — read this first each session** | [STATUS.md](STATUS.md) |
+| **Plan — phases, timeline, Definition of Done** | [PLANNING.md](PLANNING.md) |
 | System architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) |
 | Multi-agent architecture | [docs/architecture/agent-architecture.md](docs/architecture/agent-architecture.md) |
 | Investigation data flow | [docs/architecture/data-flow.md](docs/architecture/data-flow.md) |

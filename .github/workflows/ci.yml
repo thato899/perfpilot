@@ -1,0 +1,233 @@
+name: CI
+
+# Every stage below is its own top-level job (not a step buried inside a
+# bigger one) so it shows up as its own check on a PR — "lint failed" and
+# "tests failed" should never be the same red X.
+#
+# Most target directories (apps/web, apps/api, agents/*, most of packages/*)
+# are still README-only stubs per README.md's Phase 0 Definition of Done.
+# Every job that targets one of those guards on file existence and exits 0
+# with a skip notice instead of failing — this pipeline is meant to go green
+# today and activate itself automatically as each owner's code lands, with
+# no CI re-edit required. See PLANNING.md "process decisions on record".
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly Monday 06:00 UTC — drives the audit job only
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ts-lint:
+    name: ts-lint (eslint)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for TS sources
+        id: files
+        run: |
+          FILES=$(git ls-files 'apps/web/**/*.ts' 'apps/web/**/*.tsx' 'packages/schemas/typescript/**/*.ts')
+          if [ -z "$FILES" ]; then
+            echo "No TypeScript files under apps/web or packages/schemas/typescript yet — skipping. This job activates automatically once code lands."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.files.outputs.skip == 'false'
+      - uses: actions/setup-node@v4
+        if: steps.files.outputs.skip == 'false'
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: Install dependencies
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+      - name: eslint
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm exec eslint apps/web packages/schemas/typescript --no-error-on-unmatched-pattern
+
+  ts-format:
+    name: ts-format (prettier --check)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for TS/CSS sources
+        id: files
+        run: |
+          FILES=$(git ls-files 'apps/web/**/*.ts' 'apps/web/**/*.tsx' 'apps/web/**/*.css' 'packages/schemas/typescript/**/*.ts')
+          if [ -z "$FILES" ]; then
+            echo "No TS/CSS files yet — skipping. Activates automatically once code lands."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.files.outputs.skip == 'false'
+      - uses: actions/setup-node@v4
+        if: steps.files.outputs.skip == 'false'
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: Install dependencies
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+      - name: prettier --check
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm run format:check
+
+  py-lint:
+    name: py-lint (ruff)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+
+  py-format:
+    name: py-format (black --check)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: black --check .
+
+  py-typecheck:
+    name: py-typecheck (mypy, non-blocking)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: mypy
+        continue-on-error: true # informational until the team wants strict typing everywhere — see testing-strategy.md
+        run: mypy packages/schemas/python
+
+  py-test:
+    name: py-test (pytest)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: pytest
+        run: |
+          set +e
+          pytest
+          code=$?
+          # Exit code 5 = "no tests collected". Defensive guard only: this repo
+          # ships real tests under packages/schemas/python/tests, so this
+          # shouldn't trigger post-merge — it exists so a future transient
+          # state (e.g. mid-refactor) can't turn the whole pipeline red for a
+          # reason unrelated to an actual test failure.
+          if [ $code -eq 5 ]; then
+            echo "No tests collected — treating as a pass while some packages are still stubs."
+            exit 0
+          fi
+          exit $code
+
+  build:
+    name: build
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Next.js build (apps/web)
+        run: |
+          if [ -f apps/web/package.json ]; then
+            pnpm install --frozen-lockfile
+            pnpm --filter web build
+          else
+            echo "apps/web has no package.json yet — skipping Next.js build. Activates automatically once Thato scaffolds it."
+          fi
+      - name: Python import sanity
+        run: |
+          python -c "
+          import packages.schemas.python.entities as entities
+          import packages.schemas.python.agent_io as agent_io
+          print('schema modules import cleanly:', entities.__name__, agent_io.__name__)
+          "
+          # Sweep any other Python packages once they exist — a bare compile
+          # check that a change didn't leave a syntax error behind, distinct
+          # from py-lint/py-test above.
+          for dir in agents apps/api packages/ai packages/metrics packages/common; do
+            if find "$dir" -name '*.py' 2>/dev/null | grep -q .; then
+              echo "Compiling $dir ..."
+              python -m compileall -q "$dir"
+            fi
+          done
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: pip-audit
+        continue-on-error: true # informational until something's actually deployed — see PLANNING.md
+        run: |
+          pip install -r requirements-dev.txt
+          pip-audit -r requirements-dev.txt
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: pnpm audit
+        continue-on-error: true
+        run: |
+          if [ -f package.json ]; then
+            pnpm install --frozen-lockfile
+            pnpm audit || true
+          else
+            echo "no package.json — skipping JS audit"
+          fi
+      - name: Secret scan (gitleaks)
+        continue-on-error: true
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Audit stage" >> "$GITHUB_STEP_SUMMARY"
+          echo "Dependency and secret scans above are informational for now (nothing's deployed yet — see docs/security/security-model.md and PLANNING.md)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Anything flagged: first responder is Thatayaone (Reviewer role, docs/development/team-roles.md). For a deeper manual pass, the team also has the \`/code-review\` and \`/security-review\` skills available." >> "$GITHUB_STEP_SUMMARY"

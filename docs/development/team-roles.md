@@ -33,8 +33,8 @@ Out of scope:
 **Mandate:** the issue board and the timeline are accurate, and stay accurate.
 
 In scope:
-- Keeps the [issue board](https://github.com/thato899/perfpilot/issues) (Phase 1 milestone) honest — labels match reality, issues close when their PR merges, and `status:todo`/`status:in-progress` issues that have gone stale get chased rather than left to self-report.
-- Tracks the Phase 1 timeline against [roadmap.md](../roadmap.md) and flags slippage before it's a demo-day surprise, not after.
+- Keeps the [issue board](https://github.com/thato899/perfpilot/issues) (Phase 1 milestone) honest — labels match reality, issues close when their PR merges, and `status:todo`/`status:in-progress` issues that have gone stale get chased rather than left to self-report. `status:todo`↔`status:in-progress` now flips automatically on claim (self-assignment, see [CONTRIBUTING.md](../../CONTRIBUTING.md#claim-a-task-before-you-start)); cross-check [STATUS.md](../../STATUS.md)'s per-developer entries against that reality — a mismatch between what STATUS.md says and what the board shows is exactly the drift this role exists to catch.
+- Tracks the Phase 1 timeline against [roadmap.md](../roadmap.md) and [PLANNING.md](../../PLANNING.md)'s dated checkpoints, and flags slippage before it's a demo-day surprise, not after.
 - Owns the **Depends on / Blocks** bookkeeping across issues — when someone flags a `status:blocked` issue per [coding-standards.md §5](coding-standards.md#5-note-it-when-something-is-waiting-on-your-code), PM makes sure it's visible and actually gets unblocked, not just labeled and forgotten.
 - Watches the shared/jointly-owned paths (`packages/schemas/`, `packages/common/`, `docs/`, root config — see [team-workflow.md](team-workflow.md#shared--jointly-owned-paths)) for changes that slipped through without the required second opinion.
 
@@ -51,6 +51,7 @@ In scope:
 - Spot-checks that merged PRs actually did the doc updates [coding-standards.md §1](coding-standards.md#1-code-and-docs-move-together) requires, not just the code change.
 - Owns escalation when a shared-contract PR doesn't have the sign-off [CONTRIBUTING.md's "Changing a shared contract"](../../CONTRIBUTING.md#changing-a-shared-contract) process requires, and blocks merge until it does.
 - First point of contact when the developer assigned to review a given PR is unsure whether it's good enough to merge.
+- First responder when the CI `audit` job (`.github/workflows/ci.yml`) flags something — dependency or secret-scan findings land here first. The `/code-review` and `/security-review` skills are available for a deeper manual pass beyond what CI's automated audit stage catches.
 
 Out of scope:
 - Does not have to personally review every PR — the per-PR "at least one other developer approves" rule in CONTRIBUTING.md is unchanged; any developer can be that reviewer. This role owns the *standard*, not a bottleneck.
@@ -63,7 +64,7 @@ Out of scope:
 In scope:
 - Produces stakeholder-facing status: what shipped, what's blocked, demo-readiness — narrated from the issue board (PM keeps the board accurate; Reporter turns it into a readable update).
 - Owns the demo-day narrative and any external summary of project state (e.g. a judge-facing readout).
-- Writes the periodic status update referenced in [team-workflow.md's Communication section](team-workflow.md#communication), if the team wants a written artifact rather than only a verbal daily sync.
+- Writes the periodic status update referenced in [team-workflow.md's Communication section](team-workflow.md#communication), if the team wants a written artifact rather than only a verbal daily sync. [STATUS.md](../../STATUS.md) (live, per-developer) and [PLANNING.md](../../PLANNING.md) (stable plan/timeline) are the artifacts this role narrates from and keeps legible — PM keeps STATUS.md's underlying board accurate, Reporter turns it into a readable update.
 
 Out of scope:
 - Does not decide what counts as "done" — Team Lead owns Definition of Done; Reporter reports state, doesn't adjudicate it.

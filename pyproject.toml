@@ -1,0 +1,44 @@
+# Single root-level Python tooling config for the whole monorepo (apps/api,
+# agents/*, packages/* share one pyproject for now — see PLANNING.md's
+# "process decisions on record"). No [project]/[build-system] table: nothing
+# here is pip-installed as a package, this file only configures tools.
+# Revisit (split per-package) once apps/api etc. have real, divergent
+# dependency sets.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["apps/web", ".venv", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# UP042: "class Foo(str, Enum) -> prefer enum.StrEnum" — packages/schemas
+# deliberately uses str+Enum throughout for stable Pydantic JSON
+# serialization; that's a design call for the schema owner (Kamogelo) to
+# revisit, not something a linter should force silently.
+ignore = ["UP042"]
+
+[tool.black]
+target-version = ["py311"]
+line-length = 100
+extend-exclude = "apps/web|node_modules"
+
+[tool.mypy]
+python_version = "3.11"
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = true
+exclude = ["apps/web/", "node_modules/"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "--import-mode=importlib"
+testpaths = [
+    "packages/schemas/python/tests",
+    "packages/metrics",
+    "packages/ai",
+    "packages/common",
+    "agents",
+    "apps/api",
+]
+python_files = ["test_*.py"]

@@ -1,0 +1,36 @@
+# Review-suggestion only — GitHub auto-requests these reviewers on a
+# matching PR. No branch protection enforces this (the team decided against
+# locking `main`, see PLANNING.md), so treat it as a strong hint, not a gate.
+#
+# Source of truth: docs/development/team-workflow.md#ownership-map
+# CODEOWNERS uses last-match-wins, same as .gitignore — checked, no pattern
+# below overlaps another in a way that matters.
+
+/agents/orchestrator/               @Thatayaone910
+/agents/test-planner/               @Thatayaone910
+/agents/performance-investigator/   @Thatayaone910
+/packages/ai/                       @Thatayaone910
+
+/agents/load-engineer/              @malumzz
+/packages/metrics/                  @malumzz
+/infrastructure/docker/k6/          @malumzz
+
+/apps/api/                          @Kamogelo-Skhosana
+/packages/schemas/                  @Kamogelo-Skhosana
+
+/apps/web/                          @thato899
+/agents/reporting/                  @thato899
+
+# Shared / jointly-owned — per team-workflow.md#shared--jointly-owned-paths
+# and CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging
+/packages/common/      @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/docs/                  @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/.github/                @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/README.md               @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/CONTRIBUTING.md         @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/PLANNING.md             @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/STATUS.md               @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/render.yaml             @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/pyproject.toml          @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/package.json            @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899
+/.env.example            @Thatayaone910 @malumzz @Kamogelo-Skhosana @thato899

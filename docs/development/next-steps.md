@@ -6,10 +6,12 @@ Every checklist item below is also tracked as an issue on the [task board](https
 
 ## Everyone, before writing code
 
-1. Re-read [CONTRIBUTING.md](../../CONTRIBUTING.md#before-you-write-code) — in particular, don't invent a local data shape if it should live in `packages/schemas`.
-2. `cp .env.example .env` and fill in the keys you need (see [local-development.md](local-development.md#environment-setup)).
-3. Branch off `develop`, never off `main`: `feature/<short-description>` (see [team-workflow.md](team-workflow.md#git-workflow)).
-4. Post in the team channel before touching a shared path (`packages/schemas/`, `packages/common/`, `docs/`, root config) — see [CONTRIBUTING.md](../../CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging).
+1. Read [STATUS.md](../../STATUS.md) — what's already in progress, what's blocked, what's next. Update your section before you end your session, or the next one (yours or a teammate's) starts blind.
+2. Re-read [CONTRIBUTING.md](../../CONTRIBUTING.md#before-you-write-code) — in particular, don't invent a local data shape if it should live in `packages/schemas`.
+3. `cp .env.example .env` and fill in the keys you need (see [local-development.md](local-development.md#environment-setup)).
+4. Branch off `develop`, never off `main`: `feature/<short-description>` (see [team-workflow.md](team-workflow.md#git-workflow)).
+5. **Claim your task first** — self-assign its issue before starting (see [CONTRIBUTING.md#claim-a-task-before-you-start](../../CONTRIBUTING.md#claim-a-task-before-you-start)).
+6. Post in the team channel before touching a shared path (`packages/schemas/`, `packages/common/`, `docs/`, root config) — see [CONTRIBUTING.md](../../CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging).
 
 ## Thatayaone — Developer 1 (AI / Orchestration)
 

@@ -30,12 +30,12 @@ from .entities import (
     TestType,
 )
 
-
 # --------------------------------------------------------------------------
 # Shared investigation state — owned exclusively by the Orchestrator.
 # Specialists never see more of this than their own input schema projects
 # out of it. See docs/architecture/data-flow.md#investigation-state.
 # --------------------------------------------------------------------------
+
 
 class DecisionLogEntry(BaseModel):
     step: str
@@ -59,6 +59,7 @@ class InvestigationState(BaseModel):
 # --------------------------------------------------------------------------
 # Orchestrator — docs/agents/orchestrator.md
 # --------------------------------------------------------------------------
+
 
 class OrchestratorEventType(str, Enum):
     TEST_RUN_COMPLETED = "test_run_completed"
@@ -99,6 +100,7 @@ class OrchestratorDecision(BaseModel):
 # --------------------------------------------------------------------------
 # Test Planner — docs/agents/test-planner.md
 # --------------------------------------------------------------------------
+
 
 class ExpectedTraffic(BaseModel):
     normal_concurrent_users: int
@@ -167,6 +169,7 @@ class TestPlanOutput(BaseModel):
 # Load Engineer — docs/agents/load-engineer.md
 # --------------------------------------------------------------------------
 
+
 class TargetRef(BaseModel):
     base_url: str
     auth: str | None = None  # reference to a stored credential — never a raw secret
@@ -202,6 +205,7 @@ class LoadExecutionResult(BaseModel):
 # --------------------------------------------------------------------------
 # Performance Investigator — docs/agents/performance-investigator.md
 # --------------------------------------------------------------------------
+
 
 class TestRunMetricsRef(BaseModel):
     id: UUID
@@ -248,6 +252,7 @@ class InvestigatorOutput(BaseModel):
 # --------------------------------------------------------------------------
 # Reporting Agent — docs/agents/reporting-agent.md
 # --------------------------------------------------------------------------
+
 
 class CapacityEstimate(BaseModel):
     sustainable_concurrency: int

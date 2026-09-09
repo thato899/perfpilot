@@ -1,0 +1,7 @@
+# apps/api is Python (no package.json, never a workspace member).
+# packages/schemas/typescript is deliberately NOT a workspace member either —
+# it's a single types.ts file with no package.json of its own; eslint/prettier
+# target it directly by path glob, which is simpler than giving it a package.json
+# just to join the workspace. Add it here if that ever stops being true.
+packages:
+  - "apps/web"

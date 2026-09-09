@@ -18,10 +18,10 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-
 # --------------------------------------------------------------------------
 # Enums
 # --------------------------------------------------------------------------
+
 
 class TestType(str, Enum):
     LOAD = "load"
@@ -96,6 +96,7 @@ class AgentName(str, Enum):
 # --------------------------------------------------------------------------
 # Core entities — see docs/database/database-design.md for relationships
 # --------------------------------------------------------------------------
+
 
 class Project(BaseModel):
     id: UUID
