@@ -4,6 +4,8 @@ This is a 4-person hackathon team project. The goal of this guide is to let ever
 
 Each developer uses a different AI coding assistant. See [docs/development/coding-standards.md](docs/development/coding-standards.md) for the rules that follow from that — keeping docs in sync with code, not touching another owner's files without a must-have reason, and flagging it when your work is blocked on (or blocking) someone else's. Task status lives on the [issue board](https://github.com/thato899/perfpilot/issues).
 
+Beyond code ownership, four non-coding process roles (Team Lead, Project Manager, Reviewer, Reporter) are assigned in [docs/development/team-roles.md](docs/development/team-roles.md) — read it if you're unsure who has final say on a scope dispute, who's tracking the board, or who to escalate a stalled shared-contract sign-off to.
+
 ## Before you write code
 
 Phase 0 (this commit) is documentation only. Before implementing anything, read:

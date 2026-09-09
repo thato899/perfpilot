@@ -2,6 +2,8 @@
 
 Four developers, four largely independent surfaces. The split is designed so each person can build against the contracts in `packages/schemas` and `docs/` without waiting on another developer's in-progress code.
 
+This document covers *code* ownership. For the non-coding process roles (Team Lead, Project Manager, Reviewer, Reporter) layered on top of it, see [team-roles.md](team-roles.md).
+
 ## Ownership map
 
 | Developer | Owns | Responsibilities |

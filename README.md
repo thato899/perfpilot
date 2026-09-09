@@ -122,6 +122,7 @@ Full rationale for this layout — in particular why it's optimized for four peo
 | Security model | [docs/security/security-model.md](docs/security/security-model.md) |
 | Local development | [docs/development/local-development.md](docs/development/local-development.md) |
 | Team workflow & ownership | [docs/development/team-workflow.md](docs/development/team-workflow.md) |
+| Team roles (Team Lead, PM, Reviewer, Reporter) | [docs/development/team-roles.md](docs/development/team-roles.md) |
 | Phase 1 next steps (per developer) | [docs/development/next-steps.md](docs/development/next-steps.md) |
 | Coding standards & AI-assisted workflow rules | [docs/development/coding-standards.md](docs/development/coding-standards.md) |
 | Task board (status per task) | [GitHub Issues](https://github.com/thato899/perfpilot/issues) |
