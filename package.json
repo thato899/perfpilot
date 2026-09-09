@@ -1,0 +1,22 @@
+{
+  "name": "perfpilot",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint apps/web packages/schemas/typescript --no-error-on-unmatched-pattern",
+    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\"",
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.3.0"
+  }
+}

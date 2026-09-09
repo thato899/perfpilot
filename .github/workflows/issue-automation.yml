@@ -1,0 +1,53 @@
+name: Issue Automation — Claim Labels
+
+# The claim mechanism: self-assigning an issue *is* claiming it. This
+# mechanizes the todo <-> in-progress half of that — status:blocked and
+# status:done stay manual, per docs/development/coding-standards.md §3.
+
+on:
+  issues:
+    types: [assigned, unassigned]
+
+permissions:
+  issues: write
+
+jobs:
+  sync-status-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const hasAssignee = (issue.assignees || []).length > 0;
+            const labels = issue.labels.map((l) => l.name);
+            const { owner, repo } = context.repo;
+            const number = issue.number;
+
+            async function swap(remove, add, note) {
+              if (labels.includes(remove)) {
+                await github.rest.issues
+                  .removeLabel({ owner, repo, issue_number: number, name: remove })
+                  .catch(() => {});
+              }
+              if (!labels.includes(add)) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [add] });
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body: note });
+            }
+
+            if (context.payload.action === "assigned" && hasAssignee && labels.includes("status:todo")) {
+              await swap(
+                "status:todo",
+                "status:in-progress",
+                `Claimed by @${context.payload.assignee.login} — \`status:todo\` -> \`status:in-progress\`.`
+              );
+            }
+
+            if (context.payload.action === "unassigned" && !hasAssignee && labels.includes("status:in-progress")) {
+              await swap(
+                "status:in-progress",
+                "status:todo",
+                "Unassigned with no remaining claim — `status:in-progress` -> `status:todo`."
+              );
+            }

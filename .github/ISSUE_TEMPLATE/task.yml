@@ -1,0 +1,45 @@
+name: Task
+description: A Phase 1+ engineering task tracked on the issue board
+title: "[Task]: "
+labels: ["status:todo", "phase-1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: confirm who owns this area in [team-workflow.md](../../docs/development/team-workflow.md#ownership-map), and add the matching `dev:*` label after creation.
+
+        Filing this issue does **not** claim it. Claim it by self-assigning it (GitHub *Assignees*, top right) before you start — that flips `status:todo` to `status:in-progress` automatically. See [CONTRIBUTING.md](../../CONTRIBUTING.md#claim-a-task-before-you-start).
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      description: Whose surface does this belong to, per team-workflow.md's ownership map? (Add the matching dev:* label after filing.)
+      options:
+        - Thatayaone — AI / Orchestration
+        - Govenor — Performance Engine
+        - Kamogelo — Backend / Data
+        - Thato — Frontend / Reporting
+        - Shared / jointly-owned (packages/common, docs/, root config)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs to be built or changed, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Concrete, checkable outcomes — this becomes the task's Definition of Done.
+    validations:
+      required: true
+  - type: input
+    id: depends-on
+    attributes:
+      label: Depends on
+      description: "Issue number(s) this is blocked by, e.g. #3, #7. Leave blank if none — see team-workflow.md#who-depends-on-whom for what's actually blocking vs. fixture-able."
+    validations:
+      required: false

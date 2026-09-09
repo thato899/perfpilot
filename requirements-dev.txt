@@ -1,0 +1,15 @@
+# Dev/CI tooling for the whole Python side of the monorepo (see pyproject.toml).
+# Floor-pinned (>=) rather than exact-pinned: this is a fast-moving toolchain
+# and floors keep CI on recent releases without a hard pin going stale mid-hackathon.
+# Once the team wants reproducible CI, switch to exact pins + a lockfile (pip-compile/uv).
+ruff>=0.15.0
+black>=24.8.0
+pytest>=8.3.0
+mypy>=2.1.0
+pip-audit>=2.7.0
+
+# pydantic is a dev pin here only because packages/schemas/python/tests needs
+# it to run the smoke tests against entities.py/agent_io.py. Once apps/api
+# declares its own real runtime dependencies, pydantic should move there as
+# a proper runtime dep (Kamogelo's call — flagged, not silently done here).
+pydantic>=2.9.0

@@ -1,0 +1,116 @@
+# Render Blueprint — PerfPilot's full planned stack, free/starter tiers.
+#
+# TEMPLATE, not yet deployable: apps/web and apps/api have no application
+# code yet (README.md's Phase 0 Definition of Done — see PLANNING.md for
+# where Phase 1 stands). Kamogelo activates this once apps/api and apps/web
+# boot locally via docker-compose (issue #10), filling in the TODOs below.
+#
+# Native runtimes (runtime: node / runtime: python), not Docker-based
+# services: infrastructure/docker has no Dockerfiles yet (it's a stub), so a
+# Docker-based Render deploy would be pointing at files that don't exist.
+# Switch to `runtime: docker` per service once infrastructure/docker lands,
+# if the team prefers parity between local Compose and Render.
+#
+# k6 has no first-class Render service type. It's installed as a binary in
+# the worker's build step below rather than modeled as
+# infrastructure/docker's separate k6-runner container — flag with Govenor
+# (owns infrastructure/docker/k6) before activating; this may need
+# rethinking once that container is real.
+#
+# Env var names below are taken directly from .env.example — that file
+# stays the canonical list. sync: false marks anything secret (never
+# committed; set in the Render dashboard).
+
+databases:
+  - name: perfpilot-db
+    plan: free # Render's free Postgres expires ~30 days after creation — recreate
+    # or upgrade to starter (~$7/mo) before 2026-10-02/07 if this is stood up early. See PLANNING.md.
+    databaseName: perfpilot
+    user: perfpilot
+
+services:
+  - type: keyvalue # current name for what used to be called "redis" — 'redis' still works as a deprecated alias
+    name: perfpilot-redis
+    plan: free # bump if load testing needs more than the free plan's headroom
+    ipAllowList: [] # empty = no external access; only other Render services on this account can reach it
+
+  - type: web
+    name: perfpilot-web
+    runtime: node
+    plan: free # bump to starter before demo day — free web services spin down when idle
+    rootDir: apps/web
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # .env.example has no browser-exposed API URL var today (API_BASE_URL
+      # is written server-side-shaped). If apps/web ever calls the API
+      # directly from the browser, this needs a NEXT_PUBLIC_ prefix to be
+      # readable client-side — Thato's call once apps/web exists.
+      - key: API_BASE_URL
+        fromService: { name: perfpilot-api, type: web, property: hostport }
+
+  - type: web
+    name: perfpilot-api
+    runtime: python
+    plan: starter
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt # TODO(kamogelo): apps/api's own requirements.txt — doesn't exist yet
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT # TODO(kamogelo): confirm actual app module path
+    healthCheckPath: /health # TODO(kamogelo): confirm against docs/api/api-contract.md once written
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: perfpilot-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { name: perfpilot-redis, type: keyvalue, property: connectionString }
+      - key: CELERY_BROKER_URL
+        fromService: { name: perfpilot-redis, type: keyvalue, property: connectionString }
+      - key: CELERY_RESULT_BACKEND
+        fromService: { name: perfpilot-redis, type: keyvalue, property: connectionString }
+      - key: WEB_BASE_URL
+        fromService: { name: perfpilot-web, type: web, property: hostport }
+      - key: API_AUTH_SECRET
+        sync: false
+      - key: AI_PROVIDER
+        value: gemini
+      - key: AI_PROVIDER_MODEL
+        value: gemini-2.5-pro
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: MAX_VIRTUAL_USERS
+        value: "5000"
+      - key: MAX_TEST_DURATION_SECONDS
+        value: "1800"
+      - key: ALLOWED_TARGET_HOSTS
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  - type: worker
+    name: perfpilot-worker
+    runtime: python
+    plan: starter # Render has no free plan for Background Workers
+    rootDir: apps/api # same codebase as api, per docs/development/local-development.md
+    buildCommand: >
+      pip install -r requirements.txt &&
+      mkdir -p .bin &&
+      curl -L https://github.com/grafana/k6/releases/latest/download/k6-linux-amd64.tar.gz | tar -xz -C .bin --strip-components=1
+    startCommand: celery -A app.celery_app worker --loglevel=info # TODO(kamogelo): confirm actual Celery app module path
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: { name: perfpilot-db, property: connectionString }
+      - key: CELERY_BROKER_URL
+        fromService: { name: perfpilot-redis, type: keyvalue, property: connectionString }
+      - key: CELERY_RESULT_BACKEND
+        fromService: { name: perfpilot-redis, type: keyvalue, property: connectionString }
+      - key: K6_BINARY_PATH
+        value: /opt/render/project/src/.bin/k6
+      - key: MAX_VIRTUAL_USERS
+        value: "5000"
+      - key: MAX_TEST_DURATION_SECONDS
+        value: "1800"
+      - key: ALLOWED_TARGET_HOSTS
+        sync: false
