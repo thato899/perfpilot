@@ -32,7 +32,7 @@ jobs:
       - name: Check for TS sources
         id: files
         run: |
-          FILES=$(git ls-files 'apps/web/**/*.ts' 'apps/web/**/*.tsx' 'packages/schemas/typescript/**/*.ts')
+          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)packages/schemas/typescript/**/*.ts')
           if [ -z "$FILES" ]; then
             echo "No TypeScript files under apps/web or packages/schemas/typescript yet — skipping. This job activates automatically once code lands."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -62,7 +62,7 @@ jobs:
       - name: Check for TS/CSS sources
         id: files
         run: |
-          FILES=$(git ls-files 'apps/web/**/*.ts' 'apps/web/**/*.tsx' 'apps/web/**/*.css' 'packages/schemas/typescript/**/*.ts')
+          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)apps/web/**/*.css' ':(glob)packages/schemas/typescript/**/*.ts')
           if [ -z "$FILES" ]; then
             echo "No TS/CSS files yet — skipping. Activates automatically once code lands."
             echo "skip=true" >> "$GITHUB_OUTPUT"
