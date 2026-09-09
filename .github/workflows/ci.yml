@@ -165,6 +165,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
       - name: Next.js build (apps/web)
         run: |
           if [ -f apps/web/package.json ]; then
