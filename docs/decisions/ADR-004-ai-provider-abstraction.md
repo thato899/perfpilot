@@ -35,6 +35,6 @@ The active provider (and even the model *per agent* — e.g. a stronger reasonin
 
 ## Consequences
 
-- `packages/ai` becomes a required dependency of every agent — it's a small, stable surface, owned by Developer 1, and changes to it should be rare once Phase 1 starts (see [team-workflow.md](../development/team-workflow.md)).
+- `packages/ai` becomes a required dependency of every agent — it's a small, stable surface, owned by Developer 1/Thatayaone, and changes to it should be rare once Phase 1 starts (see [team-workflow.md](../development/team-workflow.md)).
 - Provider-specific quirks (rate limits, differing structured-output mechanisms — e.g. function calling vs. JSON mode) are absorbed inside each `*Provider` implementation, not leaked into agent code.
 - We do not commit, in Phase 0, to automatic provider fallback (e.g. "if Gemini is down, silently retry on DeepSeek") — that's a real feature with real implications (different providers may produce different quality/behavior for the same prompt) and is deferred as a documented future decision, not built speculatively now.

@@ -1,6 +1,6 @@
 # Agent Contract — Test Planner Agent
 
-**Owner:** Developer 1 (AI / Orchestration) · **Code location:** `agents/test-planner/`
+**Owner:** Developer 1/Thatayaone (AI / Orchestration) · **Code location:** `agents/test-planner/`
 
 ## Purpose
 

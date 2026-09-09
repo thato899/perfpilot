@@ -1,6 +1,6 @@
 # Agent Contract — Load Engineer Agent
 
-**Owner:** Developer 2 (Performance Engine) · **Code location:** `agents/load-engineer/`
+**Owner:** Developer 2/Govenor (Performance Engine) · **Code location:** `agents/load-engineer/`
 
 ## Purpose
 

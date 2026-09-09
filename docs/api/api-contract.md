@@ -1,6 +1,6 @@
 # API Contract
 
-**Owner:** Developer 3 (Backend / Data) · **Code location:** `apps/api/`
+**Owner:** Developer 3/Kamogelo (Backend / Data) · **Code location:** `apps/api/`
 
 All endpoints are versionless-for-now (`/api/...`) — the MVP is single-version, single-tenant. Request/response bodies are the Pydantic models in `packages/schemas/python`, mirrored in `packages/schemas/typescript` for the frontend. All endpoints return `application/json`.
 
@@ -120,4 +120,4 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ## Ownership note
 
-`apps/api` (Developer 3) owns the HTTP layer, request/response validation, auth, and persistence for every endpoint above. It does not own what happens *inside* `POST /api/tests/plan` or `.../continue` beyond calling the Orchestrator and persisting what comes back — that reasoning belongs to Developer 1's agents. This is the seam that lets backend and AI work proceed in parallel: Developer 3 can build and test every endpoint above against the schemas in `packages/schemas` with a stubbed Orchestrator response, before Developer 1's agents are finished.
+`apps/api` (Developer 3/Kamogelo) owns the HTTP layer, request/response validation, auth, and persistence for every endpoint above. It does not own what happens *inside* `POST /api/tests/plan` or `.../continue` beyond calling the Orchestrator and persisting what comes back — that reasoning belongs to Developer 1/Thatayaone's agents. This is the seam that lets backend and AI work proceed in parallel: Developer 3/Kamogelo can build and test every endpoint above against the schemas in `packages/schemas` with a stubbed Orchestrator response, before Developer 1/Thatayaone's agents are finished.

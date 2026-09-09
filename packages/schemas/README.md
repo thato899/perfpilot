@@ -1,6 +1,6 @@
 # packages/schemas
 
-**Owner:** Developer 3 (canonical), consumed by everyone.
+**Owner:** Developer 3/Kamogelo (canonical), consumed by everyone.
 
 This package is the single source of truth for every structured object that crosses a boundary in PerfPilot: database entities, agent inputs/outputs, and API request/response bodies. It exists so that four people can build four different parts of the system against an agreed shape instead of a shared understanding that quietly drifts.
 

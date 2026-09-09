@@ -1,6 +1,6 @@
 # agents/load-engineer
 
-**Owner:** Developer 2 (Performance Engine)
+**Owner:** Developer 2/Govenor (Performance Engine)
 
 Turns an approved `TestPlan` into an executable k6 script, runs it safely (enforcing the configured VU/duration ceiling), and hands raw output to `packages/metrics`.
 

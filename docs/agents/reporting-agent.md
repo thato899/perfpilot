@@ -1,6 +1,6 @@
 # Agent Contract — Performance Reporting Agent
 
-**Owner:** Developer 4 (Frontend / Reporting) · **Code location:** `agents/reporting/`
+**Owner:** Developer 4/Thato (Frontend / Reporting) · **Code location:** `agents/reporting/`
 
 ## Purpose
 

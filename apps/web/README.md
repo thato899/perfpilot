@@ -1,6 +1,6 @@
 # apps/web
 
-**Owner:** Developer 4 (Frontend / Reporting)
+**Owner:** Developer 4/Thato (Frontend / Reporting)
 
 Next.js + TypeScript + Tailwind CSS + shadcn/ui dashboard: project/target management, investigation progress, findings, and final reports.
 

@@ -1,6 +1,6 @@
 # Agent Contract — Performance Orchestrator
 
-**Owner:** Developer 1 (AI / Orchestration) · **Code location:** `agents/orchestrator/`
+**Owner:** Developer 1/Thatayaone (AI / Orchestration) · **Code location:** `agents/orchestrator/`
 
 ## Purpose
 

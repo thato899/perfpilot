@@ -1,8 +1,8 @@
 # Database Design
 
-**Owner:** Developer 3 (Backend / Data) · **Engine:** PostgreSQL (see [ADR-001](../decisions/ADR-001-tech-stack.md))
+**Owner:** Developer 3/Kamogelo (Backend / Data) · **Engine:** PostgreSQL (see [ADR-001](../decisions/ADR-001-tech-stack.md))
 
-This document defines entities and relationships. **No migrations are implemented in Phase 0** — this is the agreed shape Developer 3 will implement as Alembic (or equivalent) migrations in Phase 1.
+This document defines entities and relationships. **No migrations are implemented in Phase 0** — this is the agreed shape Developer 3/Kamogelo will implement as Alembic (or equivalent) migrations in Phase 1.
 
 ## Entity-relationship overview
 

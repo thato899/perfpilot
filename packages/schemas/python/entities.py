@@ -5,7 +5,7 @@ of truth; this file is the typed contract other packages import against.
 
 This is a Phase 0 CONTRACT, not a running implementation: it declares shape
 only. ORM mapping (SQLAlchemy models), migrations, and persistence logic are
-Phase 1 work owned by Developer 3 (see docs/development/team-workflow.md).
+Phase 1 work owned by Developer 3/Kamogelo (see docs/development/team-workflow.md).
 No business logic belongs in this file — see packages/schemas/README.md.
 """
 

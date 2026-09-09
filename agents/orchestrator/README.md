@@ -1,6 +1,6 @@
 # agents/orchestrator
 
-**Owner:** Developer 1 (AI / Orchestration)
+**Owner:** Developer 1/Thatayaone (AI / Orchestration)
 
 The Performance Orchestrator — owns `InvestigationState`, sequences the four specialist agents, and applies the deterministic continuation policy.
 

@@ -1,6 +1,6 @@
 # agents/reporting
 
-**Owner:** Developer 4 (Frontend / Reporting)
+**Owner:** Developer 4/Thato (Frontend / Reporting)
 
 Turns a complete investigation into a human-readable report: executive summary, capacity estimate, ranked findings, bottleneck analysis, actionable recommendations, and regression comparison.
 

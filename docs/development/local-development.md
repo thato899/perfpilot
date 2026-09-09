@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** target-state document for Phase 1 setup. No `docker-compose.yml` or install scripts exist yet in Phase 0 — this describes what Developer 3 will stand up first.
+**Status:** target-state document for Phase 1 setup. No `docker-compose.yml` or install scripts exist yet in Phase 0 — this describes what Developer 3/Kamogelo will stand up first.
 
 ## Prerequisites
 

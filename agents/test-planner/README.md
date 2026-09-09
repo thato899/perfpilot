@@ -1,6 +1,6 @@
 # agents/test-planner
 
-**Owner:** Developer 1 (AI / Orchestration)
+**Owner:** Developer 1/Thatayaone (AI / Orchestration)
 
 Turns target/traffic information into a structured `TestPlan` and recommends the right test type (load/stress/spike/endurance/capacity/baseline/regression) for the stated objective.
 

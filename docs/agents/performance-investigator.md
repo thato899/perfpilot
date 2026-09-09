@@ -1,6 +1,6 @@
 # Agent Contract — Performance Investigator Agent
 
-**Owner:** Developer 1 (AI / Orchestration) · **Code location:** `agents/performance-investigator/`
+**Owner:** Developer 1/Thatayaone (AI / Orchestration) · **Code location:** `agents/performance-investigator/`
 
 This is the most important AI component of the system, and the one where hallucination risk is highest. Its entire output is structured specifically to make speculation visually and mechanically distinguishable from fact.
 

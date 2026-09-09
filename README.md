@@ -84,18 +84,18 @@ Rationale for each choice is in [ADR-001](docs/decisions/ADR-001-tech-stack.md).
 ```text
 perfpilot/
 ├── apps/
-│   ├── web/          # Next.js dashboard (Developer 4)
-│   └── api/           # FastAPI backend (Developer 3)
+│   ├── web/          # Next.js dashboard (Developer 4/Thato)
+│   └── api/           # FastAPI backend (Developer 3/Kamogelo)
 ├── agents/
-│   ├── orchestrator/               # Developer 1
-│   ├── test-planner/               # Developer 1
-│   ├── load-engineer/              # Developer 2
-│   ├── performance-investigator/   # Developer 1
-│   └── reporting/                  # Developer 4
+│   ├── orchestrator/               # Developer 1/Thatayaone
+│   ├── test-planner/               # Developer 1/Thatayaone
+│   ├── load-engineer/              # Developer 2/Govenor
+│   ├── performance-investigator/   # Developer 1/Thatayaone
+│   └── reporting/                  # Developer 4/Thato
 ├── packages/
-│   ├── schemas/       # Shared contracts — Pydantic + TS types (Developer 3, jointly used by all)
-│   ├── ai/            # AI provider abstraction (Developer 1)
-│   ├── metrics/       # Deterministic metrics/threshold calculations (Developer 2)
+│   ├── schemas/       # Shared contracts — Pydantic + TS types (Developer 3/Kamogelo, jointly used by all)
+│   ├── ai/            # AI provider abstraction (Developer 1/Thatayaone)
+│   ├── metrics/       # Deterministic metrics/threshold calculations (Developer 2/Govenor)
 │   └── common/        # Cross-cutting utilities (jointly owned, PR review required)
 ├── tests/
 ├── docs/               # Architecture, agent contracts, API, DB, security, workflow, ADRs
@@ -122,6 +122,7 @@ Full rationale for this layout — in particular why it's optimized for four peo
 | Security model | [docs/security/security-model.md](docs/security/security-model.md) |
 | Local development | [docs/development/local-development.md](docs/development/local-development.md) |
 | Team workflow & ownership | [docs/development/team-workflow.md](docs/development/team-workflow.md) |
+| Phase 1 next steps (per developer) | [docs/development/next-steps.md](docs/development/next-steps.md) |
 | Testing strategy | [docs/testing/testing-strategy.md](docs/testing/testing-strategy.md) |
 | Architecture Decision Records | [docs/decisions/](docs/decisions/) |
 | Demo scenario | [docs/demo-scenario.md](docs/demo-scenario.md) |

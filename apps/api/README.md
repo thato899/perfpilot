@@ -1,6 +1,6 @@
 # apps/api
 
-**Owner:** Developer 3 (Backend / Data)
+**Owner:** Developer 3/Kamogelo (Backend / Data)
 
 FastAPI backend: HTTP layer, auth, persistence, background job dispatch. Invokes the Orchestrator (`agents/orchestrator`) but contains no agent reasoning itself.
 
