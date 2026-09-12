@@ -271,6 +271,16 @@ class ReportRequest(BaseModel):
     investigation_state: InvestigationState
     capacity_estimate: CapacityEstimate
     regression_comparison: RegressionComparison
+    # Deterministic key-metrics summary (throughput_rps, p50/p95/p99_ms,
+    # error_rate, peak_concurrency_tested) computed once by packages/metrics
+    # from the investigation's TestRun(s) — never recomputed by this agent.
+    # Added while implementing agents/reporting (issue #15): ReportOutput.key_metrics
+    # is required by docs/agents/reporting-agent.md's "Key metrics table"
+    # responsibility, but nothing upstream of this schema previously carried
+    # it into the request. Flagged as a schema-shape addition in the PR —
+    # packages/schemas is Kamogelo's canonical file, this is proposed, not
+    # unilaterally final.
+    key_metrics: dict[str, Any]
 
 
 class BottleneckAnalysisEntry(BaseModel):

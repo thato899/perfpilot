@@ -49,7 +49,7 @@ Owns: `apps/api/`, database migrations, `packages/schemas/`
 Owns: `apps/web/`, `agents/reporting/`
 
 - [ ] Minimal dashboard: create a target, trigger an investigation, watch a test run's progress, view the resulting report.
-- [ ] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one — see [reporting-agent.md](../agents/reporting-agent.md).
+- [x] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one — see [reporting-agent.md](../agents/reporting-agent.md). Done: `agents/reporting/report_builder.py` (issue #15) — deterministic (template, not AI-generated prose yet — `packages/ai` doesn't exist, see `# BLOCKED-ON: #1` in the code) but contract-checked (`validate_report`) and tested against the demo-scenario fixture and the "no findings" case. Wiring to a real `InvestigationState` still pending on the Orchestrator (#2) and Investigator (#4).
 - [ ] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
 - [ ] Open question to settle early with Govenor: see above (interval-bucketed metrics vs. summary-at-completion).
 

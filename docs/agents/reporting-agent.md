@@ -25,16 +25,19 @@ Convert a complete investigation (test runs, metrics, findings, hypotheses, expe
 
 ## Input schema
 
-`ReportRequest`:
+`ReportRequest` (`packages/schemas/python/agent_io.py` — field names below are the canonical ones; this doc previously showed a `capacity`/`estimated_sustainable_users` shape that didn't match the schema file and no `key_metrics` field at all — fixed here while implementing `agents/reporting` against it, see issue #15):
 
 ```json
 {
   "investigation_id": "inv_01H...",
   "investigation_state": { "...": "full InvestigationState, see data-flow.md — this is the one agent allowed the full state, since its job is synthesis" },
   "capacity_estimate": { "sustainable_concurrency": 620, "recommended_operating_concurrency": 500, "method": "packages/metrics deterministic estimate — see database-design.md" },
-  "regression_comparison": { "previous_p95_ms": 420, "current_p95_ms": 890, "regression_pct": 112.0 }
+  "regression_comparison": { "previous_p95_ms": 420, "current_p95_ms": 890, "regression_pct": 112.0 },
+  "key_metrics": { "throughput_rps": 340, "p50_ms": 120, "p95_ms": 890, "p99_ms": 1450, "error_rate": 0.008, "peak_concurrency_tested": 1000 }
 }
 ```
+
+`key_metrics` is a new field (added alongside the `agents/reporting` implementation): nothing upstream of `ReportRequest` previously carried the "Key metrics table" data this agent's Responsibilities section requires — it's computed once by `packages/metrics` and passed straight through, same as `capacity_estimate`/`regression_comparison`, never recomputed here. Flagged for Govenor/Kamogelo as a schema-shape addition, not a unilaterally final one.
 
 ## Output schema
 
@@ -44,14 +47,16 @@ Convert a complete investigation (test runs, metrics, findings, hypotheses, expe
 {
   "id": "rep_01H...",
   "executive_summary": "string",
-  "capacity": { "estimated_sustainable_users": 620, "recommended_operating_users": 500 },
+  "capacity": { "sustainable_concurrency": 620, "recommended_operating_concurrency": 500, "method": "packages/metrics deterministic estimate — see database-design.md" },
   "key_metrics": { "throughput_rps": 340, "p50_ms": 120, "p95_ms": 890, "p99_ms": 1450, "error_rate": 0.008, "peak_concurrency_tested": 1000 },
-  "findings": [ { "...": "Finding, ranked, see performance-investigator.md" } ],
+  "findings": [ { "id": "string", "severity": "CRITICAL|HIGH|MEDIUM|LOW|INFO", "summary": "string" } ],
   "bottleneck_analysis": [ { "observation": "string", "likely_cause": "string", "evidence": ["string"], "confidence": 0.87 } ],
-  "recommendations": ["Investigate database connection pool saturation.", "Inspect slow queries.", "Review missing indexes."],
+  "recommendations": [ { "finding_id": "string", "statement": "Investigate database connection pool saturation.", "priority": "HIGH" } ],
   "regression": { "previous_p95_ms": 420, "current_p95_ms": 890, "regression_pct": 112.0 }
 }
 ```
+
+Note for whoever wires `apps/api`'s persistence/response mapping (issue #12): `packages/schemas/typescript/types.ts`'s dashboard-facing `Report`/`CapacitySummary` uses different field names again (e.g. `estimatedSustainableUsers`) for frontend convenience — that's a deliberate, separate layer (per [system-architecture.md](../architecture/system-architecture.md)'s agent-output vs. API-response distinction), not a second drift to silently reconcile. Whoever builds the `ReportOutput` → `entities.Report` → frontend `Report` mapping needs to know these three shapes name the same concepts differently on purpose.
 
 ## Tools
 

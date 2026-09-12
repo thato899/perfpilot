@@ -41,18 +41,25 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Thato — Frontend / Reporting
 
-**Last updated:** 2026-09-09 by Thato (Claude Code)
+**Last updated:** 2026-09-12 by Thato (Claude Code)
 
-- **Currently working on:** Phase 1 engineering process setup — CI pipeline, issue-claim automation, PLANNING.md/STATUS.md, render.yaml template (this session).
-- **Just completed:** —
-- **Blocked on:** nothing
-- **Next up:** claim an issue from [docs/development/next-steps.md#thato--developer-4-frontend--reporting](docs/development/next-steps.md#thato--developer-4-frontend--reporting) once this process PR merges; settle [issue #9](https://github.com/thato899/perfpilot/issues/9) with Govenor early.
+- **Currently working on:** Dashboard (issue #14) — starting next, against a mocked API per next-steps.md (no real `apps/api` to wait on).
+- **Just completed:** Reporting Agent (issue #15, PR open) — `agents/reporting/report_builder.py`: deterministic `build_report()` + `validate_report()` guardrail checker, tested against the demo-scenario fixture and the "no findings" case (15 tests passing repo-wide). Found and fixed a real schema gap along the way (`ReportRequest` was missing `key_metrics` — flagged in the PR, not silently patched around) and corrected a stale illustrative example in `docs/agents/reporting-agent.md` that didn't match the actual schema field names.
+- **Blocked on:** nothing for the fixture-first slice. Wiring the Reporting Agent to a *real* `InvestigationState` needs the Orchestrator (#2) and Investigator (#4) first — noted as `# BLOCKED-ON:` comments in the code, not a current blocker since fixture-first was the explicit scope.
+- **Next up:** Dashboard (issue #14): minimal Next.js views (create target / trigger investigation / watch progress / view report) against a mocked API. Also still need to settle [issue #9](https://github.com/thato899/perfpilot/issues/9) with Govenor (interval-bucketed metrics vs. summary-at-completion) — relevant to the dashboard's progress view, proposing a default there rather than blocking on it.
 
 ---
 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-12 — Thato (Claude Code)
+
+- Claimed and completed issue #15 (Reporting Agent, fixture-first slice): `agents/reporting/report_builder.py` + fixtures + 8 tests, all passing alongside the existing schema tests (15 total). PR open against `main`.
+- Fixed a schema gap found while implementing: `ReportRequest` had no `key_metrics` field even though `ReportOutput` requires one — added it to `packages/schemas/python/agent_io.py`, flagged in the PR for Kamogelo/Govenor.
+- Corrected `docs/agents/reporting-agent.md`'s illustrative JSON, which used field names (`estimated_sustainable_users`, etc.) that didn't match the actual `agent_io.py` schema (`sustainable_concurrency`, etc.) — also noted that `packages/schemas/typescript/types.ts`'s frontend-facing `Report` type uses yet different names on purpose (separate layer), for whoever builds `apps/api`'s response mapping later.
+- Starting issue #14 (dashboard) next.
 
 ### 2026-09-09 — Thato (Claude Code)
 
