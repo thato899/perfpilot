@@ -1,0 +1,9 @@
+# Normalize line endings to LF in the repository regardless of a
+# contributor's local core.autocrlf setting. Found this was needed while
+# building apps/web on Windows: git's default Windows autocrlf=true kept
+# converting checked-out files to CRLF, which then failed prettier's
+# default endOfLine: "lf" on the very next `git checkout`/cherry-pick —
+# a recurring, confusing false-positive CI failure for any Windows
+# contributor, not a real formatting issue. `text=auto` still lets git
+# detect and leave binary files (favicon.ico, images) alone.
+* text=auto eol=lf

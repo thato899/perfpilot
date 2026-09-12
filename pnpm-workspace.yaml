@@ -5,3 +5,28 @@
 # just to join the workspace. Add it here if that ever stops being true.
 packages:
   - "apps/web"
+
+# create-next-app's default: don't run the postinstall/build scripts these
+# two optional native deps ship with (sharp's image-optimization binary,
+# unrs-resolver's native resolver) unless the team deliberately opts in.
+allowBuilds:
+  # esbuild's postinstall only fetches its own platform-specific binary (no
+  # arbitrary third-party code) and Vite/Vitest can't run without it — unlike
+  # sharp/unrs-resolver below, this one is load-bearing, not optional.
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
+
+minimumReleaseAgeExclude:
+  - '@next/env@16.3.5'
+  - '@next/eslint-plugin-next@16.3.5'
+  - '@next/swc-darwin-arm64@16.3.5'
+  - '@next/swc-darwin-x64@16.3.5'
+  - '@next/swc-linux-arm64-gnu@16.3.5'
+  - '@next/swc-linux-arm64-musl@16.3.5'
+  - '@next/swc-linux-x64-gnu@16.3.5'
+  - '@next/swc-linux-x64-musl@16.3.5'
+  - '@next/swc-win32-arm64-msvc@16.3.5'
+  - '@next/swc-win32-x64-msvc@16.3.5'
+  - eslint-config-next@16.3.5
+  - next@16.3.5
