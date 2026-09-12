@@ -9,6 +9,7 @@
   "scripts": {
     "lint": "eslint packages/schemas/typescript --no-error-on-unmatched-pattern",
     "lint:web": "pnpm --filter web lint",
+    "test:web": "pnpm --filter web test",
     "format": "prettier --no-error-on-unmatched-pattern --write \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\"",
     "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\""
   },

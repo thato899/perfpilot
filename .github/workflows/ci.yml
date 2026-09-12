@@ -95,6 +95,36 @@ jobs:
         if: steps.files.outputs.skip == 'false'
         run: pnpm run format:check
 
+  ts-test:
+    name: ts-test (vitest)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for a web test suite
+        id: files
+        run: |
+          FILES=$(git ls-files ':(glob)apps/web/**/*.test.ts' ':(glob)apps/web/**/*.test.tsx')
+          if [ -z "$FILES" ]; then
+            echo "No apps/web test files yet — skipping. Activates automatically once code lands."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.files.outputs.skip == 'false'
+      - uses: actions/setup-node@v4
+        if: steps.files.outputs.skip == 'false'
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: Install dependencies
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+      - name: vitest (apps/web)
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm --filter web test
+
   py-lint:
     name: py-lint (ruff)
     if: github.event_name != 'schedule'

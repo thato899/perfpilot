@@ -10,6 +10,10 @@ packages:
 # two optional native deps ship with (sharp's image-optimization binary,
 # unrs-resolver's native resolver) unless the team deliberately opts in.
 allowBuilds:
+  # esbuild's postinstall only fetches its own platform-specific binary (no
+  # arbitrary third-party code) and Vite/Vitest can't run without it — unlike
+  # sharp/unrs-resolver below, this one is load-bearing, not optional.
+  esbuild: true
   sharp: false
   unrs-resolver: false
 
