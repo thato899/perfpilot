@@ -48,9 +48,9 @@ Owns: `apps/api/`, database migrations, `packages/schemas/`
 
 Owns: `apps/web/`, `agents/reporting/`
 
-- [ ] Minimal dashboard: create a target, trigger an investigation, watch a test run's progress, view the resulting report.
-- [ ] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one — see [reporting-agent.md](../agents/reporting-agent.md).
-- [ ] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
+- [x] Minimal dashboard: create a target, trigger an investigation, watch a test run's progress, view the resulting report. Done: `apps/web` (issue #14) — Next.js + TypeScript + Tailwind + shadcn/ui, all four flows working against a mocked API (`src/lib/mock-api.ts`), verified end to end with a scripted headless-browser run. Not yet done: real `apps/api` wiring, project CRUD, automated frontend tests, live metric charts (pending issue #9).
+- [ ] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one — see [reporting-agent.md](../agents/reporting-agent.md). *(In progress on a separate branch/PR #17 — not this one; check that PR for current status rather than this checkbox.)*
+- [x] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
 - [ ] Open question to settle early with Govenor: see above (interval-bucketed metrics vs. summary-at-completion).
 
 ## Definition of done for Phase 1
