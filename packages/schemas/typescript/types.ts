@@ -124,6 +124,17 @@ export interface Metric {
 // Investigation — docs/architecture/data-flow.md#investigation-state
 // ---------------------------------------------------------------------------
 
+/** Mirrors agent_io.ExpectedTraffic (packages/schemas/python) — this is the
+ * `expected_traffic` body `POST /api/investigations` takes per
+ * docs/api/api-contract.md, which apps/web sends directly. Added while
+ * building the dashboard (issue #14); previously missing from this file
+ * entirely even though the API contract requires it. */
+export interface ExpectedTraffic {
+  normalConcurrentUsers: number;
+  peakConcurrentUsers: number;
+  peakDescription?: string;
+}
+
 export interface Observation {
   id: string;
   statement: string;

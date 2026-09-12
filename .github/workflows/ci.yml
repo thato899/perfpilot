@@ -49,9 +49,21 @@ jobs:
       - name: Install dependencies
         if: steps.files.outputs.skip == 'false'
         run: pnpm install --frozen-lockfile
-      - name: eslint
+      - name: eslint (apps/web, via its own Next.js-flavored config)
+        # apps/web has its own eslint.config.mjs (eslint-config-next — React
+        # hooks rules, a11y, Next-specific checks) once it exists as a real
+        # package. The root eslint.config.js below intentionally doesn't
+        # duplicate those rules — see that file's own comment.
         if: steps.files.outputs.skip == 'false'
-        run: pnpm exec eslint apps/web packages/schemas/typescript --no-error-on-unmatched-pattern
+        run: |
+          if [ -f apps/web/package.json ]; then
+            pnpm --filter web lint
+          else
+            echo "apps/web has no package.json yet — nothing Next-flavored to lint."
+          fi
+      - name: eslint (packages/schemas/typescript, via root config)
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm exec eslint packages/schemas/typescript --no-error-on-unmatched-pattern
 
   ts-format:
     name: ts-format (prettier --check)
@@ -82,6 +94,36 @@ jobs:
       - name: prettier --check
         if: steps.files.outputs.skip == 'false'
         run: pnpm run format:check
+
+  ts-test:
+    name: ts-test (vitest)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for a web test suite
+        id: files
+        run: |
+          FILES=$(git ls-files ':(glob)apps/web/**/*.test.ts' ':(glob)apps/web/**/*.test.tsx')
+          if [ -z "$FILES" ]; then
+            echo "No apps/web test files yet — skipping. Activates automatically once code lands."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.files.outputs.skip == 'false'
+      - uses: actions/setup-node@v4
+        if: steps.files.outputs.skip == 'false'
+        with:
+          node-version: "20"
+          cache: pnpm
+      - name: Install dependencies
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+      - name: vitest (apps/web)
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm --filter web test
 
   py-lint:
     name: py-lint (ruff)
