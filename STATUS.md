@@ -4,6 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
+**Last updated:** 2026-09-14 by Govenor
 **Last updated:** 2026-09-14 by Kamogelo
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
@@ -25,12 +26,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Govenor — Performance Engine
 
-**Last updated:** — not yet logged
+**Last updated:** 2026-09-14 by Govenor
 
-- **Currently working on:**
-- **Just completed:**
+- **Currently working on:** Phase 1 performance engine on `feature/k6-engine`; real k6 dry-run and container integration are next.
+- **Just completed:** Implemented deterministic k6 summary parsing, threshold evaluation, regression comparison, capacity estimation, VU/duration safety clamping, target allow-list checks, k6 script generation, subprocess timeout/failure handling, and focused tests in `packages/metrics` and `agents/load-engineer`.
 - **Blocked on:**
-- **Next up:** claim an issue from [docs/development/next-steps.md#govenor--developer-2-performance-engine](docs/development/next-steps.md#govenor--developer-2-performance-engine); also owns unblocking [issue #9](https://github.com/thato899/perfpilot/issues/9) (interval vs. summary metrics) early — see Thato's proposal there, needs your read.
+- **Next up:** read and settle [issue #9](https://github.com/thato899/perfpilot/issues/9) (interval vs. summary metrics), then validate against real k6 output and build the k6 runner container; claim the corresponding issue before continuing.
 
 ### Kamogelo — Backend / Data
 
@@ -58,6 +59,10 @@ Each section below follows the same template. Update your own section — don't 
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
 
+### 2026-09-14 — Govenor
+
+- Implemented and tested the deterministic metrics core and Load Engineer safety boundary on `feature/k6-engine`: parsing, thresholds, regression comparison, capacity estimation, clamping, allow-list checks, script rendering, and subprocess failure handling. Validation is green: 19 focused tests passed, Ruff passed, and diagnostics are clean.
+- Moved the work off `main` onto `feature/k6-engine`; no commits have been created yet.
 ### 2026-09-14 — Kamogelo
 
 - Issue #10: stood up `infrastructure/docker/docker-compose.yml` with all six services from local-development.md's planned layout, plus `infrastructure/docker/{api,web}/Dockerfile` and a root `.dockerignore`. Both images build from the repo root, because `apps/api` imports `packages.schemas` root-relative and the container has to mirror that or the imports break.
