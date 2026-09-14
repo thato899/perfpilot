@@ -118,6 +118,18 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ---
 
+## Operational endpoints
+
+Not part of the resource surface above — infrastructure probes, not product API.
+
+### `GET /health`
+- **Purpose:** liveness probe. Consumed by `infrastructure/docker/docker-compose.yml`'s healthcheck for the `api` service and by `render.yaml`'s `healthCheckPath`.
+- **Auth:** none. A probe that needs a bearer token can't be used by an orchestrator that doesn't have one.
+- **Response:** `200` → `{ "status": "ok" }`.
+- **Deliberately shallow:** it reports that the process is serving and checks nothing downstream. Compose already gates `api` on `db` and `redis` passing their own healthchecks, so re-checking them here would report someone else's outage as this service being unhealthy and trigger restarts that fix nothing. If a readiness probe that *does* check dependencies is ever needed, it belongs at a separate path, not folded into this one.
+
+---
+
 ## Ownership note
 
 `apps/api` (Developer 3/Kamogelo) owns the HTTP layer, request/response validation, auth, and persistence for every endpoint above. It does not own what happens *inside* `POST /api/tests/plan` or `.../continue` beyond calling the Orchestrator and persisting what comes back — that reasoning belongs to Developer 1/Thatayaone's agents. This is the seam that lets backend and AI work proceed in parallel: Developer 3/Kamogelo can build and test every endpoint above against the schemas in `packages/schemas` with a stubbed Orchestrator response, before Developer 1/Thatayaone's agents are finished.

@@ -5,6 +5,9 @@ The **live** state of the project. This changes every session — for the stable
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
 **Last updated:** 2026-09-14 by Govenor
+**Last updated:** 2026-09-14 by Kamogelo
+
+*Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
 ---
 
@@ -32,12 +35,14 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Kamogelo — Backend / Data
 
-**Last updated:** — not yet logged
+**Last updated:** 2026-09-12 by Kamogelo (Claude/Cowork)
 
-- **Currently working on:**
-- **Just completed:**
-- **Blocked on:**
-- **Next up:** claim an issue from [docs/development/next-steps.md#kamogelo--developer-3-backend--data](docs/development/next-steps.md#kamogelo--developer-3-backend--data); also the one who activates `render.yaml` once `apps/api` boots locally.
+- **Currently working on:** issue #10 (`docker-compose.yml`) — branch open, PR not yet raised. See the log entry below for what landed and the one open question for Govenor.
+- **Just completed:** the local stack. `infrastructure/docker/docker-compose.yml` with all six planned services, profile-gated so a bare `docker compose up` starts `db` + `redis` (which is what #11 and #13 need) and `--profile all` brings up everything. Two Dockerfiles (`infrastructure/docker/api/`, `.../web/`), a root `.dockerignore`, and the minimum `apps/api` scaffolding needed for the `api`/`worker` containers to actually boot: `requirements.txt`, `main.py` (`/health` only), `celery_app.py` (one no-op `perfpilot.ping` task). Validated with `docker compose config` across every profile, and the repo's own CI gates (`ruff check .`, `black --check .`, `pytest`, `compileall apps/api`) all pass with the new files in place.
+- **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
+- **Next up:** #11 (Postgres migrations) — the compose `db` service is what it needs to apply against, which is why #10 went first. Then #12, then #13. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the log entry.
+
+**Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml`, the new root `.dockerignore`, `docs/development/local-development.md`, `docs/api/api-contract.md`. Govenor is the right reviewer — he owns the other half of `infrastructure/docker/`.
 
 ### Thato — Frontend / Reporting
 
@@ -58,6 +63,16 @@ Reverse-chronological. One entry per session — a couple of lines, not a full c
 
 - Implemented and tested the deterministic metrics core and Load Engineer safety boundary on `feature/k6-engine`: parsing, thresholds, regression comparison, capacity estimation, clamping, allow-list checks, script rendering, and subprocess failure handling. Validation is green: 19 focused tests passed, Ruff passed, and diagnostics are clean.
 - Moved the work off `main` onto `feature/k6-engine`; no commits have been created yet.
+### 2026-09-14 — Kamogelo
+
+- Issue #10: stood up `infrastructure/docker/docker-compose.yml` with all six services from local-development.md's planned layout, plus `infrastructure/docker/{api,web}/Dockerfile` and a root `.dockerignore`. Both images build from the repo root, because `apps/api` imports `packages.schemas` root-relative and the container has to mirror that or the imports break.
+- Used compose **profiles** rather than shipping six services that half-fail: `db` + `redis` have no profile and start on a bare `docker compose up`; `api`/`worker` sit behind `backend`, `web` behind `frontend`, `k6-runner` behind `k6`, and everything is also in an `all` profile for the #10 done-when check. The reasoning is that #11 and #13 need a database and a broker *today*, and making someone wait through a pnpm install to get them is friction for no benefit.
+- Wrote the minimum `apps/api` scaffolding for the containers to genuinely boot — `requirements.txt`, `main.py` with only `GET /health`, `celery_app.py` with one no-op `perfpilot.ping` task. This is deliberately *not* issue #12/#13 work: it's boot scaffolding, because a compose file whose services can't start isn't wiring. `ping.delay().get()` round-tripping through Redis is the smoke test that proves the whole backend path at once (command in local-development.md).
+- Put `k6-runner` on its own network (`perfpilot-targets`) with no route to `db`/`redis`, which is the compose-level half of security-model.md's "k6 ... network access scoped to the target(s) actually needed, not open egress". Left two decisions to Govenor in comments rather than guessing: pinning a locally-built k6 image (his folder, his version choice), and whether `perfpilot-targets` should be `internal: true` — that depends on whether the demo target runs on the host or as a container.
+- **Found, not fixed:** `render.yaml`'s TODOs assume `rootDir: apps/api` with `uvicorn main:app` and `celery -A app.celery_app`. Those are wrong for this repo — with `apps/api` as the root, `packages.schemas` imports don't resolve. The correct paths are `apps.api.main:app` and `apps.api.celery_app` from the repo root. Not changed here (activating `render.yaml` is separate work on a shared root file); flagged in `apps/api/celery_app.py`'s docstring so whoever does it sees it in context.
+- **Also flagged:** `requirements-dev.txt`'s comment says pydantic should move to `apps/api`'s runtime deps "once apps/api declares its own". It now does, and pydantic is listed there — but CI still installs only `requirements-dev.txt`, so removing it there would break `py-test`. Left in both deliberately. Consolidating that (and adding fastapi to whatever CI installs, which #12 will need for its tests) is a separate change to a shared root file.
+- **Not verified:** I couldn't run Docker against this checkout this session, so `docker compose up` has not actually been executed — only `docker compose config` across every profile, plus the repo's CI gates (`ruff`, `black`, `pytest`, `compileall`), which all pass. First person with Docker running should do the two smoke commands in local-development.md before #10 is closed.
+- **#10 stays open** until `api`/`worker` serve real endpoints (#12/#13) and Govenor's k6 image lands — the done-when is "`docker compose up` brings up every planned service", and three of them are still standing in for something.
 
 ### 2026-09-13 — Thato (Claude Code)
 

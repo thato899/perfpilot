@@ -1,0 +1,312 @@
+# PerfPilot — local development stack.
+#
+# Implements the planned service layout in
+# docs/development/local-development.md#planned-service-layout-infrastructuredocker
+# (web, api, worker, db, redis, k6-runner). Issue #10.
+#
+# SHARED PATH — per CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging,
+# flag changes here in the team channel before merging. The `k6-runner`
+# service is wired here (compose wiring is Kamogelo's), but the k6 container
+# *definition* is Govenor's (see CODEOWNERS: /infrastructure/docker/k6/) —
+# see the notes on that service below for the two decisions left to him.
+#
+# Run it from this directory:
+#
+#   cd infrastructure/docker
+#   docker compose up                    # db + redis (always-on infra)
+#   docker compose --profile backend up  # + api + worker
+#   docker compose --profile all up      # everything, including web + k6-runner
+#
+# PROFILES — why not everything by default. `db` and `redis` have no profile,
+# so a bare `docker compose up` starts exactly the two services that work
+# today and that migrations (#11) and Celery (#13) need. The rest are gated:
+#
+#   backend  -> api, worker       (needs apps/api; boot scaffolding only today)
+#   frontend -> web               (works today — apps/web is complete)
+#   k6       -> k6-runner         (image is a placeholder; Govenor owns it)
+#   all      -> every gated service, for the #10 done-when check
+#
+# Naming a profiled service directly also starts it, so the commands
+# documented in local-development.md (`docker compose up api worker`) work
+# without remembering the profile name.
+#
+# Requires Docker Compose v2.24+ (for `env_file: required: false`).
+
+name: perfpilot
+
+# --------------------------------------------------------------------------
+# Networks
+# --------------------------------------------------------------------------
+# Two networks, deliberately. `perfpilot` carries application traffic
+# (db/redis/api/worker/web). `perfpilot-targets` is the only network the k6
+# load generator sits on, so a load-generating container can never reach the
+# database or the broker — see docs/security/security-model.md ("k6 running
+# in its own container with network access scoped to the target(s) actually
+# needed for the demo, not open egress"). `worker` straddles both because it
+# is what invokes k6.
+networks:
+  perfpilot:
+    driver: bridge
+  perfpilot-targets:
+    driver: bridge
+    # DECISION FOR GOVENOR: setting `internal: true` here would fully enforce
+    # "not open egress" — the k6 container could then reach only other
+    # containers on this network, never the public internet. It would also
+    # stop k6 reaching a demo target running on the *host* rather than as a
+    # container. Left as a normal bridge until the demo target's shape is
+    # settled (see local-development.md#working-against-a-demo-target); this
+    # is your call, not a silent default.
+
+volumes:
+  pgdata:
+  redisdata:
+
+services:
+  # ------------------------------------------------------------------------
+  # db — PostgreSQL. Always on.
+  # ------------------------------------------------------------------------
+  # Credentials match .env.example's DATABASE_URL
+  # (postgresql://perfpilot:perfpilot@localhost:5432/perfpilot). They are
+  # local-development-only values that are already committed there, not
+  # secrets. Port 5432 is published so Alembic (#11) and a host-run uvicorn
+  # can reach the database without entering a container.
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: perfpilot
+      POSTGRES_PASSWORD: perfpilot
+      POSTGRES_DB: perfpilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Other services wait on this, so migrations never race an
+      # initialising database.
+      test: ["CMD-SHELL", "pg_isready -U perfpilot -d perfpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - perfpilot
+
+  # ------------------------------------------------------------------------
+  # redis — Celery broker + result backend. Always on.
+  # ------------------------------------------------------------------------
+  # One instance, three logical databases, matching .env.example:
+  #   /0 REDIS_URL   /1 CELERY_BROKER_URL   /2 CELERY_RESULT_BACKEND
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - perfpilot
+
+  # ------------------------------------------------------------------------
+  # api — FastAPI. Profile: backend
+  # ------------------------------------------------------------------------
+  # Today this serves only /health (apps/api/main.py is boot scaffolding —
+  # see that file). The Phase 1 contract endpoints are issue #12.
+  api:
+    profiles: ["backend", "all"]
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api/Dockerfile
+    image: perfpilot-api:local
+    # Optional: developers who haven't created a .env yet still get a working
+    # db/redis stack, because the connection URLs below are set explicitly.
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # These four override whatever .env holds. .env.example points at
+      # localhost, which is correct from the host but wrong from inside a
+      # container — in here the services are reachable by service name.
+      DATABASE_URL: postgresql://perfpilot:perfpilot@db:5432/perfpilot
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONPATH: /app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - uvicorn
+      - apps.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    # Source mounted for --reload. Only apps/api and packages are mounted:
+    # site-packages stays baked into the image.
+    volumes:
+      - ../../apps/api:/app/apps/api
+      - ../../packages:/app/packages
+      - ../../agents:/app/agents
+    healthcheck:
+      # python -c rather than curl/wget: python:3.11-slim ships neither, and
+      # adding a package just for a healthcheck isn't worth the image size.
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8000/health")
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - perfpilot
+
+  # ------------------------------------------------------------------------
+  # worker — Celery. Profile: backend
+  # ------------------------------------------------------------------------
+  # Same image and codebase as `api`, different command — per
+  # local-development.md's planned layout. Reuses perfpilot-api:local rather
+  # than building twice.
+  worker:
+    profiles: ["backend", "all"]
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/api/Dockerfile
+    image: perfpilot-api:local
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://perfpilot:perfpilot@db:5432/perfpilot
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      PYTHONPATH: /app
+      # Where the worker looks for k6 output written by the k6-runner
+      # container through the shared bind mount below.
+      K6_RESULTS_DIR: /app/infrastructure/docker/k6/results
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - celery
+      - -A
+      - apps.api.celery_app
+      - worker
+      - --loglevel=info
+    volumes:
+      - ../../apps/api:/app/apps/api
+      - ../../packages:/app/packages
+      - ../../agents:/app/agents
+      # Shared with k6-runner: k6 writes its raw JSON summaries here and
+      # packages/metrics (Govenor) reads them back. Git-ignored on the host.
+      - ./k6/results:/app/infrastructure/docker/k6/results
+    healthcheck:
+      # CMD-SHELL, not CMD: the destination needs a shell to substitute the
+      # container's hostname. `$$(hostname)` rather than `$$HOSTNAME` because
+      # python:3.11-slim's /bin/sh is dash, which doesn't set HOSTNAME.
+      # Without `-d` this would report healthy whenever *any* worker on the
+      # broker answers, including a different one.
+      test: ["CMD-SHELL", "celery -A apps.api.celery_app inspect ping -d celery@$$(hostname)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # Celery's inspect round-trip is slow to become answerable on a cold
+      # start; a short start_period would report a false failure.
+      start_period: 40s
+    networks:
+      - perfpilot
+      - perfpilot-targets
+
+  # ------------------------------------------------------------------------
+  # web — Next.js dev server. Profile: frontend
+  # ------------------------------------------------------------------------
+  # apps/web is complete and runs against its mocked API (src/lib/mock-api.ts)
+  # today, so this service genuinely works — it just isn't in the default set
+  # because installing the pnpm tree makes `docker compose up` slow for
+  # someone who only wanted a database.
+  web:
+    profiles: ["frontend", "all"]
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/web/Dockerfile
+    image: perfpilot-web:local
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      # Server-side (route handlers, RSC) reaches the API by service name.
+      # NOTE FOR THATO: anything fetching the API from the *browser* needs a
+      # NEXT_PUBLIC_-prefixed variable instead — same open point render.yaml
+      # already flags. Not decided here; apps/web is your surface.
+      API_BASE_URL: http://api:8000
+      WEB_BASE_URL: http://localhost:3000
+      # Docker Desktop bind mounts on Windows/macOS don't deliver inotify
+      # events, so Next's file watcher needs polling or hot reload silently
+      # stops working.
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../apps/web:/app/apps/web
+      - ../../packages/schemas:/app/packages/schemas
+      # Anonymous volumes so the bind mounts above don't shadow the
+      # node_modules pnpm built inside the image (pnpm's symlink layout spans
+      # both locations, so both need protecting).
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    networks:
+      - perfpilot
+
+  # ------------------------------------------------------------------------
+  # k6-runner — load generator. Profile: k6
+  # ------------------------------------------------------------------------
+  # OWNED BY GOVENOR (CODEOWNERS: /infrastructure/docker/k6/). Wired here so
+  # the stack has the shape local-development.md describes; nothing has been
+  # written into infrastructure/docker/k6/ by this change.
+  #
+  # TWO DECISIONS LEFT TO GOVENOR:
+  #  1. Image vs. build. This uses the upstream grafana/k6 image, unpinned, so
+  #     the service comes up today. Replace with
+  #       build: { context: ./k6, dockerfile: Dockerfile }
+  #     and pin a version once infrastructure/docker/k6/Dockerfile exists —
+  #     the version choice is yours, so it isn't pinned to a guess here.
+  #  2. Invocation model. This runs the container idle, on the assumption the
+  #     worker executes k6 inside it (`docker compose exec k6-runner k6 run ...`).
+  #     The alternative — the worker spawning a fresh container per test run —
+  #     needs the Docker socket mounted into `worker`, which is a meaningful
+  #     privilege escalation. The idle model is the conservative default, not
+  #     a settled decision.
+  k6-runner:
+    profiles: ["k6", "all"]
+    image: grafana/k6:latest
+    # Overrides the image's `k6` entrypoint. Printing the version on start
+    # makes a broken image obvious immediately rather than at first test run.
+    entrypoint: ["sh", "-c", "k6 version && tail -f /dev/null"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      K6_RESULTS_DIR: /results
+    volumes:
+      - ./k6/results:/results
+    # Lets k6 reach a demo target running on the host rather than as a
+    # container (ALLOWED_TARGET_HOSTS includes `localhost`). Automatic on
+    # Docker Desktop; this makes it work on Linux too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Deliberately NOT on the `perfpilot` network — see the networks block.
+    networks:
+      - perfpilot-targets
