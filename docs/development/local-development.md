@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** target-state document for Phase 1 setup. No `docker-compose.yml` or install scripts exist yet in Phase 0 — this describes what Developer 3/Kamogelo will stand up first.
+**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` uses a placeholder upstream image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
 
 ## Prerequisites
 
@@ -21,7 +21,20 @@
 | `redis` | Celery broker/result backend |
 | `k6-runner` | Container with the k6 binary, invoked by the worker for test execution |
 
-A `docker-compose.yml` wiring these together is Phase 1 work (see [roadmap.md](../roadmap.md)) — this document exists so whoever writes it starts from an agreed shape instead of inventing one under time pressure.
+`infrastructure/docker/docker-compose.yml` wires these together (issue #10). It is a **shared path** — flag changes in the team channel before merging, per [CONTRIBUTING.md](../../CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging).
+
+Two images support it, both building from the repository root so `apps/api`'s root-relative imports of `packages/schemas` resolve the same way they do in CI:
+
+| Image | Used by | Definition |
+|---|---|---|
+| `perfpilot-api:local` | `api`, `worker` | `infrastructure/docker/api/Dockerfile` |
+| `perfpilot-web:local` | `web` | `infrastructure/docker/web/Dockerfile` |
+
+`k6-runner` has no Dockerfile here on purpose — `infrastructure/docker/k6/` is Developer 2/Govenor's ([CODEOWNERS](../../CODEOWNERS)). The compose service currently points at the upstream `grafana/k6` image so the service can start; swapping it for a pinned local build is his call, along with whether the worker `exec`s into an idle container or spawns one per run. Both questions are written up in the service's comment block.
+
+### Network layout
+
+Two networks, not one. `perfpilot` carries application traffic (`db`, `redis`, `api`, `worker`, `web`). `perfpilot-targets` carries load-generation traffic and is the only network `k6-runner` sits on, so the load generator has no route to the database or the broker — this is the compose-level half of [security-model.md](../security/security-model.md)'s "k6 running in its own container with network access scoped to the target(s) actually needed". `worker` is on both, because it is what invokes k6.
 
 ## Environment setup
 
@@ -29,15 +42,50 @@ A `docker-compose.yml` wiring these together is Phase 1 work (see [roadmap.md](.
 2. Fill in `GEMINI_API_KEY` and/or `DEEPSEEK_API_KEY` depending on `AI_PROVIDER` (see [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md)).
 3. Set `ALLOWED_TARGET_HOSTS` to include whatever demo target you're running locally (see [security model](../security/security-model.md#target-authorization)) — PerfPilot will refuse to test anything not listed here, including your own local demo app if you forget to add it.
 
-## Running the pieces (planned)
+## Running the pieces
+
+The compose file lives in `infrastructure/docker/`, so run it from there:
 
 ```bash
-docker compose up db redis            # infra only
-docker compose up api worker          # backend + async workers
-docker compose up web                 # frontend
+cd infrastructure/docker
+
+docker compose up                     # db + redis — the always-on infra
+docker compose --profile backend up   # + api + worker
+docker compose --profile frontend up  # + web
+docker compose --profile all up       # everything, including k6-runner
 ```
 
-Or `docker compose up` for everything. Exact compose targets/commands will be finalized alongside the actual `docker-compose.yml` in Phase 1.
+`db` and `redis` carry no profile, so a bare `docker compose up` starts exactly the two services that are needed most often and work unconditionally. Everything else is gated behind a profile — naming a service directly also starts it, so the shorter forms work too:
+
+```bash
+docker compose up api worker          # same as --profile backend
+docker compose up web
+```
+
+Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: false` so the stack runs before you've created a `.env`).
+
+### What actually works today
+
+| Service | Status |
+|---|---|
+| `db`, `redis` | Real. Ports 5432/6379 are published, so Alembic and a host-run `uvicorn`/`celery` can reach them without entering a container. |
+| `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
+| `api` | Starts, serves `GET /health`, nothing else. The contract endpoints are issue #12. |
+| `worker` | Starts, registers one no-op `perfpilot.ping` task. Real task dispatch is issue #13. |
+| `k6-runner` | Starts on a placeholder upstream image and idles. Issue #6/#7 territory, Govenor's container. |
+
+Smoke-test the full backend path once it's up:
+
+```bash
+curl localhost:8000/health
+# {"status":"ok"}
+
+docker compose --profile backend exec api \
+  python -c "from apps.api.celery_app import ping; print(ping.delay().get(timeout=10))"
+# pong
+```
+
+The second command is the one worth running: it proves the API container, the broker, the worker and the result backend are all talking to each other, which is the whole point of the wiring.
 
 ## Working against a demo target
 
@@ -50,3 +98,81 @@ See [docs/testing/testing-strategy.md](../testing/testing-strategy.md) for the f
 - Python: `pytest` per package (`apps/api`, each `agents/*`, `packages/*`)
 - TypeScript: the project's configured test runner for `apps/web`
 - k6 scripts: validated via `k6 run --dry-run` or equivalent before execution, per [load-engineer.md](../agents/load-engineer.md)
+
+## Checking CI before you push
+
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) has seven blocking jobs — `ts-lint`, `ts-format`, `ts-test`, `py-lint`, `py-format`, `py-test`, `build` — plus two that are `continue-on-error` and can't turn a PR red (`py-typecheck`, `audit`). There are two ways to run them before pushing, and they're for different moments.
+
+### Fast loop — the same commands, on your machine
+
+```bash
+./scripts/ci-local.sh            # every blocking job
+./scripts/ci-local.sh py         # ruff, black, pytest, compileall
+./scripts/ci-local.sh ts         # eslint, prettier, vitest, next build
+./scripts/ci-local.sh --install  # pip install -r requirements-dev.txt first
+```
+
+Seconds to a couple of minutes, and it replicates the workflow's own `git ls-files` guards so a job CI would skip is skipped here too. **Windows: run it in Git Bash**, not PowerShell or cmd.
+
+#### First-run setup on Windows
+
+Three things bite on a fresh Windows checkout. All of them are environment, not repo:
+
+1. **`pip install` works, but the tools still aren't found.** pip drops `ruff.exe`/`black.exe`/`pytest.exe` into a `Scripts\` directory that isn't on PATH, and says so in a warning that's easy to scroll past. The script sidesteps this by calling `python -m ruff` rather than bare `ruff`, so you don't have to fix PATH at all.
+2. **`python` runs the Microsoft Store stub.** It prints "Python was not found..." and exits without running anything. The script probes several candidates (`py -3.11`, `python3`, `python`, …) and uses the first that actually executes, so it usually routes around this on its own. If it can't, either turn the alias off under *Settings > Apps > Advanced app settings > App execution aliases*, or point the script at your interpreter: `PERFPILOT_PYTHON="py -3.11" ./scripts/ci-local.sh py`.
+3. **pnpm fails with `'...\AppData\Local\pnpm\.tools\...\pnpm' is not recognized`.** pnpm self-installs the version pinned in `package.json`'s `packageManager` field, and that cached copy can land corrupt. Delete it and let pnpm refetch: `rm -rf ~/AppData/Local/pnpm/.tools/pnpm`. Failing that, `corepack enable && corepack prepare pnpm@12.3.4 --activate`.
+
+The tidiest fix for 1 and 2 together is a virtualenv, which also matches the Python version CI pins:
+
+```bash
+py install 3.11                   # only if `py -3.11 --version` says no runtime matches
+py -3.11 -m venv .venv
+source .venv/Scripts/activate     # Git Bash; PowerShell is .venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+```
+
+Run those one at a time. Pasted as a block they run regardless of each other failing, and a missing 3.11 turns into a confusing cascade: no venv gets created, `activate` reports a missing file, and `pip install` then quietly installs into your *global* Python instead.
+
+`.venv/` is already git-ignored. Worth doing even though the script works without it: CI runs Python 3.11, and a newer local Python can disagree with it on `pytest` in ways `ruff` and `black` won't (their `target-version` is pinned in `pyproject.toml`, so those two behave the same anywhere). The script prints which interpreter it used and warns when it isn't 3.11.
+
+Or run the gates by hand — this is all the script does:
+
+```bash
+ruff check .                        # py-lint
+black --check .                     # py-format
+pytest                              # py-test
+python -m compileall -q apps/api    # half of build
+
+pnpm install --frozen-lockfile
+pnpm --filter web lint              # ts-lint
+pnpm exec eslint packages/schemas/typescript --no-error-on-unmatched-pattern
+pnpm run format:check               # ts-format
+pnpm --filter web test              # ts-test
+pnpm --filter web build             # the other half of build
+```
+
+### Faithful run — `act`
+
+The fast loop runs on *your* machine; CI runs on `ubuntu-latest` with Node 20. That gap is not theoretical here — see [.gitattributes](../../.gitattributes) for the CRLF/prettier false-positive it already caused a Windows contributor, and STATUS.md's 2026-09-12 entry for a local Node version that couldn't run the versions of Vitest/jsdom CI installs happily. When the fast loop passes and CI still disagrees, that gap is usually why.
+
+[`act`](https://github.com/nektos/act) runs the real workflow in Linux containers, so it closes it. It needs Docker running.
+
+```bash
+winget install nektos.act          # or: choco install act-cli / scoop install act
+
+act -l                             # list the jobs
+act pull_request                   # run the PR-triggered jobs
+act pull_request -j py-lint        # just one
+```
+
+The default runner image is a stripped-down one with no Python or Node, so point act at a fuller image. Put this in `~/.actrc` so you don't retype it:
+
+```text
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+```
+
+Two things to expect: the first run pulls a ~1GB image, and the `audit` job's gitleaks step wants a `GITHUB_TOKEN` it won't have. Skip that job — every step in it is `continue-on-error` in real CI anyway, so it can't be what's failing your PR.
+
+### What CI can't tell you
+
+`docker compose` is not exercised by any workflow. Nothing in CI builds the images in `infrastructure/docker/` or starts the stack, so a green PR says nothing about whether the local stack still comes up. Run the smoke commands in [Running the pieces](#running-the-pieces) yourself after changing anything under `infrastructure/docker/`.
