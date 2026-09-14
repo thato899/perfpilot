@@ -1,0 +1,59 @@
+# Both images in infrastructure/docker/ build from the repository root, so
+# without this file the whole working tree — node_modules, .git, virtualenvs —
+# is uploaded to the daemon on every build.
+#
+# Security: .env is excluded here so secrets can never be baked into an image
+# layer, per docs/security/security-model.md ("All secrets are supplied via
+# environment variables ... never embedded"). Compose injects it at runtime
+# instead (env_file), which is the supported path.
+
+.git
+.github
+.gitignore
+.gitattributes
+
+# --- Node / Next.js ---
+node_modules
+**/node_modules
+.next
+**/.next
+out
+.turbo
+.pnpm-store
+*.tsbuildinfo
+
+# --- Python ---
+__pycache__
+**/__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+.venv
+venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# --- Secrets / local config ---
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+docker-compose.override.yml
+
+# --- Test + run artifacts ---
+infrastructure/docker/k6/results
+*.k6-summary.json
+*.log
+logs
+dist
+build
+*.sqlite3
+pgdata
+
+# --- Editors / OS ---
+.vscode
+.idea
+.DS_Store
+Thumbs.db

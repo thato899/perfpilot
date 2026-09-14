@@ -1,0 +1,31 @@
+# Runtime dependencies for apps/api — used by both the `api` and `worker`
+# services (infrastructure/docker/api/Dockerfile).
+#
+# Floor-pinned (>=) to match requirements-dev.txt's stated convention; switch
+# to exact pins + a lockfile when the team wants reproducible builds.
+#
+# Added by issue #10 so the api/worker containers have something to install.
+# Resolves one of render.yaml's TODO(kamogelo) items ("apps/api's own
+# requirements.txt — doesn't exist yet").
+
+# --- HTTP layer (issue #12: docs/api/api-contract.md) ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# --- Contracts. packages/schemas/python is Pydantic v2. ---
+# NOTE: requirements-dev.txt carries a pydantic pin purely so
+# packages/schemas/python/tests can run in CI, with a comment saying it
+# should move here once apps/api declares real runtime deps. It now does —
+# but that pin is still what CI installs, so removing it there would break
+# py-test. Left in both deliberately; consolidating is a separate change to a
+# shared root file, not a drive-by edit in this PR.
+pydantic>=2.9.0
+
+# --- Persistence (issue #11: docs/database/database-design.md) ---
+sqlalchemy>=2.0.36
+alembic>=1.14.0
+psycopg[binary]>=3.2.0
+
+# --- Async execution (issue #13) ---
+celery[redis]>=5.4.0
+redis>=5.2.0

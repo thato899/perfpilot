@@ -37,7 +37,7 @@ Owns: `agents/load-engineer/`, `packages/metrics/`, `infrastructure/docker/k6/`
 
 Owns: `apps/api/`, database migrations, `packages/schemas/`
 
-- [ ] Stand up `infrastructure/docker/docker-compose.yml` per the planned service layout in [local-development.md](local-development.md#planned-service-layout-infrastructuredocker) — you're first to need it, so you're building it.
+- [ ] Stand up `infrastructure/docker/docker-compose.yml` per the planned service layout in [local-development.md](local-development.md#planned-service-layout-infrastructuredocker) — you're first to need it, so you're building it. *(Issue #10 — mostly done: all six services wired, `db`/`redis`/`web` real, `api`/`worker` booting against scaffolding. Stays open until #12/#13 give them real endpoints and Govenor's k6 image lands. See [STATUS.md](../../STATUS.md).)*
 - [ ] Migrate the Postgres schema per [database-design.md](../database/database-design.md) (Alembic or equivalent).
 - [ ] Build the `apps/api` endpoints in [api-contract.md](../api/api-contract.md) that the Phase 1 slice actually needs: projects, targets, test plan/run, investigation create/get.
 - [ ] Wire Celery for async test execution.
