@@ -22,9 +22,7 @@ def summary(*, p95: float = 420, error_rate: float = 0.01, concurrency: int = 50
     return {
         "duration_seconds": 60,
         "metrics": {
-            "http_req_duration": {
-                "values": {"med": 120, "p(90)": 300, "p(95)": p95, "p(99)": 900}
-            },
+            "http_req_duration": {"values": {"med": 120, "p(90)": 300, "p(95)": p95, "p(99)": 900}},
             "http_reqs": {"values": {"count": 20_400, "rate": 340}},
             "http_req_failed": {"values": {"rate": error_rate}},
         },

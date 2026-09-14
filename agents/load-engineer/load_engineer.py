@@ -104,8 +104,7 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
     path = plan.user_journeys[0]
     request_path = path if path.startswith("/") else "/"
     stages = [
-        {"target": stage.target_vus, "duration": f"{stage.duration_s}s"}
-        for stage in plan.stages
+        {"target": stage.target_vus, "duration": f"{stage.duration_s}s"} for stage in plan.stages
     ]
     thresholds = {
         "http_req_duration": [f"p(95)<{plan.thresholds['p95_ms']}"],
