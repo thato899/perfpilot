@@ -4,7 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-13 by Thato (Claude Code)
+**Last updated:** 2026-09-14 by Govenor
 
 ---
 
@@ -23,12 +23,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Govenor — Performance Engine
 
-**Last updated:** — not yet logged
+**Last updated:** 2026-09-14 by Govenor
 
-- **Currently working on:**
-- **Just completed:**
+- **Currently working on:** Phase 1 performance engine on `feature/k6-engine`; real k6 dry-run and container integration are next.
+- **Just completed:** Implemented deterministic k6 summary parsing, threshold evaluation, regression comparison, capacity estimation, VU/duration safety clamping, target allow-list checks, k6 script generation, subprocess timeout/failure handling, and focused tests in `packages/metrics` and `agents/load-engineer`.
 - **Blocked on:**
-- **Next up:** claim an issue from [docs/development/next-steps.md#govenor--developer-2-performance-engine](docs/development/next-steps.md#govenor--developer-2-performance-engine); also owns unblocking [issue #9](https://github.com/thato899/perfpilot/issues/9) (interval vs. summary metrics) early — see Thato's proposal there, needs your read.
+- **Next up:** read and settle [issue #9](https://github.com/thato899/perfpilot/issues/9) (interval vs. summary metrics), then validate against real k6 output and build the k6 runner container; claim the corresponding issue before continuing.
 
 ### Kamogelo — Backend / Data
 
@@ -53,6 +53,11 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-14 — Govenor
+
+- Implemented and tested the deterministic metrics core and Load Engineer safety boundary on `feature/k6-engine`: parsing, thresholds, regression comparison, capacity estimation, clamping, allow-list checks, script rendering, and subprocess failure handling. Validation is green: 19 focused tests passed, Ruff passed, and diagnostics are clean.
+- Moved the work off `main` onto `feature/k6-engine`; no commits have been created yet.
 
 ### 2026-09-13 — Thato (Claude Code)
 
