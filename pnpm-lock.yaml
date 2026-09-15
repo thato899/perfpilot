@@ -112,6 +112,9 @@ importers:
       '@eslint/js':
         specifier: ^9.9.0
         version: 9.39.5
+      '@types/node':
+        specifier: ^20.19.43
+        version: 20.19.43
       eslint:
         specifier: ^9.9.0
         version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
@@ -127,6 +130,9 @@ importers:
       typescript-eslint:
         specifier: ^8.3.0
         version: 8.70.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7
 
   apps/web:
     dependencies:
@@ -203,6 +209,22 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@20.19.43)(jiti@2.7.0)(jsdom@25.0.1(supports-color@7.2.0))(lightningcss@1.33.0)(supports-color@7.2.0)
+
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.43
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7
 
 packages:
 
