@@ -34,7 +34,8 @@ export class AIService {
     let attempts = 0;
 
     while (attempts <= maxRetries) {
-      const raw = await this.provider.generateText(prompt);
+      const requestPrompt = attempts === 0 ? prompt : this.buildRetryPrompt(prompt, attempts);
+      const raw = await this.provider.generateText(requestPrompt);
 
       try {
         const parsed = JSON.parse(raw);
@@ -44,9 +45,30 @@ export class AIService {
         if (attempts > maxRetries) {
           throw error;
         }
+
+        const validationError = error instanceof Error ? error.message : String(error);
+        const retryPrompt = this.buildRetryPrompt(prompt, attempts, validationError);
+        // The model only gets the plain prompt on the first attempt; subsequent
+        // attempts include the actual validation error so it can fix the issue.
+        const generated = await this.provider.generateText(retryPrompt);
+        const parsed = JSON.parse(generated);
+        return schema.parse(parsed) as T;
       }
     }
 
     throw new Error("Structured generation failed after retries.");
+  }
+
+  private buildRetryPrompt(prompt: string, attempts: number, validationError?: string): string {
+    return `Your previous response failed schema validation.
+
+Validation error:
+${validationError ?? `retry attempt ${attempts}`}
+
+Return only valid JSON.
+
+Original request:
+${prompt}
+`;
   }
 }

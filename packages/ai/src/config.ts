@@ -13,13 +13,16 @@ export interface ResolvedAIConfig {
 
 export function resolveAIConfig(env: AIEnvironment = process.env): ResolvedAIConfig {
   const provider = (env.AI_PROVIDER ?? "gemini").toLowerCase();
-  const normalizedProvider = provider === "deepseek" ? "deepseek" : "gemini";
 
-  const model = env.AI_PROVIDER_MODEL ?? (normalizedProvider === "gemini" ? "gemini-2.5-flash" : "deepseek-chat");
-  const apiKey = normalizedProvider === "gemini" ? env.GEMINI_API_KEY : env.DEEPSEEK_API_KEY;
+  if (provider !== "gemini" && provider !== "deepseek") {
+    throw new Error(`Unsupported AI provider: ${provider}`);
+  }
+
+  const model = env.AI_PROVIDER_MODEL ?? (provider === "gemini" ? "gemini-2.5-flash" : "deepseek-chat");
+  const apiKey = provider === "gemini" ? env.GEMINI_API_KEY : env.DEEPSEEK_API_KEY;
 
   return {
-    provider: normalizedProvider,
+    provider,
     model,
     apiKey,
   };

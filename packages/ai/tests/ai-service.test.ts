@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { AIService } from "../src/ai-service";
-import { GeminiProvider } from "../src/gemini-provider";
-import { resolveAIConfig } from "../src/config";
+import { AIService } from "../src/ai-service.js";
+import { GeminiProvider } from "../src/gemini-provider.js";
+import { resolveAIConfig } from "../src/config.js";
 
 describe("resolveAIConfig", () => {
   it("reads provider and model from the environment", () => {
@@ -65,6 +65,8 @@ describe("AIService", () => {
 
     expect(result).toEqual({ status: "ok", confidence: 0.91 });
     expect(provider.generateText).toHaveBeenCalledTimes(2);
+    expect(String(provider.generateText.mock.calls[1][0])).toContain("Validation error:");
+    expect(String(provider.generateText.mock.calls[1][0])).toContain("Original request:");
   });
 });
 
