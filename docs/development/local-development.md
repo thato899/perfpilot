@@ -10,7 +10,7 @@
 - [k6](https://k6.io/) CLI installed locally (for running/debugging generated scripts outside Docker during development)
 - PostgreSQL and Redis — provided via Docker Compose for local dev; no local install required
 
-## Planned service layout (`infrastructure/docker`)
+## Service layout (`infrastructure/docker`)
 
 | Service | Purpose |
 |---|---|
@@ -87,6 +87,68 @@ docker compose --profile backend exec api \
 
 The second command is the one worth running: it proves the API container, the broker, the worker and the result backend are all talking to each other, which is the whole point of the wiring.
 
+## Database migrations
+
+Schema lives in two places that must agree: `apps/api/db/models.py` (SQLAlchemy models — what exists in Postgres) and [database-design.md](../database/database-design.md) (the prose source of truth). `packages/schemas/python/entities.py` is the typed contract the API validates against; the models import their enums from it so there's one definition of what `test_type` may contain.
+
+Alembic is configured at `apps/api/alembic.ini` rather than the repository root, and is run **from the repository root** so `apps.api.*` and `packages.*` imports resolve the way they do in CI:
+
+```bash
+cd infrastructure/docker && docker compose up -d db && cd ../..
+
+alembic -c apps/api/alembic.ini upgrade head          # apply
+alembic -c apps/api/alembic.ini downgrade -1          # roll back one
+alembic -c apps/api/alembic.ini current               # what's applied
+alembic -c apps/api/alembic.ini upgrade head --sql    # print DDL, don't apply
+```
+
+If `alembic` isn't on your PATH (common on Windows — see above), `python -m alembic ...` works identically.
+
+### Changing the schema
+
+1. Edit `apps/api/db/models.py`.
+2. `alembic -c apps/api/alembic.ini revision --autogenerate -m "what changed"`.
+3. **Read the generated file before committing it.** Autogenerate is a first draft, not an oracle — it doesn't detect table or column *renames* (it emits a drop plus an add, which loses the data), and it never emits `DROP TYPE` for an enum, so any new enum needs a line adding to `downgrade()` by hand. The existing initial migration has that block; copy the pattern.
+4. Apply it, then re-run `--autogenerate` once more. A second run that produces an *empty* migration is the proof your models and the database actually agree.
+
+The connection URL comes from `DATABASE_URL` and is never written into `alembic.ini`, so no connection string is committed. `.env.example`'s `postgresql://` URL is rewritten to `postgresql+psycopg://` at runtime — apps/api uses psycopg 3, and SQLAlchemy would otherwise route a bare `postgresql://` to psycopg2, which isn't installed.
+
+## Background jobs
+
+Test execution runs off the request path: `POST /api/tests/{id}/run` returns `202 queued` immediately and a Celery worker picks the run up (issue #13). Nothing happens without a worker — the row just sits `queued`.
+
+```bash
+cd infrastructure/docker && docker compose up -d db redis && cd ../..
+
+# from the repository root, same as alembic
+celery -A apps.api.celery_app worker --loglevel=info
+```
+
+Or let compose run it, which is what the `worker` service is for:
+
+```bash
+cd infrastructure/docker && docker compose --profile backend up -d
+```
+
+Watch a run go through end to end:
+
+```bash
+# trigger one, then poll until it leaves `queued`
+curl -s localhost:8000/api/test-runs/$RUN_ID -H "Authorization: Bearer $API_AUTH_SECRET"
+```
+
+`queued` → `running` → `succeeded`, with `progress.current_vus` moving off 0 once the worker records stages.
+
+### If a run stays queued forever
+
+Check the worker actually registered the task:
+
+```bash
+celery -A apps.api.celery_app inspect registered
+```
+
+You want `perfpilot.execute_test_run` in that list, not just `perfpilot.ping`. A worker only knows tasks from modules it has imported, which is why `celery_app.py` names `apps.api.tasks` in `include=` — the API process imports it anyway to call `.delay()`, so this failure is invisible from the API side and shows up only as jobs that never run.
+
 ## Working against a demo target
 
 The reference [demo scenario](../demo-scenario.md) expects a small, team-owned application (e.g. a simple e-commerce or quiz app) running locally or in a container, added to `ALLOWED_TARGET_HOSTS`, and registered as a `Target` with `authorization_confirmed: true` before any plan can be run against it (see [security model](../security/security-model.md)).
@@ -125,13 +187,10 @@ Three things bite on a fresh Windows checkout. All of them are environment, not 
 The tidiest fix for 1 and 2 together is a virtualenv, which also matches the Python version CI pins:
 
 ```bash
-py install 3.11                   # only if `py -3.11 --version` says no runtime matches
 py -3.11 -m venv .venv
 source .venv/Scripts/activate     # Git Bash; PowerShell is .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 ```
-
-Run those one at a time. Pasted as a block they run regardless of each other failing, and a missing 3.11 turns into a confusing cascade: no venv gets created, `activate` reports a missing file, and `pip install` then quietly installs into your *global* Python instead.
 
 `.venv/` is already git-ignored. Worth doing even though the script works without it: CI runs Python 3.11, and a newer local Python can disagree with it on `pytest` in ways `ruff` and `black` won't (their `target-version` is pinned in `pyproject.toml`, so those two behave the same anywhere). The script prints which interpreter it used and warns when it isn't 3.11.
 

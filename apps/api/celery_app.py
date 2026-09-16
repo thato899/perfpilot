@@ -23,6 +23,12 @@ from celery import Celery
 
 celery_app = Celery(
     "perfpilot",
+    # Without `include`, a worker only knows tasks from modules that happen
+    # to have been imported — and nothing imports apps.api.tasks in a worker
+    # process, so `perfpilot.execute_test_run` would be unregistered and
+    # every dispatched run would sit queued forever. The API process hides
+    # this, because its routers import the module in order to call .delay().
+    include=["apps.api.tasks"],
     # Defaults match .env.example's host-side values, so this is importable
     # outside a container (e.g. `celery ... inspect` from a developer's
     # shell) without every variable already exported.
@@ -32,6 +38,20 @@ celery_app = Celery(
 
 celery_app.conf.update(
     task_track_started=True,
+    # Fail fast when the broker is unreachable. `.delay()` is called from
+    # inside an HTTP request handler, and Celery's defaults retry a publish
+    # for ~20s — which turned `POST /api/tests/{id}/run` into a 20-second
+    # hang on a request whose TestRun row was already committed.
+    #
+    # task_publish_retry is the setting that governs this, NOT
+    # broker_transport_options (that one covers the transport's own
+    # reconnects, and leaves publishing alone). Retrying a publish adds
+    # nothing here anyway: the row is committed and the caller is told
+    # `queued`, so a failed enqueue is recoverable by re-dispatching rather
+    # than by making a user wait.
+    task_publish_retry=False,
+    broker_connection_timeout=2.0,
+    broker_connection_retry_on_startup=True,
     # Load tests run for minutes, not seconds — Celery's default prefetch of
     # 4 would let one worker claim several long jobs and sit on them. One at
     # a time is the right shape for this workload.

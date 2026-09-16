@@ -57,7 +57,7 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ### `POST /api/tests/plan`
 - **Purpose:** invoke the Test Planner agent (via the Orchestrator) to produce a `TestPlan` for a target.
-- **Request:** `TestPlanRequest` (see [test-planner.md](../agents/test-planner.md#input-schema)).
+- **Request:** `TestPlanRequest` (see [test-planner.md](../agents/test-planner.md#input-schema)), **plus `project_id` and `target_id`**. `TestPlanRequest` carries a target *description* but no ids, and the API has to know which `Project` and `Target` to persist the resulting plan against. The request body is therefore the planner's fields flattened alongside those two ids — see `apps/api/schemas.py::CreateTestPlanRequest`.
 - **Response:** `201` → `TestPlan`, persisted with status `proposed`.
 - **Errors:** `422` on schema failure or an agent-reported "insufficient input" rejection (see test-planner.md failure states).
 
@@ -65,7 +65,11 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 - **Purpose:** approve a `TestPlan` and enqueue its execution. `{id}` is the `TestPlan` id.
 - **Request:** `{ "target_id": "tgt_..." }`
 - **Response:** `202` → `{ "test_run_id": "run_...", "status": "queued" }`. Execution happens asynchronously via Celery (see [system-architecture.md](../architecture/system-architecture.md)); this endpoint never blocks on test completion.
-- **Errors:** `429` if the plan's concurrency/duration exceeds configured safety limits and the plan wasn't already clamped; `403` if the target's authorization has been revoked since the plan was created.
+- **Errors:** `429` if the plan's concurrency/duration exceeds configured safety limits; `403` if the target's authorization has been revoked since the plan was created; `409` if a run for this plan is already `queued` or `running`.
+
+  *Open question:* this previously read "…and the plan wasn't already clamped", but `clamped` is a `TestRun` column — there is no such field on `TestPlan`, and at approval time no run exists yet. Implemented as a straight ceiling check. If plans are meant to carry a pre-clamped marker, that's a `database-design.md` change and needs a decision.
+
+  Both ceilings are checked: `target_concurrency` against `MAX_VIRTUAL_USERS`, and `duration.total_s` against `MAX_TEST_DURATION_SECONDS`.
 
 ---
 

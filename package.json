@@ -10,15 +10,18 @@
     "lint": "eslint packages/schemas/typescript --no-error-on-unmatched-pattern",
     "lint:web": "pnpm --filter web lint",
     "test:web": "pnpm --filter web test",
+    "test:ai": "vitest run packages/ai/tests/ai-service.test.ts",
     "format": "prettier --no-error-on-unmatched-pattern --write \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\"",
     "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\""
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@types/node": "^20.19.43",
     "eslint": "^9.9.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
-    "typescript-eslint": "^8.3.0"
+    "typescript-eslint": "^8.3.0",
+    "vitest": "^3.2.7"
   }
 }

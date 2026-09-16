@@ -37,10 +37,10 @@ Owns: `agents/load-engineer/`, `packages/metrics/`, `infrastructure/docker/k6/`
 
 Owns: `apps/api/`, database migrations, `packages/schemas/`
 
-- [ ] Stand up `infrastructure/docker/docker-compose.yml` per the planned service layout in [local-development.md](local-development.md#planned-service-layout-infrastructuredocker) — you're first to need it, so you're building it. *(Issue #10 — mostly done: all six services wired, `db`/`redis`/`web` real, `api`/`worker` booting against scaffolding. Stays open until #12/#13 give them real endpoints and Govenor's k6 image lands. See [STATUS.md](../../STATUS.md).)*
-- [ ] Migrate the Postgres schema per [database-design.md](../database/database-design.md) (Alembic or equivalent).
-- [ ] Build the `apps/api` endpoints in [api-contract.md](../api/api-contract.md) that the Phase 1 slice actually needs: projects, targets, test plan/run, investigation create/get.
-- [ ] Wire Celery for async test execution.
+- [x] Stand up `infrastructure/docker/docker-compose.yml` per the service layout in [local-development.md](local-development.md#service-layout-infrastructuredocker) — you're first to need it, so you're building it. Done: issue #10 — all six services wired behind profiles, on two networks so the load generator has no route to the database or broker. `db`/`redis`/`web` real, `api` real as of #12, `worker` real as of #13. The remaining placeholder is `k6-runner`'s upstream image, which is Govenor's `infrastructure/docker/k6/Dockerfile` (#6/#7), not this issue.
+- [x] Migrate the Postgres schema per [database-design.md](../database/database-design.md) (Alembic or equivalent). Done: issue #11 — SQLAlchemy models for all 14 entities in `apps/api/db/models.py` (enums imported from `packages/schemas`, not redeclared) plus an Alembic environment at `apps/api/alembic.ini`. Verified against a real Postgres 16: applies to a fresh database, schema matches the doc column by column, autogenerate reports no drift, and down/up cycles are clean. See [local-development.md#database-migrations](local-development.md#database-migrations).
+- [x] Build the `apps/api` endpoints in [api-contract.md](../api/api-contract.md) that the Phase 1 slice actually needs: projects, targets, test plan/run, investigation create/get. Done: issue #12 — all 13 documented endpoints, not just the Phase 1 subset, behind bearer auth with the contract's error envelope and both security-model gates. Built against a stub Orchestrator (`apps/api/orchestrator_stub.py`, injected via `deps.get_orchestrator()`), with 46 endpoint tests running against real Postgres in CI. Still to do: Celery dispatch (#13) — a run is persisted `queued` but nothing consumes it.
+- [x] Wire Celery for async test execution. Done: issue #13 — `apps/api/tasks.py` takes a queued `TestRun` through to a terminal state, dispatched from `POST /api/tests/{id}/run` and from an approved experiment. Verified against a real Redis broker and a real `celery` worker process, not just in-process: triggered over HTTP, polled to `succeeded`. The k6 wrapper itself is stubbed behind `deps.get_load_engineer()` pending Govenor's `agents/load-engineer`, but the safety clamping and allow-list re-check are real.
 - [ ] You own `packages/schemas` canonically — when Thatayaone, Govenor, or Thato need a contract change, that's a sign-off from you, not a unilateral edit on their part (see [team-workflow.md](team-workflow.md#shared--jointly-owned-paths)).
 - You can build every endpoint against `packages/schemas` with the Orchestrator stubbed — you don't need to wait on Thatayaone's agents to be finished.
 
@@ -52,6 +52,10 @@ Owns: `apps/web/`, `agents/reporting/`
 - [x] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one. Done: `agents/reporting/report_builder.py` (issue #15, PR #17, merged into `main`) — deterministic `build_report`/`validate_report` per [reporting-agent.md](../agents/reporting-agent.md), fixtures for the demo scenario and the "healthy run" case, 8 passing tests. Not yet done: swapping the two LLM-shaped prose functions (marked `# BLOCKED-ON: #1`) for real `AIService` output once `packages/ai` (#1) exists.
 - [x] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
 - [x] Open question settled with Govenor: summary-at-completion is enough for the MVP; interval/time-bucketed metrics are deferred to Phase 2. *(Decision written into [database-design.md](../database/database-design.md).)*
+
+## Current implementation update (2026-09-16)
+
+The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, dashboard fixture, and Reporting Agent fixture are also merged. Remaining work is Orchestrator and specialist-agent integration, Celery execution, real k6 runner integration, and switching the dashboard/reporting flow from fixtures to real API output.
 
 ## Definition of done for Phase 1
 
