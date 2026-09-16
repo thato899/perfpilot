@@ -13,8 +13,10 @@ deps.py              Auth, DB session, and the Orchestrator seam.
 errors.py            The single error envelope api-contract.md documents.
 schemas.py           Request/response bodies; ORM -> packages/schemas conversion.
 orchestrator_stub.py Canned Orchestrator. DELETE when agents/orchestrator lands.
-routers/             One module per resource group (implemented in issue #12).
-celery_app.py        Celery app + one no-op task. Real dispatch is issue #13.
+routers/             One module per resource group (issue #12).
+celery_app.py        Celery app; `include` is what makes tasks visible to a worker.
+tasks.py             Async test execution (issue #13).
+load_engineer_stub.py Canned k6 wrapper. DELETE when agents/load-engineer lands.
 db/base.py           Declarative base, constraint naming convention, session factory.
 db/models.py         SQLAlchemy models for all 14 entities (issue #11).
 alembic.ini          Migration config — run from the REPO ROOT, see below.
@@ -23,14 +25,20 @@ tests/               Endpoint tests against the stub Orchestrator.
 requirements.txt     Runtime dependencies for the api and worker containers.
 ```
 
-## The Orchestrator seam
+## The two agent seams
 
-`deps.get_orchestrator()` is the only place that names the Orchestrator
-implementation. It returns `orchestrator_stub.StubOrchestrator` today; when
-Developer 1/Thatayaone's `agents/orchestrator` lands, that one function
-changes and no router does. The stub returns payloads that validate against
-`packages/schemas`, so a contract change there breaks the endpoint tests
-rather than surfacing at integration time.
+`deps.get_orchestrator()` and `deps.get_load_engineer()` are the only places
+that name an agent implementation. Both return stubs today; when
+Developer 1/Thatayaone's `agents/orchestrator` and Developer 2/Govenor's
+`agents/load-engineer` land, those two functions change and nothing else
+does. Each stub returns payloads that validate against `packages/schemas`,
+so a contract change there breaks the tests here rather than surfacing at
+integration time.
+
+The Load Engineer stub is deliberately *not* a pure fake: the safety-ceiling
+clamping and the pre-execution allow-list re-check are implemented for real,
+because those are the parts that must survive the swap. The tests covering
+them should keep passing against Govenor's wrapper unchanged.
 
 ## Running the tests
 
@@ -55,10 +63,17 @@ See [local-development.md#database-migrations](../../docs/development/local-deve
 
 The ORM lives here rather than in `packages/schemas` deliberately: that package is the typed *contract* layer (its docstring scopes ORM mapping and persistence out), and it's a shared path needing cross-owner sign-off. The two stay in step because `db/models.py` imports its enums from `packages/schemas` instead of redeclaring them.
 
-## Still to build
+## Running a worker
 
-Celery dispatch (#13): `POST /api/tests/{id}/run` persists a `queued`
-TestRun but nothing picks it up yet. Reference material for the rest:
+Execution is asynchronous; without a worker a run stays `queued`:
+
+```bash
+celery -A apps.api.celery_app worker --loglevel=info
+```
+
+See [local-development.md#background-jobs](../../docs/development/local-development.md#background-jobs), including what to check when a run never leaves the queue.
+
+## Reference
 
 - [docs/api/api-contract.md](../../docs/api/api-contract.md) — every endpoint, request/response shape, auth, and error contract
 - [docs/database/database-design.md](../../docs/database/database-design.md) — the schema to migrate

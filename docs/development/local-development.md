@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` uses a placeholder upstream image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
+**Status:** live. `infrastructure/docker/docker-compose.yml` stands up all six services ([#10](https://github.com/thato899/perfpilot/issues/10)). `db`, `redis` and `web` are real; `api` serves the full contract ([#12](https://github.com/thato899/perfpilot/issues/12)) and `worker` consumes queued test runs ([#13](https://github.com/thato899/perfpilot/issues/13)). The one placeholder left is `k6-runner`, which runs an upstream `grafana/k6` image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile` — so the load the worker generates is stubbed, not real k6. See [Running the pieces](#running-the-pieces) for what each service does today.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@
 - [k6](https://k6.io/) CLI installed locally (for running/debugging generated scripts outside Docker during development)
 - PostgreSQL and Redis — provided via Docker Compose for local dev; no local install required
 
-## Planned service layout (`infrastructure/docker`)
+## Service layout (`infrastructure/docker`)
 
 | Service | Purpose |
 |---|---|
@@ -71,7 +71,7 @@ Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: f
 | `db`, `redis` | Real. Ports 5432/6379 are published, so Alembic and a host-run `uvicorn`/`celery` can reach them without entering a container. |
 | `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
 | `api` | Real FastAPI endpoint layer, persistence, auth/error handling, and Orchestrator seam. |
-| `worker` | Starts and registers the current Celery task; consuming queued test runs is still issue #13. |
+| `worker` | Real — consumes queued test runs and drives them to a terminal state (issue #13). The k6 wrapper it calls is still a stub. |
 | `k6-runner` | Starts on a placeholder upstream image and idles. Issue #6/#7 territory, Govenor's container. |
 
 Smoke-test the full backend path once it's up:
@@ -112,6 +112,42 @@ If `alembic` isn't on your PATH (common on Windows — see above), `python -m al
 4. Apply it, then re-run `--autogenerate` once more. A second run that produces an *empty* migration is the proof your models and the database actually agree.
 
 The connection URL comes from `DATABASE_URL` and is never written into `alembic.ini`, so no connection string is committed. `.env.example`'s `postgresql://` URL is rewritten to `postgresql+psycopg://` at runtime — apps/api uses psycopg 3, and SQLAlchemy would otherwise route a bare `postgresql://` to psycopg2, which isn't installed.
+
+## Background jobs
+
+Test execution runs off the request path: `POST /api/tests/{id}/run` returns `202 queued` immediately and a Celery worker picks the run up (issue #13). Nothing happens without a worker — the row just sits `queued`.
+
+```bash
+cd infrastructure/docker && docker compose up -d db redis && cd ../..
+
+# from the repository root, same as alembic
+celery -A apps.api.celery_app worker --loglevel=info
+```
+
+Or let compose run it, which is what the `worker` service is for:
+
+```bash
+cd infrastructure/docker && docker compose --profile backend up -d
+```
+
+Watch a run go through end to end:
+
+```bash
+# trigger one, then poll until it leaves `queued`
+curl -s localhost:8000/api/test-runs/$RUN_ID -H "Authorization: Bearer $API_AUTH_SECRET"
+```
+
+`queued` → `running` → `succeeded`, with `progress.current_vus` moving off 0 once the worker records stages.
+
+### If a run stays queued forever
+
+Check the worker actually registered the task:
+
+```bash
+celery -A apps.api.celery_app inspect registered
+```
+
+You want `perfpilot.execute_test_run` in that list, not just `perfpilot.ping`. A worker only knows tasks from modules it has imported, which is why `celery_app.py` names `apps.api.tasks` in `include=` — the API process imports it anyway to call `.delay()`, so this failure is invisible from the API side and shows up only as jobs that never run.
 
 ## Working against a demo target
 

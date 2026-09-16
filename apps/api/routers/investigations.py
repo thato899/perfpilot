@@ -244,8 +244,16 @@ def approve_experiment(
     )
     investigation.experiments_run += 1
     plan.status = TestPlanStatus.APPROVED
+    # The approved experiment becomes the investigation's current run, which
+    # is what lets the worker's completion callback find it again.
+    investigation.current_test_run_id = run.id
     db.commit()
     db.refresh(run)
+
+    # After the commit, and tolerant of a down broker — see tests_._dispatch.
+    from .tests_ import _dispatch
+
+    _dispatch(run.id)
     return ExperimentQueuedResponse(test_run_id=run.id)
 
 

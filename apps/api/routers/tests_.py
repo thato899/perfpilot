@@ -6,6 +6,7 @@ mistake it for a test package.
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
@@ -33,6 +34,28 @@ from ..schemas import (
     TestRunStatusResponse,
     from_orm,
 )
+from ..tasks import execute_test_run
+
+log = logging.getLogger(__name__)
+
+
+def _dispatch(run_id: UUID) -> None:
+    """Enqueue execution, tolerating a broker that's down.
+
+    The TestRun row is already committed and genuinely is `queued` — which
+    is exactly what the 202 promises. A broker outage is an operational
+    problem, not a bad request, and raising here would leave the caller
+    unsure whether the run exists (it does). It stays visible via
+    `GET /api/test-runs/{id}` as `queued` and can be re-dispatched.
+
+    Logged at exception level on purpose: a queue nothing is draining is
+    something an operator has to see.
+    """
+    try:
+        execute_test_run.delay(str(run_id))
+    except Exception:
+        log.exception("could not enqueue execution for TestRun %s — it stays queued", run_id)
+
 
 router = APIRouter(prefix="/api", tags=["tests"], dependencies=[Depends(require_auth)])
 
@@ -183,8 +206,11 @@ def run_test_plan(
     db.commit()
     db.refresh(run)
 
-    # Dispatching the Celery task is issue #13. The row exists and is
-    # QUEUED, which is what the contract promises; nothing picks it up yet.
+    # Dispatched only after the commit above. Enqueueing first would race:
+    # a worker can pick the job up before the transaction is visible and
+    # find no such TestRun.
+    _dispatch(run.id)
+
     return TestRunQueuedResponse(test_run_id=run.id, status=run.status)
 
 
