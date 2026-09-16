@@ -4,9 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-14 by Kamogelo
-
-*Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
+**Last updated:** 2026-09-14 by Kamogelo 
 
 ---
 
@@ -34,12 +32,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Kamogelo — Backend / Data
 
-**Last updated:** 2026-09-12 by Kamogelo (Claude/Cowork)
+**Last updated:** 2026-09-14 by Kamogelo
 
-- **Currently working on:** issue #10 (`docker-compose.yml`) — branch open, PR not yet raised. See the log entry below for what landed and the one open question for Govenor.
+- **Currently working on:** issue #11 (Postgres migrations) — branch `feature/postgres-migrations`, built on top of #10's branch since it needs the compose `db` service. Issue #10's PR is open and awaiting review.
 - **Just completed:** the local stack. `infrastructure/docker/docker-compose.yml` with all six planned services, profile-gated so a bare `docker compose up` starts `db` + `redis` (which is what #11 and #13 need) and `--profile all` brings up everything. Two Dockerfiles (`infrastructure/docker/api/`, `.../web/`), a root `.dockerignore`, and the minimum `apps/api` scaffolding needed for the `api`/`worker` containers to actually boot: `requirements.txt`, `main.py` (`/health` only), `celery_app.py` (one no-op `perfpilot.ping` task). Validated with `docker compose config` across every profile, and the repo's own CI gates (`ruff check .`, `black --check .`, `pytest`, `compileall apps/api`) all pass with the new files in place.
 - **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
-- **Next up:** #11 (Postgres migrations) — the compose `db` service is what it needs to apply against, which is why #10 went first. Then #12, then #13. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the log entry.
+- **Next up:** #12 (`apps/api` endpoints) — the tables now exist to persist into, and `db/base.py` already exposes a `get_session()` in FastAPI dependency shape to build on. Then #13. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
 
 **Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml`, the new root `.dockerignore`, `docs/development/local-development.md`, `docs/api/api-contract.md`. Govenor is the right reviewer — he owns the other half of `infrastructure/docker/`.
 
@@ -58,6 +56,15 @@ Each section below follows the same template. Update your own section — don't 
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
 
+### 2026-09-14 — Kamogelo, second session
+
+- Issue #11: Postgres schema. SQLAlchemy models for all 14 entities in `apps/api/db/models.py`, a declarative base with a constraint naming convention in `apps/api/db/base.py`, and an Alembic environment at `apps/api/alembic.ini` + `apps/api/alembic/`. `alembic.ini` deliberately sits under `apps/api`, not the repo root (root config is a shared path), and runs from the root so `apps.api.*`/`packages.*` imports resolve as they do in CI.
+- Enums are **imported** from `packages/schemas/python/entities.py` rather than redeclared, so there's one definition of what `test_type` may contain. Needed `values_callable` on every `sa.Enum`: SQLAlchemy's default persists the Python member *name* (`LOAD`), while Pydantic serializes the *value* (`load`) — without it the database and every JSON payload would disagree, and only on first read-back.
+- Verified against a real Postgres 16 (same major as the compose `db` service), not just written: applies to a genuinely fresh database; schema matches database-design.md column by column across all 14 entities (scripted audit); `--autogenerate` run a second time produces an empty migration, proving models and schema agree; two full down/up cycles are clean; a full investigation graph inserts across every layer, with the confidence CHECK and the one-report-per-investigation constraint both rejecting bad rows.
+- **Bug found and fixed in the process:** Alembic emits `CREATE TYPE` for enum columns on the way up but never `DROP TYPE` on the way down, so the first downgrade left all nine types orphaned and the next `upgrade` died on "type test_type already exists". `downgrade()` now drops them explicitly. Anyone adding an enum column later has to add a line there too — written up in local-development.md#changing-the-schema.
+- Judgement calls worth a reviewer's eye: `TestStage` got a `UNIQUE(test_run_id, sequence_index)` that database-design.md doesn't state but "sequence" implies; `Investigation`'s active-status partial index is written as `NOT IN ('complete','failed')` rather than listing the five in-flight statuses, so a status added later is treated as active by default; and the ER diagram's many-to-many Investigation↔TestRun edge is *not* materialised as a join table, because the normative Entities section defines only the two nullable FK columns.
+- No tests added, same reason as #10: CI installs only `requirements-dev.txt`, which has no SQLAlchemy, and a migration test needs a live database CI doesn't have. #12 has to solve the CI-dependencies problem; a `services: postgres` block in the py-test job would then make migration tests possible.
+
 ### 2026-09-14 — Kamogelo
 
 - Issue #10: stood up `infrastructure/docker/docker-compose.yml` with all six services from local-development.md's planned layout, plus `infrastructure/docker/{api,web}/Dockerfile` and a root `.dockerignore`. Both images build from the repo root, because `apps/api` imports `packages.schemas` root-relative and the container has to mirror that or the imports break.
@@ -66,7 +73,8 @@ Reverse-chronological. One entry per session — a couple of lines, not a full c
 - Put `k6-runner` on its own network (`perfpilot-targets`) with no route to `db`/`redis`, which is the compose-level half of security-model.md's "k6 ... network access scoped to the target(s) actually needed, not open egress". Left two decisions to Govenor in comments rather than guessing: pinning a locally-built k6 image (his folder, his version choice), and whether `perfpilot-targets` should be `internal: true` — that depends on whether the demo target runs on the host or as a container.
 - **Found, not fixed:** `render.yaml`'s TODOs assume `rootDir: apps/api` with `uvicorn main:app` and `celery -A app.celery_app`. Those are wrong for this repo — with `apps/api` as the root, `packages.schemas` imports don't resolve. The correct paths are `apps.api.main:app` and `apps.api.celery_app` from the repo root. Not changed here (activating `render.yaml` is separate work on a shared root file); flagged in `apps/api/celery_app.py`'s docstring so whoever does it sees it in context.
 - **Also flagged:** `requirements-dev.txt`'s comment says pydantic should move to `apps/api`'s runtime deps "once apps/api declares its own". It now does, and pydantic is listed there — but CI still installs only `requirements-dev.txt`, so removing it there would break `py-test`. Left in both deliberately. Consolidating that (and adding fastapi to whatever CI installs, which #12 will need for its tests) is a separate change to a shared root file.
-- **Not verified:** I couldn't run Docker against this checkout this session, so `docker compose up` has not actually been executed — only `docker compose config` across every profile, plus the repo's CI gates (`ruff`, `black`, `pytest`, `compileall`), which all pass. First person with Docker running should do the two smoke commands in local-development.md before #10 is closed.
+- **Not verified:** `docker compose up` has not actually been executed against this branch — only `docker compose config` across every profile. First person with Docker running should do the two smoke commands in local-development.md before #10 is closed. No workflow exercises compose either, so a green PR says nothing about it. The CI gates themselves (`ruff`, `black`, `pytest` — 15 tests including Thato's merged reporting-agent suite, `compileall`) were run locally and pass.
+- Added `scripts/ci-local.sh` along the way — runs the seven blocking CI jobs locally with the workflow's own skip guards, since a PR is a slow place to discover a lint failure. Not part of #10; drop it if the team would rather it were separate. Documented in local-development.md, along with three Windows-specific setup traps it works around (pip's `Scripts\` not on PATH, the Microsoft Store `python` stub, and a corrupt self-installed pnpm).
 - **#10 stays open** until `api`/`worker` serve real endpoints (#12/#13) and Govenor's k6 image lands — the done-when is "`docker compose up` brings up every planned service", and three of them are still standing in for something.
 
 ### 2026-09-13 — Thato (Claude Code)
