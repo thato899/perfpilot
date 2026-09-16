@@ -18,11 +18,14 @@ from sqlalchemy.orm import Session
 from .config import Settings, get_settings
 from .db.base import SessionLocal
 from .errors import unauthorized
+from .load_engineer_stub import StubLoadEngineer
 from .orchestrator_stub import StubOrchestrator
 
-# Protocol the routers depend on. Today it's only satisfied by the stub;
-# agents/orchestrator will satisfy it too, unchanged on this side.
+# Protocols the routers and tasks depend on. Today these are only satisfied
+# by the stubs; agents/orchestrator and agents/load-engineer will satisfy
+# them too, unchanged on this side.
 Orchestrator = StubOrchestrator
+LoadEngineer = StubLoadEngineer
 
 
 def get_db() -> Iterator[Session]:
@@ -61,6 +64,17 @@ def get_orchestrator() -> Orchestrator:
     that instead; every router keeps calling the same methods.
     """
     return StubOrchestrator()
+
+
+def get_load_engineer() -> LoadEngineer:
+    """The Load Engineer seam — the k6 execution wrapper.
+
+    Called from the Celery task, not from a router: execution happens off
+    the request path (system-architecture.md), so this is deliberately not
+    a FastAPI dependency. When agents/load-engineer lands, this returns it
+    instead and apps/api/tasks.py is untouched.
+    """
+    return StubLoadEngineer(get_settings())
 
 
 # Annotated aliases rather than `= Depends(...)` defaults. Both work in
