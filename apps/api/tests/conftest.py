@@ -6,18 +6,32 @@ else would be testing a different schema than the one that ships — and the
 migration set itself is what issue #11 delivered, so exercising it here
 keeps the two honest.
 
-Skipped rather than failed when no database is reachable: `pytest` has to
-stay green for teammates who haven't started the compose stack, since CI
-runs the whole suite on every PR regardless of who opened it.
+Skipped rather than failed twice over: once when apps/api's runtime
+dependencies aren't installed, and again when no database is reachable.
+`pytest` has to stay green for teammates who have neither — Thato and
+Govenor run the suite too, and a hard failure in this directory would take
+the schema tests down with it.
 """
 
 from __future__ import annotations
 
+import functools
+import importlib.util
 import os
+import pathlib
 import uuid
 from collections.abc import Iterator
 
 import pytest
+
+# NOT pytest.importorskip: that works in a test module, but raising Skipped
+# while a *conftest* is being imported aborts the entire pytest session
+# rather than skipping anything. collect_ignore_glob is the supported way to
+# say "this directory isn't collectable here".
+_HAVE_DEPS = all(importlib.util.find_spec(name) for name in ("fastapi", "sqlalchemy"))
+
+if not _HAVE_DEPS:
+    collect_ignore_glob = ["test_*.py"]
 
 
 def _env(name: str) -> str | None:
@@ -44,21 +58,31 @@ os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ.setdefault("API_AUTH_SECRET", "test-secret-do-not-use-in-production")
 os.environ.setdefault("ALLOWED_TARGET_HOSTS", "localhost,demo.perfpilot.local")
 
-sqlalchemy = pytest.importorskip("sqlalchemy", reason="apps/api dependencies not installed")
-pytest.importorskip("fastapi", reason="apps/api dependencies not installed")
+# Imported only when available. Everything below references these from
+# inside function bodies or from annotations, which `from __future__ import
+# annotations` keeps as strings — so nothing here evaluates them at import
+# time when the dependencies are absent.
+if _HAVE_DEPS:
+    from fastapi.testclient import TestClient  # noqa: E402
+    from sqlalchemy import create_engine, text  # noqa: E402
 
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine, text  # noqa: E402
-
-from apps.api.config import get_settings  # noqa: E402
-from apps.api.db import models as m  # noqa: E402
-from apps.api.db.base import Base  # noqa: E402
-from apps.api.main import app  # noqa: E402
+    from apps.api.config import get_settings  # noqa: E402
+    from apps.api.db import models as m  # noqa: E402
+    from apps.api.db.base import Base  # noqa: E402
+    from apps.api.main import app  # noqa: E402
 
 AUTH = {"Authorization": f"Bearer {os.environ['API_AUTH_SECRET']}"}
 
 
+@functools.lru_cache(maxsize=1)
 def _database_reachable() -> bool:
+    """Cached: without it, every fixture pays the connect timeout again.
+
+    Checked against _HAVE_DEPS first, since create_engine doesn't exist
+    when the dependencies above are absent.
+    """
+    if not _HAVE_DEPS:
+        return False
     try:
         engine = create_engine(TEST_DB_URL.replace("postgresql://", "postgresql+psycopg://", 1))
         with engine.connect() as conn:
@@ -68,9 +92,27 @@ def _database_reachable() -> bool:
         return False
 
 
-pytestmark = pytest.mark.skipif(
-    not _database_reachable(), reason=f"no Postgres reachable at {TEST_DB_URL}"
-)
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip this directory's tests when there's no database to run them against.
+
+    A module-level `pytestmark` in a conftest does NOT apply to tests in
+    sibling modules — it only marks tests defined in the same file — so the
+    skip has to be applied to collected items explicitly. Without this the
+    suite errors 24 times with a connection failure instead of saying the
+    one thing that's actually wrong.
+    """
+    if _database_reachable():
+        return
+    skip = pytest.mark.skip(
+        reason=(
+            f"no Postgres reachable at {TEST_DB_URL} — "
+            "start it with: docker compose -f infrastructure/docker/docker-compose.yml up -d db"
+        )
+    )
+    here = str(pathlib.Path(__file__).parent)
+    for item in items:
+        if str(item.path).startswith(here):
+            item.add_marker(skip)
 
 
 @pytest.fixture(scope="session", autouse=True)
