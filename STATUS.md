@@ -4,7 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-16 by Thatayaone
+**Last updated:** 2026-09-16 by Kamogelo
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
@@ -36,11 +36,12 @@ Each section below follows the same template. Update your own section — don't 
 
 **Last updated:** 2026-09-16 by Kamogelo
 
-- **Currently working on:** issue #13 (Celery dispatch) and follow-up integration of the real orchestrator and load runner.
-- **Just completed:** issue #12 (`apps/api` endpoints), including persistence, auth/error handling, request/response schemas, and contract tests; the local Docker stack and database migration baseline are also on `main`.
-- **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
-- **Next up:** #13 (Celery) — the last of my four. `POST /api/tests/{id}/run` already persists a `queued` TestRun; #13 is what consumes it, and the task it dispatches is Govenor's k6 wrapper. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
-- **Unblocks Thato:** every endpoint `apps/web`'s `mock-api.ts` mirrors now exists for real, so the dashboard's mocked layer can be swapped for `fetch` calls whenever he wants it.
+- **Currently working on:** issue #13 (Celery) — branch `feature/celery-execution`, off current `main`. That's my last of the four.
+- **Just completed:** #13. `apps/api/tasks.py` takes a queued `TestRun` through `running` -> `succeeded`/`failed`/`aborted_over_limit`, writes the `Metric` and `TestStage` rows and the `clamped` flag, and advances any investigation pointing at that run. Dispatched from `POST /api/tests/{id}/run` and from an approved experiment — after the commit, never before, or a worker can beat the transaction and find no such run.
+- **Verified against a real broker and worker**, not eager mode: real Redis, a real `celery -A apps.api.celery_app worker` process, uvicorn, triggered over HTTP and polled `GET /api/test-runs/{id}` to `succeeded`. That is #13's done-when, run rather than asserted. It's also the only reason I caught the one bug that mattered — the worker came up registering just `perfpilot.ping`, because nothing imported `apps.api.tasks` in a worker process. Every dispatched run would have sat queued forever, and eager-mode tests would have sailed straight past it since the API process imports that module anyway to call `.delay()`. Fixed with `include=["apps.api.tasks"]`.
+- **Three calls worth a reviewer's eye:** `max_retries=0` (Celery's default retry would re-run a *load test* against someone's application because a DB write blipped — a failed run is recorded failed and left for a human); the allow-list is re-checked *inside* the execution wrapper, not just at the API, because a target can be revoked in the gap between approval and execution (load-engineer.md asks for exactly this); and an over-ceiling run clamps rather than rejects, per security-model.md, with the recorded `TestStage` rows showing what actually ran rather than what was planned.
+- **Blocked on:** nothing. `load_engineer_stub.py` stands in for Govenor's wrapper behind `deps.get_load_engineer()` — I see from his 09-14 entry that `feature/k6-engine` already has the real clamping and allow-list logic, so the swap is one function and the tests around those behaviours should pass against his unchanged. Worth a conversation with him about which of the two clamping implementations survives.
+- **Next up:** all four of mine are done. Available to review, and to help with integration — #10's six-service smoke test is still the one unticked thing on my side.
 
 **Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml` and the root `.dockerignore` (#10), `docs/development/local-development.md`, `docs/api/api-contract.md`, and **`.github/workflows/ci.yml`** (#12 — adds a Postgres service and an apps/api dependency install to `py-test`; that one touches everyone's CI, so please read it before merging). Govenor is the right reviewer for the docker half; anyone for the CI change.
 
@@ -58,6 +59,14 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-16 — Kamogelo, second session
+
+- Issue #13: Celery wiring. `apps/api/tasks.py` (the task), `apps/api/load_engineer_stub.py` (the k6 wrapper stand-in), dispatch from both endpoints, and `include=["apps.api.tasks"]` in `celery_app.py`.
+- Proved the done-when literally — real Redis, a real worker process, uvicorn, `POST /api/tests/{id}/run` over HTTP, polled to `succeeded` with metrics written. Doing it for real is what surfaced the `include` bug; in-process tests would have passed while every queued run starved.
+- The stub implements the *safety* behaviour for real (ceiling clamping, allow-list re-check immediately before execution) rather than faking it, because those are the parts that must not quietly vanish when Govenor's wrapper replaces it. 12 new tests cover them plus duplicate delivery, a wrapper that raises, and a revoked target.
+- **For Govenor:** we've now both implemented clamping and the allow-list check — mine in `apps/api/load_engineer_stub.py`, yours on `feature/k6-engine`. Yours should win; mine exists so #13 could be finished and tested without blocking on your branch. The seam is `deps.get_load_engineer()`.
+- **Also note:** `POST .../experiments` now sets `investigation.current_test_run_id`, which is what lets the worker's completion callback find the investigation to advance. Without it the callback is a no-op.
 
 ### 2026-09-16 — Thatayaone
 
