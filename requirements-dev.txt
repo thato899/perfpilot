@@ -13,3 +13,14 @@ pip-audit>=2.7.0
 # declares its own real runtime dependencies, pydantic should move there as
 # a proper runtime dep (Kamogelo's call — flagged, not silently done here).
 pydantic>=2.9.0
+
+# httpx2 is what starlette's TestClient imports as of starlette 1.6 (it was
+# plain `httpx` before the rename). apps/api/tests can't construct a
+# TestClient without it, and CI installs this file, so it belongs here
+# rather than in apps/api/requirements.txt — it's a test dependency and has
+# no business in the api/worker container image. Same reasoning as the
+# pydantic pin above.
+#
+# If a stale environment resolves starlette < 1.6, that one wants `httpx`
+# instead and says so in the error. A fresh install gets 1.6+.
+httpx2>=2.13.0

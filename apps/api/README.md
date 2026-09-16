@@ -7,14 +7,43 @@ FastAPI backend: HTTP layer, auth, persistence, background job dispatch. Invokes
 ## Layout
 
 ```text
-main.py          FastAPI app. Currently /health only — endpoints are issue #12.
-celery_app.py    Celery app + one no-op task. Real dispatch is issue #13.
-db/base.py       Declarative base, constraint naming convention, session factory.
-db/models.py     SQLAlchemy models for all 14 entities (issue #11).
-alembic.ini      Migration config — run from the REPO ROOT, see below.
-alembic/         Migration environment and versions/.
-requirements.txt Runtime dependencies for the api and worker containers.
+main.py              FastAPI app: routers + error handlers + /health.
+config.py            Settings from the environment, incl. the safety ceilings.
+deps.py              Auth, DB session, and the Orchestrator seam.
+errors.py            The single error envelope api-contract.md documents.
+schemas.py           Request/response bodies; ORM -> packages/schemas conversion.
+orchestrator_stub.py Canned Orchestrator. DELETE when agents/orchestrator lands.
+routers/             One module per resource group (issue #12).
+celery_app.py        Celery app + one no-op task. Real dispatch is issue #13.
+db/base.py           Declarative base, constraint naming convention, session factory.
+db/models.py         SQLAlchemy models for all 14 entities (issue #11).
+alembic.ini          Migration config — run from the REPO ROOT, see below.
+alembic/             Migration environment and versions/.
+tests/               Endpoint tests against the stub Orchestrator.
+requirements.txt     Runtime dependencies for the api and worker containers.
 ```
+
+## The Orchestrator seam
+
+`deps.get_orchestrator()` is the only place that names the Orchestrator
+implementation. It returns `orchestrator_stub.StubOrchestrator` today; when
+Developer 1/Thatayaone's `agents/orchestrator` lands, that one function
+changes and no router does. The stub returns payloads that validate against
+`packages/schemas`, so a contract change there breaks the endpoint tests
+rather than surfacing at integration time.
+
+## Running the tests
+
+They need a database — the models use JSONB and native Postgres enums, so
+SQLite would be testing a schema that never ships:
+
+```bash
+cd infrastructure/docker && docker compose up -d db && cd ../..
+python -m pytest apps/api/tests
+```
+
+The suite skips itself if no database is reachable, so `pytest` stays green
+for teammates who haven't started the stack.
 
 Migrations run from the repository root, not from here:
 
@@ -28,7 +57,8 @@ The ORM lives here rather than in `packages/schemas` deliberately: that package 
 
 ## Still to build
 
-The HTTP layer is Phase 1 work (#12/#13). Build against:
+Celery dispatch (#13): `POST /api/tests/{id}/run` persists a `queued`
+TestRun but nothing picks it up yet. Reference material for the rest:
 
 - [docs/api/api-contract.md](../../docs/api/api-contract.md) — every endpoint, request/response shape, auth, and error contract
 - [docs/database/database-design.md](../../docs/database/database-design.md) — the schema to migrate
