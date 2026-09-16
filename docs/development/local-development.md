@@ -70,8 +70,8 @@ Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: f
 |---|---|
 | `db`, `redis` | Real. Ports 5432/6379 are published, so Alembic and a host-run `uvicorn`/`celery` can reach them without entering a container. |
 | `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
-| `api` | Starts, serves `GET /health`, nothing else. The contract endpoints are issue #12. |
-| `worker` | Starts, registers one no-op `perfpilot.ping` task. Real task dispatch is issue #13. |
+| `api` | Real FastAPI endpoint layer, persistence, auth/error handling, and Orchestrator seam. |
+| `worker` | Starts and registers the current Celery task; consuming queued test runs is still issue #13. |
 | `k6-runner` | Starts on a placeholder upstream image and idles. Issue #6/#7 territory, Govenor's container. |
 
 Smoke-test the full backend path once it's up:

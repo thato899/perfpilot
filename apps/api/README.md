@@ -13,7 +13,7 @@ deps.py              Auth, DB session, and the Orchestrator seam.
 errors.py            The single error envelope api-contract.md documents.
 schemas.py           Request/response bodies; ORM -> packages/schemas conversion.
 orchestrator_stub.py Canned Orchestrator. DELETE when agents/orchestrator lands.
-routers/             One module per resource group (issue #12).
+routers/             One module per resource group (implemented in issue #12).
 celery_app.py        Celery app + one no-op task. Real dispatch is issue #13.
 db/base.py           Declarative base, constraint naming convention, session factory.
 db/models.py         SQLAlchemy models for all 14 entities (issue #11).

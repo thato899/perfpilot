@@ -4,8 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-16 by Kamogelo 
-**Last updated:** 2026-09-14 by Govenor
+**Last updated:** 2026-09-16 by Thatayaone
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
@@ -17,12 +16,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Thatayaone — AI / Orchestration
 
-**Last updated:** — not yet logged
+**Last updated:** 2026-09-16 by Thatayaone
 
-- **Currently working on:**
-- **Just completed:**
+- **Currently working on:** Phase 1 AI/orchestration integration: connecting the provider gateway to the orchestrator and specialist agents.
+- **Just completed:** Implemented `packages/ai` with the `AIService` abstraction and Gemini provider, configuration and TypeScript build support, structured-output validation, and retry handling that feeds validation errors back into the next request. Added focused tests, including multiple structured-output retries. Changes are merged into `main`.
 - **Blocked on:**
-- **Next up:** claim an issue from [docs/development/next-steps.md#thatayaone--developer-1-ai--orchestration](docs/development/next-steps.md#thatayaone--developer-1-ai--orchestration) — start with `packages/ai` (#1), it's the one thing everyone else's agents import.
+- **Next up:** finish the deterministic Orchestrator continuation policy, then make Test Planner and Performance Investigator produce schema-valid fixture outputs and expose the integration seam for the API.
 
 ### Govenor — Performance Engine
 
@@ -37,8 +36,8 @@ Each section below follows the same template. Update your own section — don't 
 
 **Last updated:** 2026-09-16 by Kamogelo
 
-- **Currently working on:** issue #12 (`apps/api` endpoints) — branch `feature/api-endpoints`, stacked on #11's branch. #10 and #11 both have PRs open awaiting review.
-- **Just completed:** the local stack. `infrastructure/docker/docker-compose.yml` with all six planned services, profile-gated so a bare `docker compose up` starts `db` + `redis` (which is what #11 and #13 need) and `--profile all` brings up everything. Two Dockerfiles (`infrastructure/docker/api/`, `.../web/`), a root `.dockerignore`, and the minimum `apps/api` scaffolding needed for the `api`/`worker` containers to actually boot: `requirements.txt`, `main.py` (`/health` only), `celery_app.py` (one no-op `perfpilot.ping` task). Validated with `docker compose config` across every profile, and the repo's own CI gates (`ruff check .`, `black --check .`, `pytest`, `compileall apps/api`) all pass with the new files in place.
+- **Currently working on:** issue #13 (Celery dispatch) and follow-up integration of the real orchestrator and load runner.
+- **Just completed:** issue #12 (`apps/api` endpoints), including persistence, auth/error handling, request/response schemas, and contract tests; the local Docker stack and database migration baseline are also on `main`.
 - **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
 - **Next up:** #13 (Celery) — the last of my four. `POST /api/tests/{id}/run` already persists a `queued` TestRun; #13 is what consumes it, and the task it dispatches is Govenor's k6 wrapper. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
 - **Unblocks Thato:** every endpoint `apps/web`'s `mock-api.ts` mirrors now exists for real, so the dashboard's mocked layer can be swapped for `fetch` calls whenever he wants it.
@@ -51,7 +50,7 @@ Each section below follows the same template. Update your own section — don't 
 
 - **Currently working on:** nothing active — both PRs are merged into `main` (PR #18/issue #14 at 18:58, PR #17/issue #15 at 19:23 on 2026-09-12), CI green on both merge commits. Everything in next-steps.md's Thato backlog that doesn't depend on a teammate is done; see next-steps.md's Thato section for the exact per-item status.
 - **Just completed:** Dashboard (issue #14, PR #18, merged) — `apps/web`: Next.js + TypeScript + Tailwind + shadcn/ui, all four required flows (create target / trigger investigation / watch progress / view report) working against a mocked API (`src/lib/mock-api.ts`, `localStorage`-backed). Verified end to end with a scripted headless-browser run (screenshots + console-error check), not just `next build`. Found a schema gap (`types.ts` had no `ExpectedTraffic`) and fixed it. Tightened CI: `ts-lint` now runs `apps/web`'s own Next.js-flavored eslint config instead of only the generic root one. Added a real automated test suite — Vitest + React Testing Library (`apps/web/README.md#testing`), 21 tests covering `mock-api.ts`'s full behavior (target creation/rejection, tick-by-tick investigation advance to a completed report, finding/hypothesis timing) and the severity/status badge components — plus a new `ts-test` CI job (guarded the same way `ts-lint`/`ts-format` are). This closed the "automated frontend tests" gap the PR originally shipped with flagged as not-yet-done. (Separately, and in parallel: Reporting Agent, issue #15, PR #17, also merged — see that PR/branch for details, not duplicated here.)
-- **Blocked on:** nothing for this fixture/mock-first slice. Wiring the dashboard to a real API needs `apps/api` (#12) — noted as a "Not yet done" item in `apps/web/README.md`, not a current blocker since mock-first was the explicit Phase 1 scope.
+- **Blocked on:** nothing. The real `apps/api` endpoints are now on `main`; next integration work is wiring the dashboard to them while preserving the mock layer for tests.
 - **Next up:** proposed a recommendation on [issue #9](https://github.com/thato899/perfpilot/issues/9) (summary-at-completion over interval-bucketed metrics, for Phase 1) — still open, waiting on Govenor's read before treating it as settled; this is the one open item that's genuinely not mine to close. Otherwise: pick up the next unclaimed `dev:thato` issue once one exists (none currently unclaimed), or help review a teammate's PR (none currently open).
 
 ---
@@ -59,6 +58,11 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-16 — Thatayaone
+
+- Implemented and merged the Phase 1 AI provider gateway in `packages/ai`: `AIService`, Gemini provider, configuration/build support, structured-output validation, and retry handling with validation feedback.
+- Added focused tests for provider behavior and multiple structured-output retries. Remaining work is the Orchestrator and specialist-agent integration described above.
 
 ### 2026-09-16 — Kamogelo
 

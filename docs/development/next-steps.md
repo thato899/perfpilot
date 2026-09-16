@@ -53,6 +53,10 @@ Owns: `apps/web/`, `agents/reporting/`
 - [x] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
 - [ ] Open question to settle early with Govenor: see above (interval-bucketed metrics vs. summary-at-completion). *(Proposal posted on issue #9 — blocked on Govenor's read/sign-off, not a solo task.)*
 
+## Current implementation update (2026-09-16)
+
+The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, dashboard fixture, and Reporting Agent fixture are also merged. Remaining work is Orchestrator and specialist-agent integration, Celery execution, real k6 runner integration, and switching the dashboard/reporting flow from fixtures to real API output.
+
 ## Definition of done for Phase 1
 
 The [demo scenario](../demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. See [roadmap.md](../roadmap.md) for what's explicitly deferred to Phase 2+ — don't build ahead of that list.

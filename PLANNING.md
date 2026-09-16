@@ -21,19 +21,37 @@ The stable plan: phases, timeline, Definition of Done, where the detail actually
 
 ## Timeline
 
-Today is **2026-09-09**. Hard deadline: **2026-10-07**. Internal target: **2026-10-02** — five days earlier, on purpose (see below).
+Current checkpoint: **2026-09-16**. Hard deadline: **2026-10-07**. Internal integration target: **2026-10-02**.
 
 | Date | Milestone | Tracking |
 |---|---|---|
-| 2026-09-09 (today) | This process/tooling PR merges; everyone claims their first Phase 1 issue | this PR |
-| 2026-09-16 | Checkpoint 1 — local stack runnable end to end (even if empty); `packages/ai` has one working provider; k6 script-generation prototype exists; dashboard skeleton exists; open question #9 (interval vs. summary metrics) is settled, not still open | #1, #6, #9, #10, #14 |
-| 2026-09-23 | Checkpoint 2 — Orchestrator + Test Planner produce valid output against fixtures; k6 execution wrapper has the safety ceiling enforced; `packages/metrics` computes the core calculations; Postgres migrations + first API endpoints exist | #2, #3, #7, #8, #11, #12, #15 |
-| 2026-09-30 | Checkpoint 3 — all 15 currently-filed Phase 1 issues individually done in isolation (each piece works against its fixture/stub input) | #4, #5, #12, #13, #14, #15 |
+| 2026-09-16 | Checkpoint 1 — **substantially complete**: local stack, AI gateway, k6 script-generation/metrics prototypes, dashboard, Postgres migrations, and API endpoints are on `main`. Remaining: settle metric granularity and complete integration seams. | #1, #6, #9, #10, #11, #12, #14, #15 |
+| 2026-09-23 | Checkpoint 2 — Orchestrator + Test Planner produce valid fixture output; k6 execution wrapper enforces safety ceilings; Celery consumes queued runs; API and dashboard integration path is proven. | #2, #3, #7, #8, #13 |
+| 2026-09-30 | Checkpoint 3 — the complete Phase 1 slice passes in isolation and in a local integrated run, including report generation and failure-path tests. | #4, #5, #7, #8, #13, #15 |
 | **2026-10-02 — internal target** | **Full integration**: the [demo scenario](docs/demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. This is Phase 1's Definition of Done per [roadmap.md](docs/roadmap.md#phase-1--thin-vertical-slice) — met five days early, deliberately. | — |
 | 2026-10-02 → 2026-10-07 | **The 5-day buffer.** For integration bugs found once the pieces actually meet each other, demo rehearsal, and judge-Q&A prep. **Not extra feature time** — pulling new scope into this window is a Team Lead call (Govenor, per [team-roles.md](docs/development/team-roles.md#team-lead--govenor)), not a default. | — |
 | **2026-10-07 — hard deadline** | Submission. | — |
 
-Issue numbers above are the 15 currently on the [Phase 1 milestone](https://github.com/thato899/perfpilot/issues) as of this PR; the checkpoint groupings are a planning aid, not a hard gate — update this table if scope shifts rather than letting it go stale (it's a shared/root path, see below).
+Issue numbers above are a planning aid; the [issue board](https://github.com/thato899/perfpilot/issues) is authoritative for task status. Update this table when scope or ownership changes.
+
+## Ownership and next actions
+
+The four developers own independent surfaces, but integration is shared. Each owner should keep their section in [STATUS.md](STATUS.md) current, claim an issue before starting, and request review before changing shared contracts or root configuration.
+
+| Developer | Owns | Next required outcome |
+|---|---|---|
+| **Thatayaone — AI / Orchestration** | `packages/ai/`, `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/` | AI provider gateway is implemented on `main`. Next, finish the deterministic orchestrator state machine, fixture-valid Test Planner and Investigator outputs, and the seam Kamogelo's API can call. |
+| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Settle metric granularity with Thato, finish the k6 execution wrapper and safety ceilings, provide the pinned k6 image/runner integration, and validate metrics against real k6 JSON. As Team Lead, make the final Phase 1 scope and readiness calls. |
+| **Kamogelo — Backend / Data** | `apps/api/`, database migrations, canonical `packages/schemas/` ownership | Finish Celery dispatch for queued `TestRun` records, connect the worker to the load-engineer wrapper, and validate the API-to-orchestrator-to-worker path against Postgres. Approve or coordinate all schema changes. |
+| **Thato — Frontend / Reporting** | `apps/web/`, `agents/reporting/` | Replace mocked dashboard calls with the real API once the integration seam is ready, preserve the working mock fixtures for tests, wire report display to real output, and prepare the demo/rehearsal experience. |
+
+### Integration order
+
+1. Thatayaone publishes stable agent contracts and orchestrator calls.
+2. Govenor exposes the safe load-execution/metrics interface and k6 runner.
+3. Kamogelo dispatches queued runs through Celery and connects those interfaces in the API.
+4. Thato switches the dashboard from mock data to the API and verifies the report flow.
+5. Everyone runs the demo scenario, fixes integration defects, and signs off before the 2026-10-02 internal target.
 
 ## Definition of Done per phase
 
