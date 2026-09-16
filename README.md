@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 0 (documentation foundation) is done; Phase 1 (thin vertical slice) is underway. See [PLANNING.md](PLANNING.md) for the dated timeline and [STATUS.md](STATUS.md) for what's happening right now. Phase 0's own checklist is preserved below.
+**Status:** Phase 1 (thin vertical slice) is underway. The dashboard, API layer, database schema/migrations, AI provider gateway, metrics engine, and local Docker stack are implemented; Celery execution and end-to-end agent wiring remain in progress. See [PLANNING.md](PLANNING.md) and [STATUS.md](STATUS.md) for details.
 
 ---
 
@@ -161,4 +161,4 @@ The hackathon demo proves the full loop once, end-to-end, against a controlled t
 - [x] Demo scenario is defined
 - [x] No unnecessary application implementation has been started
 
-No implementation begins until this documentation is reviewed and the team agrees the contracts in `packages/schemas` are stable enough to build against.
+The Phase 0 documentation foundation has been reviewed and implementation is underway against the shared contracts in `packages/schemas`.

@@ -4,8 +4,7 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-16 by Kamogelo 
-**Last updated:** 2026-09-14 by Govenor
+**Last updated:** 2026-09-16 by Kamogelo
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
@@ -37,8 +36,8 @@ Each section below follows the same template. Update your own section — don't 
 
 **Last updated:** 2026-09-16 by Kamogelo
 
-- **Currently working on:** issue #12 (`apps/api` endpoints) — branch `feature/api-endpoints`, stacked on #11's branch. #10 and #11 both have PRs open awaiting review.
-- **Just completed:** the local stack. `infrastructure/docker/docker-compose.yml` with all six planned services, profile-gated so a bare `docker compose up` starts `db` + `redis` (which is what #11 and #13 need) and `--profile all` brings up everything. Two Dockerfiles (`infrastructure/docker/api/`, `.../web/`), a root `.dockerignore`, and the minimum `apps/api` scaffolding needed for the `api`/`worker` containers to actually boot: `requirements.txt`, `main.py` (`/health` only), `celery_app.py` (one no-op `perfpilot.ping` task). Validated with `docker compose config` across every profile, and the repo's own CI gates (`ruff check .`, `black --check .`, `pytest`, `compileall apps/api`) all pass with the new files in place.
+- **Currently working on:** issue #13 (Celery dispatch) and follow-up integration of the real orchestrator and load runner.
+- **Just completed:** issue #12 (`apps/api` endpoints), including persistence, auth/error handling, request/response schemas, and contract tests; the local Docker stack and database migration baseline are also on `main`.
 - **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
 - **Next up:** #13 (Celery) — the last of my four. `POST /api/tests/{id}/run` already persists a `queued` TestRun; #13 is what consumes it, and the task it dispatches is Govenor's k6 wrapper. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
 - **Unblocks Thato:** every endpoint `apps/web`'s `mock-api.ts` mirrors now exists for real, so the dashboard's mocked layer can be swapped for `fetch` calls whenever he wants it.
