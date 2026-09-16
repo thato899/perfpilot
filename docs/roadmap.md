@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-16):** Phase 0 is complete. Phase 1 foundations are on `main`: the AI provider gateway, metrics/load-engineer core, Postgres schema and API endpoints, dashboard fixture, and Reporting Agent fixture. Remaining Phase 1 work is integration: Orchestrator and specialist agents, Celery dispatch, the safe k6 runner image, and real API/dashboard/reporting wiring. **Hard completion deadline: 2026-09-30.**
+> **Current status (2026-09-16):** Phase 0 is complete. Phase 1 foundations are on `main`: the AI provider gateway, metrics/load-engineer core, Postgres schema and API endpoints, Celery dispatch, dashboard fixture, and Reporting Agent fixture. Remaining Phase 1 work is integration: Orchestrator and specialist agents, the real k6 runner, and real API/dashboard/reporting wiring. **Hard completion deadline: 2026-09-30.**
 
 ## Phase 0 — this commit
 
