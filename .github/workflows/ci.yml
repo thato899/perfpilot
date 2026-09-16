@@ -170,6 +170,29 @@ jobs:
     name: py-test (pytest)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    # apps/api's endpoint tests run against a real database: its models use
+    # JSONB and native Postgres ENUMs, so SQLite would be testing a schema
+    # that never ships. 16-alpine matches infrastructure/docker's db service.
+    # The suite skips itself if this is unreachable (see apps/api/tests/
+    # conftest.py), so the job stays green for anyone who hasn't got here yet.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: perfpilot
+          POSTGRES_PASSWORD: perfpilot
+          POSTGRES_DB: perfpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U perfpilot -d perfpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://perfpilot:perfpilot@localhost:5432/perfpilot
+      API_AUTH_SECRET: ci-test-secret-not-a-real-credential
+      ALLOWED_TARGET_HOSTS: localhost,demo.perfpilot.local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -177,6 +200,16 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements-dev.txt
+      # apps/api's runtime deps (FastAPI, SQLAlchemy, psycopg, Celery) aren't
+      # in requirements-dev.txt, so without this every apps/api test would
+      # skip itself and the job would pass while testing nothing.
+      - name: Install apps/api runtime dependencies
+        run: |
+          if [ -f apps/api/requirements.txt ]; then
+            pip install -r apps/api/requirements.txt
+          else
+            echo "apps/api has no requirements.txt yet — skipping."
+          fi
       - name: pytest
         run: |
           set +e
