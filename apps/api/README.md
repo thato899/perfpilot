@@ -15,8 +15,8 @@ schemas.py           Request/response bodies; ORM -> packages/schemas conversion
 orchestrator_stub.py Canned Orchestrator. DELETE when agents/orchestrator lands.
 routers/             One module per resource group (issue #12).
 celery_app.py        Celery app; `include` is what makes tasks visible to a worker.
-tasks.py             Async test execution (issue #13).
-load_engineer_stub.py Canned k6 wrapper. DELETE when agents/load-engineer lands.
+tasks.py             Async test execution (implemented in issue #13).
+load_engineer_stub.py Safe load-engineer seam used until the real k6 wrapper lands.
 db/base.py           Declarative base, constraint naming convention, session factory.
 db/models.py         SQLAlchemy models for all 14 entities (issue #11).
 alembic.ini          Migration config — run from the REPO ROOT, see below.
