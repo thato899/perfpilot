@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` uses a placeholder upstream image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
+**Status:** live. `infrastructure/docker/docker-compose.yml` stands up all six services ([#10](https://github.com/thato899/perfpilot/issues/10)). `db`, `redis` and `web` are real; `api` serves the full contract ([#12](https://github.com/thato899/perfpilot/issues/12)) and `worker` consumes queued test runs ([#13](https://github.com/thato899/perfpilot/issues/13)). The one placeholder left is `k6-runner`, which runs an upstream `grafana/k6` image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile` — so the load the worker generates is stubbed, not real k6. See [Running the pieces](#running-the-pieces) for what each service does today.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@
 - [k6](https://k6.io/) CLI installed locally (for running/debugging generated scripts outside Docker during development)
 - PostgreSQL and Redis — provided via Docker Compose for local dev; no local install required
 
-## Planned service layout (`infrastructure/docker`)
+## Service layout (`infrastructure/docker`)
 
 | Service | Purpose |
 |---|---|

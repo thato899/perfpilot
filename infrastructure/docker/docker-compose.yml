@@ -1,7 +1,7 @@
 # PerfPilot — local development stack.
 #
 # Implements the planned service layout in
-# docs/development/local-development.md#planned-service-layout-infrastructuredocker
+# docs/development/local-development.md#service-layout-infrastructuredocker
 # (web, api, worker, db, redis, k6-runner). Issue #10.
 #
 # SHARED PATH — per CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging,
