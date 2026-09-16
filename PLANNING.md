@@ -48,7 +48,24 @@ The four developers own independent surfaces, but integration is shared. Each ow
 2. Govenor exposes the safe load-execution/metrics interface and k6 runner.
 3. Kamogelo dispatches queued runs through Celery and connects those interfaces in the API.
 4. Thato switches the dashboard from mock data to the API and verifies the report flow.
-5. Everyone runs the demo scenario, fixes integration defects, and signs off before the 2026-10-02 internal target.
+5. Everyone runs the demo scenario, fixes integration defects, and signs off by the 2026-09-30 hard deadline.
+
+## Remaining ticket schedule
+
+The existing role structure does not change. These are the open tickets and the time each owner has to deliver them. All work must be complete by **2026-09-30**.
+
+| Window | Owner | Existing tickets | Required deliverable | Technology stack |
+|---|---|---|---|---|
+| Sep 16–18 | Govenor + Thato | #9 | Decide summary versus interval metrics and record the decision in the API/dashboard contracts. | Python metrics models, Pydantic schemas, TypeScript dashboard types, Recharts if live charts are retained. |
+| Sep 16–23 | Thatayaone | #2, #3, #4, #5 | Implement the deterministic Orchestrator, schema-valid Test Planner and Investigator fixture flows, and validation coverage for all agent contracts. | Python agents, Pydantic contracts in `packages/schemas`, TypeScript/Python `AIService`, Gemini provider. |
+| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | Finish safe execution integration, enforce VU/duration/target ceilings, validate real k6 JSON, and provide the runner container path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
+| Sep 16–23 | Kamogelo | #13 | Consume queued `TestRun` records, dispatch the load engineer, persist progress/results, and expose failures through the API. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
+| Sep 18–30 | Thato | #27 | Replace mocked runtime calls with the real API, connect real investigation/report output, preserve fixtures, and verify the dashboard flow end to end. | Next.js, TypeScript, React, Tailwind/shadcn/ui, Vitest/RTL, FastAPI JSON API. |
+| Sep 24–30 | Everyone | #2, #3, #4, #5, #9, #13, #27 | Integrate the full demo scenario, fix cross-surface defects, run CI and local Docker smoke tests, and obtain Team Lead sign-off. | Full stack: Next.js + TypeScript, Python/FastAPI, Pydantic, PostgreSQL, Celery/Redis, k6, Docker. |
+
+### Ticket ownership rule
+
+The issue board remains authoritative. Do not create replacement tickets for #2–#5, #9, #13, or #27. Owners should update their existing issue, keep status labels accurate, and link implementation PRs. A ticket is complete only when its acceptance behavior is demonstrated and the relevant tests/documentation are updated.
 
 ## Definition of Done per phase
 
