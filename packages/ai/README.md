@@ -12,6 +12,11 @@ This package is scaffolded with a working Gemini provider path and a shared `AIS
 - `src/gemini-provider.ts` calls Gemini's REST API
 - `src/ai-service.ts` centralizes text and structured-output calls, including one validation retry
 - `src/index.ts` exports the package API
-- `tests/ai-service.test.ts` exercises config resolution, text generation, and structured retry behavior
+- `tests/ai-service.test.ts` exercises config resolution, text generation, provider routing, and structured retry behavior
 
-> Runtime verification is currently blocked in this container because Node and pnpm are not installed, so I could not execute the TypeScript test suite here. The code is in place, but the environment needs the project’s Node toolchain available before the package can be proven green.
+Run the package checks from the repository root:
+
+```bash
+pnpm --filter @perfpilot/ai typecheck
+pnpm --filter @perfpilot/ai test
+```

@@ -1,10 +1,11 @@
 import type { AIConfig, AIProvider, StructuredGenerationOptions, StructuredSchema } from "./types.js";
+import { resolveAIConfig } from "./config.js";
 import { GeminiProvider } from "./gemini-provider.js";
 
 export class AIService {
   private readonly provider: AIProvider;
 
-  constructor(configOrProvider: AIConfig | AIProvider) {
+  constructor(configOrProvider: AIConfig | AIProvider = resolveAIConfig()) {
     if ("generateText" in configOrProvider) {
       this.provider = configOrProvider;
       return;
@@ -31,39 +32,32 @@ export class AIService {
     options: StructuredGenerationOptions = {},
   ): Promise<T> {
     const maxRetries = options.maxRetries ?? 1;
-    let attempts = 0;
+    let lastError: unknown;
 
-    while (attempts <= maxRetries) {
-      const requestPrompt = attempts === 0 ? prompt : this.buildRetryPrompt(prompt, attempts);
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      const requestPrompt = attempt === 0 ? prompt : this.buildRetryPrompt(prompt, lastError);
       const raw = await this.provider.generateText(requestPrompt);
 
       try {
         const parsed = JSON.parse(raw);
         return schema.parse(parsed) as T;
       } catch (error) {
-        attempts += 1;
-        if (attempts > maxRetries) {
+        lastError = error;
+        if (attempt === maxRetries) {
           throw error;
         }
-
-        const validationError = error instanceof Error ? error.message : String(error);
-        const retryPrompt = this.buildRetryPrompt(prompt, attempts, validationError);
-        // The model only gets the plain prompt on the first attempt; subsequent
-        // attempts include the actual validation error so it can fix the issue.
-        const generated = await this.provider.generateText(retryPrompt);
-        const parsed = JSON.parse(generated);
-        return schema.parse(parsed) as T;
       }
     }
 
     throw new Error("Structured generation failed after retries.");
   }
 
-  private buildRetryPrompt(prompt: string, attempts: number, validationError?: string): string {
+  private buildRetryPrompt(prompt: string, error: unknown): string {
+    const validationError = error instanceof Error ? error.message : String(error);
     return `Your previous response failed schema validation.
 
 Validation error:
-${validationError ?? `retry attempt ${attempts}`}
+${validationError}
 
 Return only valid JSON.
 
