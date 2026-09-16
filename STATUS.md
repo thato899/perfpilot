@@ -32,14 +32,15 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Kamogelo — Backend / Data
 
-**Last updated:** 2026-09-14 by Kamogelo
+**Last updated:** 2026-09-16 by Kamogelo
 
-- **Currently working on:** issue #11 (Postgres migrations) — branch `feature/postgres-migrations`, built on top of #10's branch since it needs the compose `db` service. Issue #10's PR is open and awaiting review.
+- **Currently working on:** issue #12 (`apps/api` endpoints) — branch `feature/api-endpoints`, stacked on #11's branch. #10 and #11 both have PRs open awaiting review.
 - **Just completed:** the local stack. `infrastructure/docker/docker-compose.yml` with all six planned services, profile-gated so a bare `docker compose up` starts `db` + `redis` (which is what #11 and #13 need) and `--profile all` brings up everything. Two Dockerfiles (`infrastructure/docker/api/`, `.../web/`), a root `.dockerignore`, and the minimum `apps/api` scaffolding needed for the `api`/`worker` containers to actually boot: `requirements.txt`, `main.py` (`/health` only), `celery_app.py` (one no-op `perfpilot.ping` task). Validated with `docker compose config` across every profile, and the repo's own CI gates (`ruff check .`, `black --check .`, `pytest`, `compileall apps/api`) all pass with the new files in place.
 - **Blocked on:** nothing. Two things are *waiting on other owners* rather than blocking me: `k6-runner` runs an unpinned upstream `grafana/k6` image until Govenor writes `infrastructure/docker/k6/Dockerfile`, and the `perfpilot-targets` network is a plain bridge rather than `internal: true` because locking egress down depends on whether the demo target runs on the host or as a container — also his call. Both are written up in the compose file's comments, not just here.
-- **Next up:** #12 (`apps/api` endpoints) — the tables now exist to persist into, and `db/base.py` already exposes a `get_session()` in FastAPI dependency shape to build on. Then #13. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
+- **Next up:** #13 (Celery) — the last of my four. `POST /api/tests/{id}/run` already persists a `queued` TestRun; #13 is what consumes it, and the task it dispatches is Govenor's k6 wrapper. Still the one who activates `render.yaml`; note the module paths in its TODOs (`rootDir: apps/api`, `main:app`, `app.celery_app`) are wrong for this repo — see the 09-14 log entry.
+- **Unblocks Thato:** every endpoint `apps/web`'s `mock-api.ts` mirrors now exists for real, so the dashboard's mocked layer can be swapped for `fetch` calls whenever he wants it.
 
-**Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml`, the new root `.dockerignore`, `docs/development/local-development.md`, `docs/api/api-contract.md`. Govenor is the right reviewer — he owns the other half of `infrastructure/docker/`.
+**Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml` and the root `.dockerignore` (#10), `docs/development/local-development.md`, `docs/api/api-contract.md`, and **`.github/workflows/ci.yml`** (#12 — adds a Postgres service and an apps/api dependency install to `py-test`; that one touches everyone's CI, so please read it before merging). Govenor is the right reviewer for the docker half; anyone for the CI change.
 
 ### Thato — Frontend / Reporting
 
@@ -55,6 +56,17 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-16 — Kamogelo
+
+- Issue #12: `apps/api` HTTP layer. All **13** endpoints in api-contract.md, not just the four groups the issue title names — the done-when says "every listed endpoint matches its documented request/response shape", and the extra ones are thin enough that leaving them half-built would have been the worse trade.
+- Built against a stub Orchestrator (`apps/api/orchestrator_stub.py`) injected through `deps.get_orchestrator()`. That function is the only place naming an Orchestrator implementation, so Thatayaone's real one replaces it without touching a router. The stub returns payloads that *validate against packages/schemas* rather than plausible-looking dicts, so a contract change there fails these tests instead of surfacing at integration.
+- Security-model gates are enforced and tested: `authorization_confirmed` required (422) and the `ALLOWED_TARGET_HOSTS` check (403) are independent, and confirmation is checked *first* so an unconfirmed request for an arbitrary host doesn't learn which hosts are allow-listed. Authorization is re-checked at run time, not trusted from target creation. The VU and duration ceilings return 429.
+- Every failure goes through one envelope. FastAPI's defaults don't produce the documented `{"error": {...}}` shape — `HTTPException` gives `{"detail": ...}` and a validation failure gives a bare list — so all three are re-wrapped. There's a test asserting a 422 body parses like every other error.
+- **46 endpoint tests, run against real Postgres.** SQLite was not an option: the models use JSONB and native Postgres enums, so it would be testing a schema that never ships. Also booted the app under `uvicorn apps.api.main:app` (the container's actual CMD) and drove the full demo flow over HTTP, not just through TestClient.
+- **CI change, please review:** `py-test` now runs a `postgres:16-alpine` service and installs `apps/api/requirements.txt`. Without the install every apps/api test would skip itself and the job would pass while testing nothing — which is the gap I flagged in #11's entry. `.github/` is a shared path.
+- Two contract clarifications, both written into api-contract.md rather than left in code: `POST /api/tests/plan` needs `project_id`/`target_id` beyond what `TestPlanRequest` carries (it has a target *description*, no ids); and the 429 rule's "…and the plan wasn't already clamped" qualifier has no field to hang on — `clamped` is a TestRun column and no run exists at approval time. Implemented as a straight ceiling check; flagged as an open question.
+- Known gaps, deliberate: `POST /api/tests/{id}/run` persists a `queued` TestRun but dispatches nothing (#13). `POST .../experiments` reuses the target's latest plan instead of asking the Test Planner for a follow-up, so the FK chain is real rather than dangling — #13 replaces that. `current_vus` in run progress reads the last recorded stage, which is 0 until the worker writes stages; it reports what's known rather than interpolating.
 
 ### 2026-09-14 — Kamogelo, second session
 
