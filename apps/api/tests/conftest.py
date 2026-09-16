@@ -28,7 +28,11 @@ import pytest
 # while a *conftest* is being imported aborts the entire pytest session
 # rather than skipping anything. collect_ignore_glob is the supported way to
 # say "this directory isn't collectable here".
-_HAVE_DEPS = all(importlib.util.find_spec(name) for name in ("fastapi", "sqlalchemy"))
+# celery is in the list because conftest's import chain reaches it:
+# apps.api.main -> routers -> tasks -> celery_app. Leaving it out would put
+# the ImportError back inside conftest loading, which is the failure mode
+# collect_ignore_glob exists to avoid.
+_HAVE_DEPS = all(importlib.util.find_spec(name) for name in ("fastapi", "sqlalchemy", "celery"))
 
 if not _HAVE_DEPS:
     collect_ignore_glob = ["test_*.py"]
@@ -57,6 +61,19 @@ TEST_DB_URL = (
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ.setdefault("API_AUTH_SECRET", "test-secret-do-not-use-in-production")
 os.environ.setdefault("ALLOWED_TARGET_HOSTS", "localhost,demo.perfpilot.local")
+
+# Kombu's in-memory transport, not Redis. Set unconditionally: no test here
+# needs a real broker — the one that checks dispatch monkeypatches `.delay`,
+# and the rest call the task function directly. Pointing at a real Redis
+# would make the suite depend on a service CI doesn't run, and pointing at a
+# dead one costs ~2s per dispatch (the connect timeout) for no benefit.
+#
+# The end-to-end "does a worker actually pick this up" question is answered
+# by running a real worker against real Redis, which is a manual check
+# documented in local-development.md#background-jobs — not something a unit
+# suite can honestly assert.
+os.environ["CELERY_BROKER_URL"] = "memory://"
+os.environ["CELERY_RESULT_BACKEND"] = "cache+memory://"
 
 # Imported only when available. Everything below references these from
 # inside function bodies or from annotations, which `from __future__ import
