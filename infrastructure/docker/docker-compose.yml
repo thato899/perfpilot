@@ -277,21 +277,24 @@ services:
   # the stack has the shape local-development.md describes; nothing has been
   # written into infrastructure/docker/k6/ by this change.
   #
-  # TWO DECISIONS LEFT TO GOVENOR:
-  #  1. Image vs. build. This uses the upstream grafana/k6 image, unpinned, so
-  #     the service comes up today. Replace with
-  #       build: { context: ./k6, dockerfile: Dockerfile }
-  #     and pin a version once infrastructure/docker/k6/Dockerfile exists —
-  #     the version choice is yours, so it isn't pinned to a guess here.
-  #  2. Invocation model. This runs the container idle, on the assumption the
-  #     worker executes k6 inside it (`docker compose exec k6-runner k6 run ...`).
-  #     The alternative — the worker spawning a fresh container per test run —
-  #     needs the Docker socket mounted into `worker`, which is a meaningful
-  #     privilege escalation. The idle model is the conservative default, not
-  #     a settled decision.
+  # Govenor-owned k6 runner: pinned local build. This is the repository's
+  # supported k6 runtime for the demo stack, rather than a floating upstream
+  # image that changes under us.
+  #
+  # Invocation model. This runs the container idle, on the assumption the
+  # worker executes k6 inside it (`docker compose exec k6-runner k6 run ...`).
+  # The alternative — the worker spawning a fresh container per test run —
+  # needs the Docker socket mounted into `worker`, which is a meaningful
+  # privilege escalation. The idle model is the conservative default, not
+  # a settled decision.
   k6-runner:
     profiles: ["k6", "all"]
-    image: grafana/k6:latest
+    build:
+      context: ./k6
+      dockerfile: Dockerfile
+    # The host bind mount is created by Docker as root. Run the isolated
+    # runner as root so k6 can persist its summary for the worker to consume.
+    user: "0:0"
     # Overrides the image's `k6` entrypoint. Printing the version on start
     # makes a broken image obvious immediately rather than at first test run.
     entrypoint: ["sh", "-c", "k6 version && tail -f /dev/null"]

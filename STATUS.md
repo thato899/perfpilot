@@ -26,12 +26,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Govenor — Performance Engine
 
-**Last updated:** 2026-09-14 by Govenor
+**Last updated:** 2026-09-16 by Govenor
 
-- **Currently working on:** Phase 1 performance engine on `feature/k6-engine`; real k6 dry-run and container integration are next.
-- **Just completed:** Implemented deterministic k6 summary parsing, threshold evaluation, regression comparison, capacity estimation, VU/duration safety clamping, target allow-list checks, k6 script generation, subprocess timeout/failure handling, and focused tests in `packages/metrics` and `agents/load-engineer`.
-- **Blocked on:**
-- **Next up:** read and settle [issue #9](https://github.com/thato899/perfpilot/issues/9) (interval vs. summary metrics), then validate against real k6 output and build the k6 runner container; claim the corresponding issue before continuing.
+- **Currently working on:** Phase 1 performance engine on `feature/k6-engine`; the real local compose/k6 smoke path is now validated.
+- **Just completed:** Settled the Phase 1 metrics design in [docs/database/database-design.md](docs/database/database-design.md): summary-at-completion is enough for the MVP, so no interval/time-bucketed `Metric` rows are required for the live dashboard view. Added the repo-owned pinned k6 runner image at [infrastructure/docker/k6/Dockerfile](infrastructure/docker/k6/Dockerfile), wired it into [infrastructure/docker/docker-compose.yml](infrastructure/docker/docker-compose.yml), and updated the local Docker docs. The full compose stack is running; API health returned `{"status":"ok"}`, Celery returned `pong`, k6 reported `v0.57.0`, and a real one-iteration k6 request reached the local web app with `http_req_failed: 0.00%` and a persisted summary export. The focused Govenor-owned Python tests pass: 12 tests passed.
+- **Blocked on:** The full Phase 1 lifecycle still depends on the backend endpoints and agent orchestration owned by the other developers; this slice validates the performance engine and runner boundary.
+- **Next up:** connect the real API/worker investigation flow to this validated runner, then run the reference demo scenario end to end.
 
 ### Kamogelo — Backend / Data
 
@@ -58,6 +58,13 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-16 — Govenor
+
+- Settled issue #9 for the MVP: summary-at-completion is enough for Phase 1, and interval/time-bucketed `Metric` rows are deferred to Phase 2. Wrote the decision into [docs/database/database-design.md](docs/database/database-design.md).
+- Added the repo-owned k6 runner image at [infrastructure/docker/k6/Dockerfile](infrastructure/docker/k6/Dockerfile) and switched [infrastructure/docker/docker-compose.yml](infrastructure/docker/docker-compose.yml) to build that pinned image instead of the upstream unpinned `grafana/k6` tag.
+- Verified with the repo Python environment: 12 Govenor-owned tests passed in the relevant metrics and load-engineer suite.
+- With Docker installed, built and started the full compose stack. API health, Celery worker round-trip, pinned k6 version, and a real one-iteration k6 request against the local web target all passed; the k6 summary export was persisted through the runner's results mount.
 
 ### 2026-09-14 — Govenor
 

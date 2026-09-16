@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` uses a placeholder upstream image until Developer 2/Govenor writes `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
+**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` now builds from the pinned local image in `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ Two images support it, both building from the repository root so `apps/api`'s ro
 | `perfpilot-api:local` | `api`, `worker` | `infrastructure/docker/api/Dockerfile` |
 | `perfpilot-web:local` | `web` | `infrastructure/docker/web/Dockerfile` |
 
-`k6-runner` has no Dockerfile here on purpose — `infrastructure/docker/k6/` is Developer 2/Govenor's ([CODEOWNERS](../../CODEOWNERS)). The compose service currently points at the upstream `grafana/k6` image so the service can start; swapping it for a pinned local build is his call, along with whether the worker `exec`s into an idle container or spawns one per run. Both questions are written up in the service's comment block.
+`k6-runner` is Developer 2/Govenor's ([CODEOWNERS](../../CODEOWNERS)) and builds from the pinned `grafana/k6:0.57.0` base image. The worker-facing invocation remains an idle container with `docker compose exec k6-runner k6 run ...`; spawning a fresh container per run would require mounting the Docker socket into the worker, which is a meaningful privilege escalation.
 
 ### Network layout
 
@@ -72,7 +72,7 @@ Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: f
 | `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
 | `api` | Starts, serves `GET /health`, nothing else. The contract endpoints are issue #12. |
 | `worker` | Starts, registers one no-op `perfpilot.ping` task. Real task dispatch is issue #13. |
-| `k6-runner` | Starts on a placeholder upstream image and idles. Issue #6/#7 territory, Govenor's container. |
+| `k6-runner` | Real pinned local image; starts idle and accepts worker-triggered k6 runs. |
 
 Smoke-test the full backend path once it's up:
 
