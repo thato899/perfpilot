@@ -5,6 +5,7 @@
 # just to join the workspace. Add it here if that ever stops being true.
 packages:
   - "apps/web"
+  - "packages/ai"
 
 # create-next-app's default: don't run the postinstall/build scripts these
 # two optional native deps ship with (sharp's image-optimization binary,
