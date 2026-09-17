@@ -1,6 +1,6 @@
 # Testing Strategy
 
-This describes how the eventual (Phase 1+) implementation will be tested. No tests are implemented in Phase 0.
+This describes how the Phase 1 and Phase 2 implementation is tested. Phase 2 adds live-model evaluation and multi-hypothesis end-to-end coverage; those tests remain gated until Phase 1's real demo path is signed off.
 
 ## Unit tests
 

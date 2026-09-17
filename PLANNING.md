@@ -11,7 +11,7 @@ The stable plan: phases, timeline, Definition of Done, where the detail actually
 | Question | Answer lives in |
 |---|---|
 | What are we building, and why | [README.md](README.md) |
-| What's in Phase 1 vs. deferred | [docs/roadmap.md](docs/roadmap.md) |
+| What's in Phase 1 vs. Phase 2 | [docs/roadmap.md](docs/roadmap.md) |
 | Who owns what code | [docs/development/team-workflow.md](docs/development/team-workflow.md#ownership-map) |
 | Who owns what *process* (Team Lead, PM, Reviewer, Reporter) | [docs/development/team-roles.md](docs/development/team-roles.md) |
 | Per-developer task checklist | [docs/development/next-steps.md](docs/development/next-steps.md) |
@@ -71,7 +71,22 @@ The issue board remains authoritative. Do not create replacement tickets for #2�
 
 - **Phase 0** — done. See [README.md's Phase 0 checklist](README.md#phase-0-definition-of-done), fully checked off.
 - **Phase 1** — the demo scenario runs end-to-end for real, once (see table above). Team Lead (Govenor) makes the final call on when it's actually done, not just individually checked off per owner — see [roadmap.md](docs/roadmap.md#phase-1--thin-vertical-slice) and [team-roles.md](docs/development/team-roles.md#team-lead--govenor).
-- **Phase 2+** — deliberately not detailed here; see [roadmap.md](docs/roadmap.md#phase-2--investigation-loop-robustness). Out of scope before 2026-10-07.
+- **Phase 2** — planned and ticketed below the Phase 1 gate; no Phase 2 ticket may begin until Phase 1 is signed off against its end-to-end Definition of Done. See [roadmap.md](docs/roadmap.md#phase-2--investigation-loop-robustness).
+
+## Phase 2 work allocation and gate
+
+Phase 2 begins only after Phase 1 is complete: the demo scenario must run once from target creation through a real report, using the real Orchestrator/specialists, real k6 execution, Celery, Postgres, and the real dashboard/API path. Govenor, as Team Lead, records the sign-off in `STATUS.md` and closes the Phase 1 milestone before Phase 2 tickets move to `status:in-progress`.
+
+Phase 2 is distributed by ticket count and expected effort:
+
+| Owner | Tickets | Allocation target | Phase 2 tickets |
+|---|---:|---:|---|
+| Thato | 3 | ~35% | [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39) |
+| Kamo | 2 | 25% | [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35) |
+| Govenor | 2 | 25% | [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36) |
+| Thatayaone | 1 | ~15% | [#33](https://github.com/thato899/perfpilot/issues/33) |
+
+Every ticket includes an owner label, `phase-2`, `status:todo`, explicit dependencies, acceptance criteria, tests, and documentation updates. Shared-contract changes require Kamo's schema sign-off and a second review.
 
 ## Process decisions on record
 

@@ -4,7 +4,9 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-16 by Kamogelo
+**Last updated:** 2026-09-17 by Codex
+
+**Phase 2 planning status:** Ticketed but gated. Phase 2 work must not begin until Govenor signs off Phase 1's real end-to-end demo and records that sign-off below. Eight Phase 2 issues are planned: Thato 3, Kamo 2, Govenor 2, Thatayaone 1.
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
@@ -57,6 +59,11 @@ Each section below follows the same template. Update your own section — don't 
 ---
 
 ## Log
+
+### 2026-09-17 — Phase 2 planning
+
+- Created the Phase 2 investigation-loop ticket register and owner allocation. Tickets cover historical baselines, multi-hypothesis experiments, deterministic comparisons, safe repeat execution, agent evaluation, timeline UI, findings UI, and side-by-side comparison UI.
+- Phase 2 is explicitly blocked on Phase 1 sign-off. Do not move any Phase 2 issue to `status:in-progress` before the real demo scenario completes with the production-shaped seams.
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
 

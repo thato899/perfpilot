@@ -19,10 +19,22 @@ Definition of done for Phase 1: the [demo scenario](demo-scenario.md) runs for r
 
 ## Phase 2 — investigation loop robustness
 
-- The full experiment loop working with more than one candidate hypothesis at a time (today's demo scenario only exercises one).
-- Regression comparison against a stored historical baseline, not just the immediately-prior run.
-- Agent evaluation suite (see [testing-strategy.md](testing/testing-strategy.md#agent-evaluation)) covering hallucination guardrails against live model output, not just schema fixtures.
-- Dashboard: investigation timeline view, live findings panel, side-by-side experiment comparison.
+Phase 2 is fully gated on Phase 1 completion. No Phase 2 implementation starts until the Phase 1 demo scenario has run once end to end with real agent wiring, k6, Celery, Postgres, API, and dashboard, and Govenor records the sign-off in `STATUS.md`.
+
+### Phase 2 ticket register
+
+| ID | Owner | Deliverable | Depends on |
+|---|---|---|---|
+| P2-API-1 ([#34](https://github.com/thato899/perfpilot/issues/34)) | Kamo | Persisted historical baselines and deterministic baseline comparison contract/API | Phase 1 sign-off; P2-METRICS-1 |
+| P2-API-2 ([#35](https://github.com/thato899/perfpilot/issues/35)) | Kamo | Robust multi-hypothesis investigation state, experiment budget, and loop API | Phase 1 sign-off; P2-EVAL-1; P2-RUNNER-1 |
+| P2-METRICS-1 ([#32](https://github.com/thato899/perfpilot/issues/32)) | Govenor | Deterministic baseline/experiment comparison metrics and regression calculations | Phase 1 sign-off |
+| P2-RUNNER-1 ([#36](https://github.com/thato899/perfpilot/issues/36)) | Govenor | Safe repeatable execution of approved follow-up experiments with real k6 results | Phase 1 sign-off; P2-API-2 contract |
+| P2-EVAL-1 ([#33](https://github.com/thato899/perfpilot/issues/33)) | Thatayaone | Agent evaluation suite for structured output, evidence grounding, and hallucination resistance | Phase 1 sign-off |
+| P2-UI-1 ([#37](https://github.com/thato899/perfpilot/issues/37)) | Thato | Investigation timeline and run-state visualization | Phase 1 sign-off; P2-API-2 |
+| P2-UI-2 ([#38](https://github.com/thato899/perfpilot/issues/38)) | Thato | Live findings/hypotheses panel with evidence and confidence states | Phase 1 sign-off; P2-API-2; P2-EVAL-1 |
+| P2-UI-3 ([#39](https://github.com/thato899/perfpilot/issues/39)) | Thato | Side-by-side baseline/experiment comparison and report integration | Phase 1 sign-off; P2-API-1; P2-METRICS-1 |
+
+GitHub issues are the execution source of truth. The eight tickets intentionally allocate 3/8 to Thato, 2/8 to Kamo, 2/8 to Govenor, and 1/8 to Thatayaone: approximately 35% / 25% / 25% / 15% by planned workload.
 
 ## Phase 3+ — deferred by design (not oversights)
 

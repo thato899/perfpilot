@@ -61,6 +61,17 @@ The AI provider gateway in `packages/ai` is complete on `main`: Gemini integrati
 
 The [demo scenario](../demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. See [roadmap.md](../roadmap.md) for what's explicitly deferred to Phase 2+ — don't build ahead of that list.
 
+## Phase 2 handoff
+
+Phase 2 work is ticketed but gated. Do not claim or start Phase 2 implementation until Govenor records Phase 1 sign-off in `STATUS.md` and the Phase 1 milestone is closed. The Phase 2 tickets are:
+
+- Thato: [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39)
+- Kamogelo: [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35)
+- Govenor: [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36)
+- Thatayaone: [#33](https://github.com/thato899/perfpilot/issues/33)
+
+Each issue contains its own dependencies, acceptance criteria, tests, documentation requirements, and Definition of Done. Follow the normal claim → branch → implementation → tests/docs → PR/review → merge → status-label workflow.
+
 ## Daily sync
 
 10 minutes, covering: (1) anything you changed in a shared path, (2) any contract you need changed, (3) anything blocking you on another owner's surface. See [team-workflow.md](team-workflow.md#communication).
