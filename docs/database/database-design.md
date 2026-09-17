@@ -84,8 +84,10 @@ All entities use a `UUID` primary key (`id`) unless noted, plus `created_at`/`up
 ### Metric
 - `id`, `test_run_id` (FK), `endpoint` (nullable — null means "aggregate across the whole run")
 - `p50_ms`, `p90_ms`, `p95_ms`, `p99_ms`, `throughput_rps`, `error_rate`, `concurrency`, `http_status_distribution` (JSONB)
-- `recorded_at` (for time-bucketed metrics within a single long-running test, if collected at intervals rather than just as a final summary)
+- `recorded_at` (retained for traceability, but the Phase 1 MVP does not require interval/time-bucketed rows for the dashboard live view)
 - Produced exclusively by `packages/metrics` parsing k6 output — never written by an agent directly (see [system-architecture.md#ai-output-reliability](../architecture/system-architecture.md)).
+
+Decision for Phase 1: summary-at-completion is sufficient for the MVP. `Metric` does not need interval/time-bucketed rows for the dashboard's live progress view; the dashboard only needs the run summary and stage-level status transitions, while any live charting remains a Phase 2 enhancement.
 
 ### Investigation
 - `id`, `project_id` (FK), `target_id` (FK)
