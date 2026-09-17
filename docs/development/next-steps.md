@@ -55,11 +55,22 @@ Owns: `apps/web/`, `agents/reporting/`
 
 ## Current implementation update (2026-09-16)
 
-The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, dashboard fixture, and Reporting Agent fixture are also merged. Remaining work is Orchestrator and specialist-agent integration, Celery execution, real k6 runner integration, and switching the dashboard/reporting flow from fixtures to real API output.
+The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner are also merged. Remaining work is Orchestrator and specialist-agent integration, connecting the real runner through the worker, and switching the dashboard/reporting flow from fixtures to real API output.
 
 ## Definition of done for Phase 1
 
 The [demo scenario](../demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. See [roadmap.md](../roadmap.md) for what's explicitly deferred to Phase 2+ — don't build ahead of that list.
+
+## Phase 2 handoff
+
+Phase 2 work is ticketed but gated. Do not claim or start Phase 2 implementation until Govenor records Phase 1 sign-off in `STATUS.md` and the Phase 1 milestone is closed. The Phase 2 tickets are:
+
+- Thato: [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39)
+- Kamogelo: [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35)
+- Govenor: [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36)
+- Thatayaone: [#33](https://github.com/thato899/perfpilot/issues/33)
+
+Each issue contains its own dependencies, acceptance criteria, tests, documentation requirements, and Definition of Done. Follow the normal claim → branch → implementation → tests/docs → PR/review → merge → status-label workflow.
 
 ## Daily sync
 

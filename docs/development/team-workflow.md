@@ -71,7 +71,7 @@ Solid arrows are data-flow dependencies (A's output is B's input); dashed arrows
 | Govenor ↔ Kamogelo | each other (`infrastructure/docker/`) | Govenor owns the `k6-runner` container; Kamogelo owns the overall `docker-compose.yml` wiring it into | Mutual — flag changes before merging |
 | Govenor ↔ Thato | each other (no owner yet — [open question](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1)) | Whether `Metric` needs interval/time-bucketed rows for the dashboard's live progress view, or summary-at-completion is enough | Settle early — a wrong guess here means one of you reworks a shape mid-Phase-1 |
 
-If one of these turns from a soft, fixture-able dependency into something actually blocking you, that's not a silent problem — see [coding-standards.md §5](coding-standards.md#5-note-it-when-something-is-waiting-on-your-code) for how to flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code.
+If one of these turns from a soft, fixture-able dependency into something actually blocking you, that's not a silent problem — see [coding-standards.md §5](coding-standards.md#5-note-it-when-something-is-waiting-on-your-code) for how to flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code. The same rule applies to Phase 2: all eight Phase 2 issues are gated on Phase 1 sign-off, and their dependency order is recorded in [roadmap.md](../roadmap.md#phase-2-ticket-register).
 
 ### A gap we found and closed during architecture review
 

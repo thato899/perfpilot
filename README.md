@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 1 (thin vertical slice) is underway. The dashboard, API layer, database schema/migrations, AI provider gateway, metrics engine, and local Docker stack are implemented; Celery execution and end-to-end agent wiring remain in progress. See [PLANNING.md](PLANNING.md) and [STATUS.md](STATUS.md) for details.
+**Status:** Phase 1 (thin vertical slice) is in integration and Phase 2 is ticketed but gated. The dashboard, API layer, database schema/migrations, AI provider gateway, metrics engine, and local Docker stack are implemented; real end-to-end agent/k6/dashboard wiring must be signed off before Phase 2 begins. See [PLANNING.md](PLANNING.md), [STATUS.md](STATUS.md), and the [Phase 2 ticket register](docs/roadmap.md#phase-2-ticket-register).
 
 ---
 
