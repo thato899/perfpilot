@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** partly live. `infrastructure/docker/docker-compose.yml` exists as of issue #10 — `db`, `redis` and `web` are real and run today; `api` and `worker` start against boot scaffolding only (their endpoints are [#12](https://github.com/thato899/perfpilot/issues/12) and tasks are [#13](https://github.com/thato899/perfpilot/issues/13)), and `k6-runner` now builds from the pinned local image in `infrastructure/docker/k6/Dockerfile`. See [Running the pieces](#running-the-pieces) for exactly what works now.
+**Status:** partly live. `infrastructure/docker/docker-compose.yml` stands up the real `db`, `redis`, `web`, `api`, `worker`, and pinned `k6-runner` services. The API and worker contract paths are implemented; the remaining Phase 1 gap is connecting the real Orchestrator/specialists and runner into the complete investigation flow. See [Running the pieces](#running-the-pieces) for exactly what works now.
 
 ## Prerequisites
 

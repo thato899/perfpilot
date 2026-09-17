@@ -38,7 +38,7 @@ The four developers own independent surfaces, but integration is shared. Each ow
 | Developer | Owns | Next required outcome |
 |---|---|---|
 | **Thatayaone — AI / Orchestration** | `packages/ai/`, `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/` | AI provider gateway is implemented on `main`. Next, finish the deterministic orchestrator state machine, fixture-valid Test Planner and Investigator outputs, and the seam Kamogelo's API can call by Sep 23. |
-| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Settle #9 with Thato by Sep 18, finish k6 runner integration and validate metrics against real k6 JSON by Sep 23. Make the final Phase 1 readiness call by Sep 30. |
+| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Phase 1 metrics decision and pinned k6 runner are complete. Next, connect the validated runner to the real API/worker investigation flow and make the final Phase 1 readiness call by Sep 30. |
 | **Kamogelo — Backend / Data** | `apps/api/`, database migrations, canonical `packages/schemas/` ownership | Finish #13 Celery dispatch and connect the worker to the load-engineer wrapper by Sep 23; validate the API-to-orchestrator-to-worker path against Postgres by Sep 30. Approve or coordinate all schema changes. |
 | **Thato — Frontend / Reporting** | `apps/web/`, `agents/reporting/` | Complete issue #27: replace mocked runtime calls with the real API, connect report display to real output, preserve fixtures, and run the integrated demo by Sep 30. |
 
@@ -56,10 +56,10 @@ The existing role structure does not change. These are the open tickets and the 
 
 | Window | Owner | Existing tickets | Required deliverable | Technology stack |
 |---|---|---|---|---|
-| Sep 16–18 | Govenor + Thato | #9 | Decide summary versus interval metrics and record the decision in the API/dashboard contracts. | Python metrics models, Pydantic schemas, TypeScript dashboard types, Recharts if live charts are retained. |
+| Sep 16–18 | Govenor + Thato | #9 | **Complete:** summary-at-completion is sufficient for Phase 1; interval metrics are deferred to Phase 2. | Python metrics models, Pydantic schemas, TypeScript dashboard types. |
 | Sep 16–23 | Thatayaone | #2, #3, #4, #5 | Implement the deterministic Orchestrator, schema-valid Test Planner and Investigator fixture flows, and validation coverage for all agent contracts. | Python agents, Pydantic contracts in `packages/schemas`, TypeScript/Python `AIService`, Gemini provider. |
-| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | Finish safe execution integration, enforce VU/duration/target ceilings, validate real k6 JSON, and provide the runner container path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
-| Sep 16–23 | Kamogelo | #13 | **Complete on `main`**: consume queued `TestRun` records, dispatch the load-engineer seam, persist progress/results, and expose failures through the API. Remaining swap: Govenor's real k6 wrapper. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
+| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | **Mostly complete:** safety execution and pinned runner are validated; remaining work is wiring the real API/worker path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
+| Sep 16–23 | Kamogelo | #13 | **Complete on `main`**: consume queued `TestRun` records, dispatch the load-engineer seam, persist progress/results, and expose failures through the API. Remaining integration is the real k6 runner and agent flow. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
 | Sep 18–30 | Thato | #27 | Replace mocked runtime calls with the real API, connect real investigation/report output, preserve fixtures, and verify the dashboard flow end to end. | Next.js, TypeScript, React, Tailwind/shadcn/ui, Vitest/RTL, FastAPI JSON API. |
 | Sep 24–30 | Everyone | #2, #3, #4, #5, #9, #13, #27 | Integrate the full demo scenario, fix cross-surface defects, run CI and local Docker smoke tests, and obtain Team Lead sign-off. | Full stack: Next.js + TypeScript, Python/FastAPI, Pydantic, PostgreSQL, Celery/Redis, k6, Docker. |
 

@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-16):** Phase 0 is complete. Phase 1 foundations are on `main`: the AI provider gateway, metrics/load-engineer core, Postgres schema and API endpoints, Celery dispatch, dashboard fixture, and Reporting Agent fixture. Remaining Phase 1 work is integration: Orchestrator and specialist agents, the real k6 runner, and real API/dashboard/reporting wiring. **Hard completion deadline: 2026-09-30.**
+> **Current status (2026-09-17):** Phase 0 is complete. Phase 1 foundations are on `main`, including the AI provider gateway, metrics/load-engineer core, Postgres schema/API, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner image. Remaining Phase 1 work is real Orchestrator/specialist integration and the real API/dashboard/reporting path. **Hard completion deadline: 2026-09-30.**
 
 ## Phase 0 — this commit
 
@@ -51,4 +51,4 @@ Explicitly out of scope until there's a real need, per the project's "don't over
 ## Open questions to revisit (not blocking Phase 1)
 
 - Whether experiment approval (`POST /api/investigations/{id}/experiments`, see [api-contract.md](api/api-contract.md)) should ever auto-approve below a certain load ceiling, versus always requiring a human click — deferred to Phase 2, needs product input from a live demo, not a Phase 0 guess.
-- Whether `Metric` needs interval/time-bucketed rows (not just per-run summaries) for the dashboard's live progress view, or whether summary-at-completion is enough for the MVP — Developer 2/Govenor and Developer 4/Thato should settle this early in Phase 1 since it affects both the metrics pipeline and the dashboard's live view.
+- **Resolved:** summary-at-completion `Metric` rows are sufficient for the Phase 1 MVP; interval/time-bucketed rows are deferred to Phase 2 if the timeline or comparison UX demonstrates a need. See [database-design.md](database/database-design.md).

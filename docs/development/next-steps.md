@@ -55,7 +55,7 @@ Owns: `apps/web/`, `agents/reporting/`
 
 ## Current implementation update (2026-09-16)
 
-The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, Celery dispatch, dashboard fixture, and Reporting Agent fixture are also merged. Remaining work is Orchestrator and specialist-agent integration, swapping the load-engineer stub for the real k6 runner, and switching the dashboard/reporting flow from fixtures to real API output.
+The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner are also merged. Remaining work is Orchestrator and specialist-agent integration, connecting the real runner through the worker, and switching the dashboard/reporting flow from fixtures to real API output.
 
 ## Definition of done for Phase 1
 
