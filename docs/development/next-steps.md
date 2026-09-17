@@ -18,7 +18,7 @@ Every checklist item below is also tracked as an issue on the [task board](https
 Owns: `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/`, `packages/ai/`
 
 - [x] Stand up `packages/ai` with one working provider (`GeminiProvider`) through `AIService`, including centralized structured-output validation and retry tests. Ticket #1 implementation is complete; focused PR cleanup and review remain.
-- [ ] Build the Orchestrator's deterministic continuation policy (state machine, not prompted) — see [orchestrator.md](../agents/orchestrator.md).
+- [x] Build the Orchestrator's deterministic continuation policy (state machine, not prompted) — see [orchestrator.md](../agents/orchestrator.md). Done: `agents/orchestrator/orchestrator.py` with focused policy tests; specialist invocation and state persistence wiring remain separate integration work.
 - [ ] Test Planner: produce a valid `TestPlan` for the [demo scenario](../demo-scenario.md)'s inputs.
 - [ ] Performance Investigator: produce a valid `Finding` from **fixture** metrics first, then wire to real ones — see [performance-investigator.md](../agents/performance-investigator.md).
 - [ ] Structured-output validation for all four specialist agents' schemas against `packages/schemas`.

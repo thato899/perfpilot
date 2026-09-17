@@ -16,12 +16,12 @@ Each section below follows the same template. Update your own section — don't 
 
 ### Thatayaone — AI / Orchestration
 
-**Last updated:** 2026-09-16 by Thatayaone
+**Last updated:** 2026-09-17 by Thatayaone
 
-- **Currently working on:** Phase 1 AI/orchestration integration: connecting the provider gateway to the orchestrator and specialist agents.
-- **Just completed:** Implemented `packages/ai` with the `AIService` abstraction and Gemini provider, configuration and TypeScript build support, structured-output validation, and retry handling that feeds validation errors back into the next request. Added focused tests, including multiple structured-output retries. Changes are merged into `main`.
+- **Currently working on:** Ticket #2 — deterministic Orchestrator continuation policy.
+- **Just completed:** Implemented the pure `agents/orchestrator/orchestrator.py` policy with configurable confidence and experiment-budget thresholds, deterministic planner/investigator/reporting/wait/complete routing, and focused tests for lifecycle and continuation decisions.
 - **Blocked on:**
-- **Next up:** finish the deterministic Orchestrator continuation policy, then make Test Planner and Performance Investigator produce schema-valid fixture outputs and expose the integration seam for the API.
+- **Next up:** integrate specialist entry points separately. Do not start Test Planner or Investigator implementation as part of Ticket #2.
 
 ### Govenor — Performance Engine
 
@@ -59,6 +59,11 @@ Each section below follows the same template. Update your own section — don't 
 ## Log
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
+
+### 2026-09-17 — Thatayaone
+
+- Ticket #2: implemented the deterministic Orchestrator continuation policy and focused tests. The policy is pure code, uses `CONFIDENCE_THRESHOLD` and `MAX_EXPERIMENTS_PER_INVESTIGATION`, and does not invoke AI, specialists, databases, or filesystem access.
+- Verified with the repo's Python tooling: focused Orchestrator tests pass (6), the full configured Python suite passes (33), Ruff passes, and Black passes.
 
 ### 2026-09-16 — Govenor
 
