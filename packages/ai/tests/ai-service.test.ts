@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AIService } from "../src/ai-service.js";
 import { GeminiProvider } from "../src/gemini-provider.js";
 import { resolveAIConfig } from "../src/config.js";
+import type { AIProvider } from "../src/types.js";
 
 describe("resolveAIConfig", () => {
   it("reads provider and model from the environment", () => {
@@ -19,7 +20,9 @@ describe("resolveAIConfig", () => {
   });
 
   it("rejects unsupported providers", () => {
-    expect(() => resolveAIConfig({ AI_PROVIDER: "banana" })).toThrow("Unsupported AI provider: banana");
+    expect(() => resolveAIConfig({ AI_PROVIDER: "banana" })).toThrow(
+      "Unsupported AI provider: banana",
+    );
   });
 });
 
@@ -36,7 +39,11 @@ describe("GeminiProvider", () => {
     global.fetch = fetchMock as typeof fetch;
 
     try {
-      const provider = new GeminiProvider({ provider: "gemini", model: "gemini-2.5-flash", apiKey: "test-key" });
+      const provider = new GeminiProvider({
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+        apiKey: "test-key",
+      });
       const result = await provider.generateText("hello");
 
       expect(result).toBe("hello from gemini");
@@ -58,7 +65,11 @@ describe("GeminiProvider", () => {
     global.fetch = fetchMock as typeof fetch;
 
     try {
-      const service = new AIService({ provider: "gemini", model: "gemini-2.5-flash", apiKey: "test-key" });
+      const service = new AIService({
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+        apiKey: "test-key",
+      });
       await expect(service.generateText("hello")).resolves.toBe("hello through service");
       expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
@@ -77,7 +88,7 @@ describe("AIService", () => {
         .mockResolvedValueOnce('{"status":"ok","confidence":0.91}'),
     };
 
-    const service = new AIService(provider as any);
+    const service = new AIService(provider as AIProvider);
 
     const result = await service.generateStructured(
       "Return a JSON result",
@@ -106,7 +117,7 @@ describe("AIService", () => {
         .mockResolvedValueOnce('{"status":"ok","confidence":0.91}'),
     };
 
-    const service = new AIService(provider as any);
+    const service = new AIService(provider as AIProvider);
 
     const result = await service.generateStructured(
       "Return a JSON result",

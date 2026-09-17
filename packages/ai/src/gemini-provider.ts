@@ -24,13 +24,16 @@ export class GeminiProvider implements AIProvider {
       },
     };
 
-    const response = await fetch(`${this.endpoint}/${this.model}:generateContent?key=${this.apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${this.endpoint}/${this.model}:generateContent?key=${this.apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
       },
-      body: JSON.stringify(requestBody),
-    });
+    );
 
     if (!response.ok) {
       const text = await response.text();
@@ -45,7 +48,8 @@ export class GeminiProvider implements AIProvider {
       }>;
     };
 
-    const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+    const text =
+      payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
     return text.trim();
   }
 }
