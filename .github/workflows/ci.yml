@@ -32,7 +32,7 @@ jobs:
       - name: Check for TS sources
         id: files
         run: |
-          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)packages/schemas/typescript/**/*.ts')
+          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)packages/schemas/typescript/**/*.ts' ':(glob)packages/ai/**/*.ts')
           if [ -z "$FILES" ]; then
             echo "No TypeScript files under apps/web or packages/schemas/typescript yet — skipping. This job activates automatically once code lands."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -64,6 +64,9 @@ jobs:
       - name: eslint (packages/schemas/typescript, via root config)
         if: steps.files.outputs.skip == 'false'
         run: pnpm exec eslint packages/schemas/typescript --no-error-on-unmatched-pattern
+      - name: eslint (packages/ai, via root config)
+        if: steps.files.outputs.skip == 'false'
+        run: pnpm exec eslint packages/ai/src packages/ai/tests --no-error-on-unmatched-pattern
 
   ts-format:
     name: ts-format (prettier --check)
@@ -74,7 +77,7 @@ jobs:
       - name: Check for TS/CSS sources
         id: files
         run: |
-          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)apps/web/**/*.css' ':(glob)packages/schemas/typescript/**/*.ts')
+          FILES=$(git ls-files ':(glob)apps/web/**/*.ts' ':(glob)apps/web/**/*.tsx' ':(glob)apps/web/**/*.css' ':(glob)packages/schemas/typescript/**/*.ts' ':(glob)packages/ai/**/*.ts')
           if [ -z "$FILES" ]; then
             echo "No TS/CSS files yet — skipping. Activates automatically once code lands."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -104,7 +107,7 @@ jobs:
       - name: Check for a web test suite
         id: files
         run: |
-          FILES=$(git ls-files ':(glob)apps/web/**/*.test.ts' ':(glob)apps/web/**/*.test.tsx')
+          FILES=$(git ls-files ':(glob)apps/web/**/*.test.ts' ':(glob)apps/web/**/*.test.tsx' ':(glob)packages/ai/tests/**/*.ts')
           if [ -z "$FILES" ]; then
             echo "No apps/web test files yet — skipping. Activates automatically once code lands."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -122,8 +125,11 @@ jobs:
         if: steps.files.outputs.skip == 'false'
         run: pnpm install --frozen-lockfile
       - name: vitest (apps/web)
-        if: steps.files.outputs.skip == 'false'
+        if: steps.files.outputs.skip == 'false' && hashFiles('apps/web/**/*.test.ts', 'apps/web/**/*.test.tsx') != ''
         run: pnpm --filter web test
+      - name: vitest (packages/ai)
+        if: steps.files.outputs.skip == 'false' && hashFiles('packages/ai/tests/**/*.ts') != ''
+        run: pnpm --filter @perfpilot/ai test
 
   py-lint:
     name: py-lint (ruff)

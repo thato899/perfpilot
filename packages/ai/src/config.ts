@@ -18,7 +18,8 @@ export function resolveAIConfig(env: AIEnvironment = process.env): ResolvedAICon
     throw new Error(`Unsupported AI provider: ${provider}`);
   }
 
-  const model = env.AI_PROVIDER_MODEL ?? (provider === "gemini" ? "gemini-2.5-flash" : "deepseek-chat");
+  const model =
+    env.AI_PROVIDER_MODEL ?? (provider === "gemini" ? "gemini-2.5-flash" : "deepseek-chat");
   const apiKey = provider === "gemini" ? env.GEMINI_API_KEY : env.DEEPSEEK_API_KEY;
 
   return {

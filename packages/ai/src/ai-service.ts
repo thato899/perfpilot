@@ -1,4 +1,9 @@
-import type { AIConfig, AIProvider, StructuredGenerationOptions, StructuredSchema } from "./types.js";
+import type {
+  AIConfig,
+  AIProvider,
+  StructuredGenerationOptions,
+  StructuredSchema,
+} from "./types.js";
 import { resolveAIConfig } from "./config.js";
 import { GeminiProvider } from "./gemini-provider.js";
 
@@ -18,7 +23,9 @@ export class AIService {
       case "deepseek":
         throw new Error("DeepSeek provider is not implemented yet in this repository.");
       default:
-        throw new Error(`Unsupported AI provider: ${(configOrProvider as { provider?: string }).provider}`);
+        throw new Error(
+          `Unsupported AI provider: ${(configOrProvider as { provider?: string }).provider}`,
+        );
     }
   }
 

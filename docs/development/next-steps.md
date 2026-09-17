@@ -17,7 +17,7 @@ Every checklist item below is also tracked as an issue on the [task board](https
 
 Owns: `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/`, `packages/ai/`
 
-- [ ] Stand up `packages/ai` with one working provider (`GeminiProvider` or `DeepSeekProvider` — pick one, see [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md)).
+- [x] Stand up `packages/ai` with one working provider (`GeminiProvider`) through `AIService`, including centralized structured-output validation and retry tests. Ticket #1 implementation is complete; focused PR cleanup and review remain.
 - [ ] Build the Orchestrator's deterministic continuation policy (state machine, not prompted) — see [orchestrator.md](../agents/orchestrator.md).
 - [ ] Test Planner: produce a valid `TestPlan` for the [demo scenario](../demo-scenario.md)'s inputs.
 - [ ] Performance Investigator: produce a valid `Finding` from **fixture** metrics first, then wire to real ones — see [performance-investigator.md](../agents/performance-investigator.md).
@@ -31,7 +31,7 @@ Owns: `agents/load-engineer/`, `packages/metrics/`, `infrastructure/docker/k6/`
 - [ ] k6 script generation for one journey type (start with whatever the [demo scenario](../demo-scenario.md) needs).
 - [ ] Execution wrapper with the safety ceiling enforced — see [load-engineer.md](../agents/load-engineer.md) and [security-model.md](../security/security-model.md).
 - [ ] `packages/metrics`: compute p50/p95/p99, error rate, threshold pass/fail, and regression % from **real** k6 JSON output (this is deterministic code, not an LLM call — see [system-architecture.md#ai-output-reliability](../architecture/system-architecture.md)).
-- [ ] Open question to settle early with Thato: does `Metric` need interval/time-bucketed rows for the dashboard's live view, or is summary-at-completion enough for the MVP? (See [roadmap.md](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1).)
+- [x] Open question settled with Thato: summary-at-completion is enough for the MVP; interval/time-bucketed rows are deferred to Phase 2, not required for the dashboard's live view. See [roadmap.md](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1) and [database-design.md](../database/database-design.md).
 
 ## Kamogelo — Developer 3 (Backend / Data)
 
@@ -51,7 +51,7 @@ Owns: `apps/web/`, `agents/reporting/`
 - [x] Minimal dashboard: create a target, trigger an investigation, watch a test run's progress, view the resulting report. Done: `apps/web` (issue #14) — Next.js + TypeScript + Tailwind + shadcn/ui, all four flows working against a mocked API (`src/lib/mock-api.ts`), verified end to end with a scripted headless-browser run, plus an automated Vitest/RTL suite (`apps/web/README.md#testing`) covering the mock API and badge components. Not yet done: real `apps/api` wiring, project CRUD, automated tests for the page/form components (still manual-only), live metric charts (pending issue #9).
 - [x] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one. Done: `agents/reporting/report_builder.py` (issue #15, PR #17, merged into `main`) — deterministic `build_report`/`validate_report` per [reporting-agent.md](../agents/reporting-agent.md), fixtures for the demo scenario and the "healthy run" case, 8 passing tests. Not yet done: swapping the two LLM-shaped prose functions (marked `# BLOCKED-ON: #1`) for real `AIService` output once `packages/ai` (#1) exists.
 - [x] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
-- [ ] Open question to settle early with Govenor: see above (interval-bucketed metrics vs. summary-at-completion). *(Proposal posted on issue #9 — blocked on Govenor's read/sign-off, not a solo task.)*
+- [x] Open question settled with Govenor: summary-at-completion is enough for the MVP; interval/time-bucketed metrics are deferred to Phase 2. *(Decision written into [database-design.md](../database/database-design.md).)*
 
 ## Current implementation update (2026-09-16)
 

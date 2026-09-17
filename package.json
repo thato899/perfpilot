@@ -7,12 +7,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "lint": "eslint packages/schemas/typescript --no-error-on-unmatched-pattern",
+    "lint": "eslint packages/schemas/typescript packages/ai/src packages/ai/tests --no-error-on-unmatched-pattern",
     "lint:web": "pnpm --filter web lint",
     "test:web": "pnpm --filter web test",
     "test:ai": "vitest run packages/ai/tests/ai-service.test.ts",
-    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\"",
-    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\""
+    "format": "prettier --no-error-on-unmatched-pattern --write \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\" \"packages/ai/**/*.ts\"",
+    "format:check": "prettier --no-error-on-unmatched-pattern --check \"apps/web/**/*.{ts,tsx,css}\" \"packages/schemas/typescript/**/*.ts\" \"packages/ai/**/*.ts\""
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
