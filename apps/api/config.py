@@ -35,6 +35,9 @@ class Settings:
     max_virtual_users: int = 5000
     max_test_duration_seconds: int = 1800
     max_experiments_per_investigation: int = 3
+    load_engineer_mode: str = "real"
+    k6_binary_path: str = "k6"
+    k6_results_dir: str = "./infrastructure/docker/k6/results"
 
     def host_is_allowed(self, base_url: str) -> bool:
         """Is `base_url`'s host on the allow-list?
@@ -64,4 +67,7 @@ def get_settings() -> Settings:
         # self-initiated follow-up experiments. Defaulted here rather than
         # added to .env.example, which is a shared root file.
         max_experiments_per_investigation=_int_env("MAX_EXPERIMENTS_PER_INVESTIGATION", 3),
+        load_engineer_mode=os.environ.get("LOAD_ENGINEER_MODE", "real"),
+        k6_binary_path=os.environ.get("K6_BINARY_PATH", "k6"),
+        k6_results_dir=os.environ.get("K6_RESULTS_DIR", "./infrastructure/docker/k6/results"),
     )

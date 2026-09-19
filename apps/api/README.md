@@ -12,11 +12,11 @@ config.py            Settings from the environment, incl. the safety ceilings.
 deps.py              Auth, DB session, and the Orchestrator seam.
 errors.py            The single error envelope api-contract.md documents.
 schemas.py           Request/response bodies; ORM -> packages/schemas conversion.
-orchestrator_stub.py Canned Orchestrator. DELETE when agents/orchestrator lands.
+orchestrator_stub.py Test-only canned Orchestrator double.
 routers/             One module per resource group (issue #12).
 celery_app.py        Celery app; `include` is what makes tasks visible to a worker.
 tasks.py             Async test execution (implemented in issue #13).
-load_engineer_stub.py Safe load-engineer seam used until the real k6 wrapper lands.
+load_engineer.py Production k6/metrics adapter; load_engineer_stub.py is test-only.
 db/base.py           Declarative base, constraint naming convention, session factory.
 db/models.py         SQLAlchemy models for all 14 entities (issue #11).
 alembic.ini          Migration config — run from the REPO ROOT, see below.
@@ -28,17 +28,13 @@ requirements.txt     Runtime dependencies for the api and worker containers.
 ## The two agent seams
 
 `deps.get_orchestrator()` and `deps.get_load_engineer()` are the only places
-that name an agent implementation. Both return stubs today; when
-Developer 1/Thatayaone's `agents/orchestrator` and Developer 2/Govenor's
-`agents/load-engineer` land, those two functions change and nothing else
-does. Each stub returns payloads that validate against `packages/schemas`,
-so a contract change there breaks the tests here rather than surfacing at
-integration time.
+that name an agent implementation. Production uses the real Orchestrator and
+the `K6LoadEngineer` adapter. Tests explicitly set `LOAD_ENGINEER_MODE=stub`
+when they need the deterministic double; production defaults to real k6.
 
-The Load Engineer stub is deliberately *not* a pure fake: the safety-ceiling
-clamping and the pre-execution allow-list re-check are implemented for real,
-because those are the parts that must survive the swap. The tests covering
-them should keep passing against Govenor's wrapper unchanged.
+The adapter delegates safety clamping, target validation, script generation,
+and process execution to `agents/load-engineer/load_engineer.py`, then parses
+the summary through `packages/metrics`.
 
 ## Running the tests
 
@@ -80,4 +76,5 @@ See [local-development.md#background-jobs](../../docs/development/local-developm
 - `packages/schemas/python/` — the Pydantic models request/response bodies and persistence must validate against
 - [docs/security/security-model.md](../../docs/security/security-model.md) — target authorization and safety-ceiling enforcement points that live at this layer
 
-This app can be built and tested against a stubbed Orchestrator response before the real agents exist — see [docs/development/team-workflow.md](../../docs/development/team-workflow.md#how-the-contracts-enable-parallel-work).
+The stubs remain available as explicit test doubles; they are not selected by
+the default production configuration.

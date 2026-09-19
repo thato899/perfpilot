@@ -18,7 +18,11 @@ Both images build from the **repository root**, not from this directory: `apps/a
 
 ## Status
 
-Stood up in issue #10. `db`, `redis` and `web` are fully real. `api` and `worker` boot against scaffolding in `apps/api` (a `/health` route and a no-op Celery task) — enough to prove the wiring, not the Phase 1 endpoints, which are issues #12 and #13.
+The stack includes real Postgres, Redis, FastAPI endpoints, Celery execution,
+the production Load Engineer adapter, and the pinned k6 runtime. The API and
+worker share the same image; the worker consumes `perfpilot.execute_test_run`.
+The end-to-end k6 smoke still requires an authorized controlled target and a
+host/port configuration without conflicts.
 
 `k6-runner` is owned by Developer 2/Govenor and builds from the pinned local image definition at `infrastructure/docker/k6/Dockerfile`. The service runs idle and the worker invokes k6 with `docker compose exec`; the alternative of spawning a fresh container per run would require mounting the Docker socket into the worker.
 
