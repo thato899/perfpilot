@@ -1,13 +1,7 @@
 """Celery application.
 
-BOOT SCAFFOLDING ONLY. This module exists so the `worker` service in
-infrastructure/docker/docker-compose.yml has a real Celery app to start
-(issue #10), and so the broker/result-backend wiring is provably correct
-before any real task depends on it.
-
-Actual async test execution is issue #13, and the task it dispatches is
-Govenor's k6 execution wrapper (agents/load-engineer). Neither is
-implemented here.
+This module configures the production Celery app used by the API and worker.
+The worker registers the persisted test-run execution task in `apps.api.tasks`.
 
 Module path note: this is `apps.api.celery_app`, not `app.celery_app` as
 render.yaml's TODO currently guesses. The repo is imported root-relative

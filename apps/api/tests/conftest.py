@@ -61,6 +61,7 @@ TEST_DB_URL = (
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ.setdefault("API_AUTH_SECRET", "test-secret-do-not-use-in-production")
 os.environ.setdefault("ALLOWED_TARGET_HOSTS", "localhost,demo.perfpilot.local")
+os.environ.setdefault("LOAD_ENGINEER_MODE", "stub")
 
 # Kombu's in-memory transport, not Redis. Set unconditionally: no test here
 # needs a real broker — the one that checks dispatch monkeypatches `.delay`,

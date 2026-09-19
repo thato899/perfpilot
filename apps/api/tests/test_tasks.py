@@ -279,9 +279,11 @@ def test_completion_advances_a_linked_investigation(
     tasks.execute_test_run(str(queued_run.id))
 
     db_session.expire_all()
-    # A completed run moves the investigation from planning to investigation;
-    # the Investigator is the next explicit specialist step.
-    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.INVESTIGATING
+    # The worker resumes the Investigator and persists the report for the
+    # degraded-but-unhypothesized fixture path.
+    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.COMPLETE
+    assert db_session.query(m.Finding).filter_by(investigation_id=inv["id"]).count() == 1
+    assert db_session.query(m.Report).filter_by(investigation_id=inv["id"]).count() == 1
 
 
 def test_completion_without_an_investigation_is_fine(db_session, queued_run: m.TestRun) -> None:

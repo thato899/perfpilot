@@ -20,13 +20,14 @@ from agents.orchestrator.orchestrator import Orchestrator as RealOrchestrator
 from .config import Settings, get_settings
 from .db.base import SessionLocal
 from .errors import unauthorized
+from .load_engineer import K6LoadEngineer
 from .load_engineer_stub import StubLoadEngineer
 
-# Protocols the routers and tasks depend on. Today these are only satisfied
-# by the stubs; agents/orchestrator and agents/load-engineer will satisfy
-# them too, unchanged on this side.
+# The API depends on public agent seams. Production resolves the real
+# implementations; the Load Engineer stub is selected only by an explicit
+# test/development setting.
 Orchestrator = RealOrchestrator
-LoadEngineer = StubLoadEngineer
+LoadEngineer = K6LoadEngineer | StubLoadEngineer
 
 
 def get_db() -> Iterator[Session]:
@@ -72,10 +73,12 @@ def get_load_engineer() -> LoadEngineer:
 
     Called from the Celery task, not from a router: execution happens off
     the request path (system-architecture.md), so this is deliberately not
-    a FastAPI dependency. When agents/load-engineer lands, this returns it
-    instead and apps/api/tasks.py is untouched.
+    a FastAPI dependency.
     """
-    return StubLoadEngineer(get_settings())
+    settings = get_settings()
+    if settings.load_engineer_mode == "stub":
+        return StubLoadEngineer(settings)
+    return K6LoadEngineer(settings)
 
 
 # Annotated aliases rather than `= Depends(...)` defaults. Both work in
