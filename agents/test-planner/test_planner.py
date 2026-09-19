@@ -41,9 +41,11 @@ class TestPlanner:
             )
             stages = [peak]
         return TestPlanOutput(
-            test_type=TestType.CAPACITY
-            if request.objective == InvestigationObjective.DETERMINE_CAPACITY
-            else TestType.LOAD,
+            test_type=(
+                TestType.CAPACITY
+                if request.objective == InvestigationObjective.DETERMINE_CAPACITY
+                else TestType.LOAD
+            ),
             rationale=(
                 "Step through supplied traffic expectations to identify sustainable capacity."
             ),

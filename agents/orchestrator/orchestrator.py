@@ -64,6 +64,7 @@ class Orchestrator:
             return self._decision(state, OrchestratorAction.COMPLETE, "terminal state")
         state = state.model_copy(deep=True, update={"current_test_run_id": test_run_id})
         if state.status in {InvestigationStatus.PLANNING.value, InvestigationStatus.RUNNING.value}:
+            state.status = InvestigationStatus.INVESTIGATING.value
             return self._decision(state, OrchestratorAction.INVOKE_INVESTIGATOR, "test completed")
         if state.status == InvestigationStatus.INVESTIGATING.value:
             if not state.findings:
