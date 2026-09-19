@@ -14,14 +14,17 @@ showed up against a real worker (see celery_app.py's `include`).
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
-from apps.api import tasks
-from apps.api.config import get_settings
+from apps.api import load_engineer, tasks
+from apps.api.config import Settings, get_settings
 from apps.api.db import models as m
+from apps.api.load_engineer import K6LoadEngineer
 from apps.api.load_engineer_stub import StubLoadEngineer, TargetNotAllowedError
-from packages.schemas.python.entities import InvestigationStatus, TestRunStatus
+from packages.schemas.python.entities import InvestigationStatus, Severity, TestRunStatus
 
 from .conftest import AUTH
 
@@ -151,6 +154,32 @@ def test_wrapper_failure_marks_the_run_failed(
     assert run.completed_at is not None
 
 
+def test_linked_investigation_fails_when_worker_execution_fails(
+    client: TestClient,
+    db_session,
+    target: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+
+    def boom(self, request):  # noqa: ANN001, ANN202, ARG001
+        raise RuntimeError("k6 exited 1")
+
+    monkeypatch.setattr(StubLoadEngineer, "execute", boom)
+    tasks.execute_test_run(inv["current_test_run_id"])
+
+    db_session.expire_all()
+    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.FAILED
+
+
 # --------------------------------------------------------------------------
 # The safety ceiling, enforced at execution time
 # --------------------------------------------------------------------------
@@ -259,7 +288,7 @@ def test_run_endpoint_dispatches_the_task(
 
 
 def test_completion_advances_a_linked_investigation(
-    client: TestClient, db_session, queued_run: m.TestRun, target: dict
+    client: TestClient, db_session, target: dict
 ) -> None:
     """data-flow.md's completion callback: OBSERVE -> the Orchestrator decides."""
     inv = client.post(
@@ -272,11 +301,11 @@ def test_completion_advances_a_linked_investigation(
         headers=AUTH,
     ).json()
 
-    investigation = db_session.get(m.Investigation, inv["id"])
-    investigation.current_test_run_id = queued_run.id
-    db_session.commit()
-
-    tasks.execute_test_run(str(queued_run.id))
+    # Creation itself links the first approved plan and queued run; execute
+    # that run to prove the worker continues the same investigation.
+    run_id = inv["current_test_run_id"]
+    assert run_id is not None
+    tasks.execute_test_run(run_id)
 
     db_session.expire_all()
     # The worker resumes the Investigator and persists the report for the
@@ -284,6 +313,77 @@ def test_completion_advances_a_linked_investigation(
     assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.COMPLETE
     assert db_session.query(m.Finding).filter_by(investigation_id=inv["id"]).count() == 1
     assert db_session.query(m.Report).filter_by(investigation_id=inv["id"]).count() == 1
+
+
+def test_real_adapter_metrics_reach_persisted_investigator_output(
+    client: TestClient,
+    db_session,
+    target: dict,
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real parser output crosses the worker and Investigator persistence seam."""
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+
+    real_module = load_engineer._load_engineer_module()
+
+    class FakeK6Module:
+        SafetyLimits = real_module.SafetyLimits
+
+        @staticmethod
+        def prepare_load(plan, limits):
+            return type("Prepared", (), {"test_plan": plan, "clamped": None})()
+
+        @staticmethod
+        def generate_k6_script(plan, target):
+            return "export default function () {}"
+
+        @staticmethod
+        def run_k6(script_path, output_path, target, **kwargs):
+            output_path.write_text(
+                json.dumps(
+                    {
+                        "duration_seconds": 1,
+                        "http_status_distribution": {"200": 1, "500": 1},
+                        "metrics": {
+                            "http_reqs": {"values": {"count": 2, "rate": 2}},
+                            "http_req_duration": {
+                                "values": {"med": 100, "p(90)": 1800, "p(95)": 2800, "p(99)": 3500}
+                            },
+                            "http_req_failed": {"values": {"rate": 0.02}},
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+    monkeypatch.setattr(load_engineer, "_load_engineer_module", lambda: FakeK6Module)
+    settings = Settings(
+        api_auth_secret="secret",
+        allowed_target_hosts=frozenset({"demo.perfpilot.local"}),
+        k6_results_dir=str(tmp_path),
+    )
+    monkeypatch.setattr(tasks, "get_load_engineer", lambda: K6LoadEngineer(settings))
+
+    tasks.execute_test_run(inv["current_test_run_id"])
+
+    db_session.expire_all()
+    run = db_session.get(m.TestRun, inv["current_test_run_id"])
+    metric = db_session.query(m.Metric).filter_by(test_run_id=run.id).one()
+    finding = db_session.query(m.Finding).filter_by(investigation_id=inv["id"]).one()
+    assert run.status is TestRunStatus.SUCCEEDED
+    assert metric.p95_ms == 2800.0
+    assert metric.error_rate == 0.02
+    assert finding.severity is Severity.HIGH
+    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.COMPLETE
 
 
 def test_completion_without_an_investigation_is_fine(db_session, queued_run: m.TestRun) -> None:

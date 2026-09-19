@@ -1,13 +1,16 @@
 import json
 import uuid
 
-from apps.api import load_engineer
+from apps.api import load_engineer, tasks
 from apps.api.config import Settings
+from packages.metrics.metrics import compare_metrics
 from packages.schemas.python.agent_io import (
+    InvestigationAnalysisRequest,
     LoadExecutionRequest,
     RampStrategy,
     TargetRef,
     TestPlanOutput,
+    TestRunMetricsRef,
     TestStagePlan,
 )
 from packages.schemas.python.entities import TestType
@@ -76,3 +79,14 @@ def test_real_adapter_generates_parses_and_returns_metrics(tmp_path, monkeypatch
     assert result.status.value == "succeeded"
     assert result.metrics[0].p95_ms == 30
     assert result.metrics[0].concurrency == 2
+
+    investigator = tasks._load_investigator_module()
+    analysis_request = InvestigationAnalysisRequest(
+        test_run=TestRunMetricsRef(id=run_id, metrics=result.metrics),
+        baseline_test_run=TestRunMetricsRef(id=run_id, metrics=result.metrics),
+        comparison=compare_metrics(result.metrics[0], result.metrics[0]),
+        thresholds=plan.thresholds,
+    )
+    analysis = investigator.PerformanceInvestigator().analyze(analysis_request)
+    assert analysis.finding.severity.value == "INFO"
+    assert analysis.hypotheses == []

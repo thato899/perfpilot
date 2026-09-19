@@ -20,6 +20,7 @@ from packages.schemas.python.entities import (
     InvestigationObjective,
     InvestigationStatus,
     Severity,
+    TestPlanStatus,
     TestRunStatus,
 )
 
@@ -336,7 +337,7 @@ def test_metrics_for_missing_run_404(client: TestClient) -> None:
 # --------------------------------------------------------------------------
 
 
-def test_create_investigation(client: TestClient, target: dict) -> None:
+def test_create_investigation(client: TestClient, db_session, target: dict) -> None:
     res = client.post(
         "/api/investigations",
         json={
@@ -348,11 +349,18 @@ def test_create_investigation(client: TestClient, target: dict) -> None:
     )
     assert res.status_code == 201
     body = res.json()
-    # The contract promises status `planning`; the stub Orchestrator's
-    # start_investigation is what sets it.
-    assert body["status"] == InvestigationStatus.PLANNING.value
+    # Creation owns the initial PLAN -> queued RUN transition, so the
+    # investigation is running as soon as its first run is linked.
+    assert body["status"] == InvestigationStatus.RUNNING.value
     assert body["objective"] == InvestigationObjective.DETERMINE_CAPACITY.value
     assert body["experiments_run"] == 0
+    assert body["current_test_run_id"] is not None
+    run = db_session.get(m.TestRun, body["current_test_run_id"])
+    assert run is not None
+    assert str(run.target_id) == target["id"]
+    plan = db_session.get(m.TestPlan, run.test_plan_id)
+    assert plan is not None
+    assert plan.status is TestPlanStatus.APPROVED
 
 
 def test_investigation_for_unauthorized_target_is_403(

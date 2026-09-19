@@ -125,6 +125,10 @@ class CreateInvestigationRequest(BaseModel):
     target_id: UUID
     objective: InvestigationObjective
     expected_traffic: ExpectedTraffic
+    user_journeys: list[str] = Field(default_factory=lambda: ["/"])
+    p95_ms: float = Field(default=500.0, gt=0)
+    max_error_rate: float = Field(default=0.01, ge=0.0, le=1.0)
+    application_name: str | None = None
 
 
 class FindingsResponse(BaseModel):

@@ -27,6 +27,9 @@ from packages.schemas.python.agent_io import (
     InvestigationAnalysisRequest,
     LoadExecutionRequest,
     LoadExecutionStatus,
+    OrchestratorEvent,
+    OrchestratorEventType,
+    OrchestratorStep,
     RampStrategy,
     TargetRef,
     TestPlanOutput,
@@ -72,6 +75,7 @@ def _plan_to_output(plan: m.TestPlan) -> TestPlanOutput:
         duration=dict(plan.duration),
         stages=[TestStagePlan(**stage) for stage in plan.stages],
         success_criteria=list(plan.success_criteria),
+        controlled_variable=(plan.controlled_variable if plan.controlled_variable else None),
     )
 
 
@@ -113,6 +117,7 @@ def execute_test_run(self, test_run_id: str) -> dict:  # noqa: ANN001, ARG001
         target = session.get(m.Target, run.target_id)
         if plan is None or target is None:
             run.status = TestRunStatus.FAILED
+            _fail_linked_investigation(session, run_uuid)
             session.commit()
             return {"test_run_id": test_run_id, "status": run.status.value}
 
@@ -138,19 +143,25 @@ def execute_test_run(self, test_run_id: str) -> dict:  # noqa: ANN001, ARG001
             log.warning("execute_test_run: %s target no longer allow-listed", test_run_id)
             run.status = TestRunStatus.ABORTED_OVER_LIMIT
             run.completed_at = _utcnow()
+            _fail_linked_investigation(session, run_uuid)
             session.commit()
             return {"test_run_id": test_run_id, "status": run.status.value}
         except Exception:
             log.exception("execute_test_run: %s failed in the execution wrapper", test_run_id)
             run.status = TestRunStatus.FAILED
             run.completed_at = _utcnow()
+            _fail_linked_investigation(session, run_uuid)
             session.commit()
             return {"test_run_id": test_run_id, "status": run.status.value}
 
         _persist_result(session, run, plan, result)
         session.commit()
 
-        _advance_investigation(session, run_uuid)
+        if run.status is TestRunStatus.SUCCEEDED:
+            _advance_investigation(session, run_uuid)
+        else:
+            _fail_linked_investigation(session, run_uuid)
+            session.commit()
         return {"test_run_id": test_run_id, "status": run.status.value}
     finally:
         session.close()
@@ -160,6 +171,17 @@ def _utcnow():  # noqa: ANN202
     from datetime import datetime
 
     return datetime.now(UTC)
+
+
+def _fail_linked_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: ANN001
+    investigation = session.scalar(
+        select(m.Investigation).where(m.Investigation.current_test_run_id == test_run_id)
+    )
+    if investigation and investigation.status not in {
+        InvestigationStatus.COMPLETE,
+        InvestigationStatus.FAILED,
+    }:
+        investigation.status = InvestigationStatus.FAILED
 
 
 def _persist_result(session, run: m.TestRun, plan: m.TestPlan, result) -> None:  # noqa: ANN001
@@ -259,8 +281,14 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
         _persist_investigator_output(session, investigation, analysis)
         session.flush()
 
-        decision = get_orchestrator().continue_investigation(
-            _load_state(session, investigation), test_run_id
+        decision = get_orchestrator().step(
+            OrchestratorStep(
+                investigation_state=_load_state(session, investigation),
+                event=OrchestratorEvent(
+                    type=OrchestratorEventType.TEST_RUN_COMPLETED,
+                    payload={"test_run_id": str(test_run_id), "status": "succeeded"},
+                ),
+            )
         )
         investigation.status = InvestigationStatus(decision.updated_state.status)
         if decision.next_action.value == "invoke_reporting_agent":

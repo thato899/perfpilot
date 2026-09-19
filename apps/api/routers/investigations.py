@@ -8,7 +8,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from packages.schemas.python.agent_io import InvestigationState
+from packages.schemas.python.agent_io import (
+    InvestigationState,
+    PerformanceRequirements,
+    TargetDescription,
+    TestPlanRequest,
+)
 from packages.schemas.python.entities import Finding as FindingSchema
 from packages.schemas.python.entities import Investigation as InvestigationSchema
 from packages.schemas.python.entities import (
@@ -132,12 +137,74 @@ def create_investigation(
     db.commit()
     db.refresh(investigation)
 
-    # The Orchestrator owns the status transition; the API persists what
-    # comes back rather than deciding it.
-    decision = orchestrator.start_investigation(investigation.id, target.id)
-    investigation.status = InvestigationStatus(decision.updated_state.status)
     db.commit()
-    db.refresh(investigation)
+
+    # The initial planner/run link is part of the investigation lifecycle,
+    # not a second frontend-only workflow. The current TestRun points to its
+    # TestPlan, so current_test_run_id is the authoritative active-plan edge.
+    try:
+        decision = orchestrator.start_investigation(investigation.id, target.id)
+        if decision.next_action.value != "invoke_test_planner":
+            raise RuntimeError("initial investigation did not request Test Planner")
+        plan = orchestrator.plan_test(
+            TestPlanRequest(
+                target_description=TargetDescription(
+                    application_name=body.application_name or target.name,
+                    user_journeys=body.user_journeys,
+                    expected_traffic=body.expected_traffic,
+                    performance_requirements=PerformanceRequirements(
+                        p95_ms=body.p95_ms,
+                        max_error_rate=body.max_error_rate,
+                    ),
+                ),
+                objective=body.objective,
+            )
+        )
+        plan_row = m.TestPlan(
+            project_id=target.project_id,
+            target_id=target.id,
+            test_type=plan.test_type,
+            rationale=plan.rationale,
+            target_concurrency=plan.target_concurrency,
+            ramp_strategy=plan.ramp_strategy.model_dump(),
+            user_journeys=plan.user_journeys,
+            thresholds=plan.thresholds,
+            duration=plan.duration,
+            stages=[stage.model_dump() for stage in plan.stages],
+            success_criteria=plan.success_criteria,
+            controlled_variable=(
+                plan.controlled_variable.model_dump() if plan.controlled_variable else None
+            ),
+            status=TestPlanStatus.APPROVED,
+        )
+        db.add(plan_row)
+        db.flush()
+        from .tests_ import _dispatch, validate_run_limits
+
+        validate_run_limits(plan_row, settings)
+        run = m.TestRun(
+            test_plan_id=plan_row.id,
+            target_id=target.id,
+            status=TestRunStatus.QUEUED,
+        )
+        db.add(run)
+        db.flush()
+        investigation.current_test_run_id = run.id
+        investigation.status = InvestigationStatus.RUNNING
+        db.commit()
+        db.refresh(investigation)
+        _dispatch(run.id)
+    except Exception:
+        db.rollback()
+        failed = db.get(m.Investigation, investigation.id)
+        if failed is not None and failed.status not in {
+            InvestigationStatus.COMPLETE,
+            InvestigationStatus.FAILED,
+        }:
+            failed.status = InvestigationStatus.FAILED
+            db.commit()
+        raise
+
     return from_orm(InvestigationSchema, investigation)
 
 
@@ -190,6 +257,12 @@ def approve_experiment(
     hypothesis = db.get(m.Hypothesis, body.hypothesis_id)
     if hypothesis is None:
         raise not_found("Hypothesis", body.hypothesis_id)
+    if hypothesis.finding.investigation_id != investigation.id:
+        raise conflict(
+            "invalid_investigation_hypothesis",
+            "The Hypothesis does not belong to this investigation.",
+            {"hypothesis_id": str(body.hypothesis_id)},
+        )
 
     if not hypothesis.recommended_experiment:
         raise conflict(
@@ -243,6 +316,7 @@ def approve_experiment(
         )
     )
     investigation.experiments_run += 1
+    investigation.status = InvestigationStatus.RUNNING
     plan.status = TestPlanStatus.APPROVED
     # The approved experiment becomes the investigation's current run, which
     # is what lets the worker's completion callback find it again.
@@ -274,8 +348,15 @@ def continue_investigation(
     investigation = db.get(m.Investigation, investigation_id)
     if investigation is None:
         raise not_found("Investigation", investigation_id)
-    if db.get(m.TestRun, body.test_run_id) is None:
+    run = db.get(m.TestRun, body.test_run_id)
+    if run is None:
         raise not_found("TestRun", body.test_run_id)
+    if run.target_id != investigation.target_id:
+        raise conflict(
+            "invalid_investigation_run",
+            "The TestRun does not belong to this investigation target.",
+            {"test_run_id": str(body.test_run_id)},
+        )
 
     decision = orchestrator.continue_investigation(_load_state(db, investigation), body.test_run_id)
     investigation.status = InvestigationStatus(decision.updated_state.status)
