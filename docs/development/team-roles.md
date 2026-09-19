@@ -13,11 +13,12 @@
 
 ## Team Lead — Govenor
 
-**Mandate:** final decision-maker when the team can't resolve something peer-to-peer.
+**Mandate:** final decision-maker when the team can't resolve something peer-to-peer. Govenor also owns the Phase 1 completion sign-off that gates all Phase 2 tickets.
 
 In scope:
 - Breaks ties when two developers (or two AI assistants acting on their behalf) disagree on scope, architecture, or a shared-contract shape — the escalation path when the sign-off process in [CONTRIBUTING.md](../../CONTRIBUTING.md#changing-a-shared-contract) stalls because the affected owners can't agree.
 - Owns each phase's Definition of Done — decides when Phase 0/1/2 (per [roadmap.md](../roadmap.md)) is actually complete enough to move on, not just individually checked off by each owner.
+- For the Phase 2 gate, records in `STATUS.md` that the real Phase 1 demo completed end to end, then authorizes moving Phase 2 issues from `status:todo` to `status:in-progress`.
 - Repository governance: branch protection on `main`, who has merge rights, and when a `develop` → `main` promotion happens (demo-ready checkpoints, per [team-workflow.md's git workflow](team-workflow.md#git-workflow)).
 - Final call on pulling scope into Phase 1 vs. deferring it, per [roadmap.md's Phase 3+ deferred-by-design list](../roadmap.md#phase-3-deferred-by-design-not-oversights).
 - Owns that the daily sync ([team-workflow.md](team-workflow.md#communication)) happens — doesn't have to run it personally every day, but is accountable if it stops happening.

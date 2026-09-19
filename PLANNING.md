@@ -11,7 +11,7 @@ The stable plan: phases, timeline, Definition of Done, where the detail actually
 | Question | Answer lives in |
 |---|---|
 | What are we building, and why | [README.md](README.md) |
-| What's in Phase 1 vs. deferred | [docs/roadmap.md](docs/roadmap.md) |
+| What's in Phase 1 vs. Phase 2 | [docs/roadmap.md](docs/roadmap.md) |
 | Who owns what code | [docs/development/team-workflow.md](docs/development/team-workflow.md#ownership-map) |
 | Who owns what *process* (Team Lead, PM, Reviewer, Reporter) | [docs/development/team-roles.md](docs/development/team-roles.md) |
 | Per-developer task checklist | [docs/development/next-steps.md](docs/development/next-steps.md) |
@@ -38,7 +38,7 @@ The four developers own independent surfaces, but integration is shared. Each ow
 | Developer | Owns | Next required outcome |
 |---|---|---|
 | **Thatayaone — AI / Orchestration** | `packages/ai/`, `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/` | AI provider gateway is implemented on `main`. Next, finish the deterministic orchestrator state machine, fixture-valid Test Planner and Investigator outputs, and the seam Kamogelo's API can call by Sep 23. |
-| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Settle #9 with Thato by Sep 18, finish k6 runner integration and validate metrics against real k6 JSON by Sep 23. Make the final Phase 1 readiness call by Sep 30. |
+| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Phase 1 metrics decision and pinned k6 runner are complete. Next, connect the validated runner to the real API/worker investigation flow and make the final Phase 1 readiness call by Sep 30. |
 | **Kamogelo — Backend / Data** | `apps/api/`, database migrations, canonical `packages/schemas/` ownership | Finish #13 Celery dispatch and connect the worker to the load-engineer wrapper by Sep 23; validate the API-to-orchestrator-to-worker path against Postgres by Sep 30. Approve or coordinate all schema changes. |
 | **Thato — Frontend / Reporting** | `apps/web/`, `agents/reporting/` | Complete issue #27: replace mocked runtime calls with the real API, connect report display to real output, preserve fixtures, and run the integrated demo by Sep 30. |
 
@@ -56,10 +56,10 @@ The existing role structure does not change. These are the open tickets and the 
 
 | Window | Owner | Existing tickets | Required deliverable | Technology stack |
 |---|---|---|---|---|
-| Sep 16–18 | Govenor + Thato | #9 | Decide summary versus interval metrics and record the decision in the API/dashboard contracts. | Python metrics models, Pydantic schemas, TypeScript dashboard types, Recharts if live charts are retained. |
+| Sep 16–18 | Govenor + Thato | #9 | **Complete:** summary-at-completion is sufficient for Phase 1; interval metrics are deferred to Phase 2. | Python metrics models, Pydantic schemas, TypeScript dashboard types. |
 | Sep 16–23 | Thatayaone | #2, #3, #4, #5 | Implement the deterministic Orchestrator, schema-valid Test Planner and Investigator fixture flows, and validation coverage for all agent contracts. | Python agents, Pydantic contracts in `packages/schemas`, TypeScript/Python `AIService`, Gemini provider. |
-| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | Finish safe execution integration, enforce VU/duration/target ceilings, validate real k6 JSON, and provide the runner container path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
-| Sep 16–23 | Kamogelo | #13 | Consume queued `TestRun` records, dispatch the load engineer, persist progress/results, and expose failures through the API. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
+| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | **Mostly complete:** safety execution and pinned runner are validated; remaining work is wiring the real API/worker path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
+| Sep 16–23 | Kamogelo | #13 | **Complete on `main`**: consume queued `TestRun` records, dispatch the load-engineer seam, persist progress/results, and expose failures through the API. Remaining integration is the real k6 runner and agent flow. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
 | Sep 18–30 | Thato | #27 | Replace mocked runtime calls with the real API, connect real investigation/report output, preserve fixtures, and verify the dashboard flow end to end. | Next.js, TypeScript, React, Tailwind/shadcn/ui, Vitest/RTL, FastAPI JSON API. |
 | Sep 24–30 | Everyone | #2, #3, #4, #5, #9, #13, #27 | Integrate the full demo scenario, fix cross-surface defects, run CI and local Docker smoke tests, and obtain Team Lead sign-off. | Full stack: Next.js + TypeScript, Python/FastAPI, Pydantic, PostgreSQL, Celery/Redis, k6, Docker. |
 
@@ -71,7 +71,22 @@ The issue board remains authoritative. Do not create replacement tickets for #2�
 
 - **Phase 0** — done. See [README.md's Phase 0 checklist](README.md#phase-0-definition-of-done), fully checked off.
 - **Phase 1** — the demo scenario runs end-to-end for real, once (see table above). Team Lead (Govenor) makes the final call on when it's actually done, not just individually checked off per owner — see [roadmap.md](docs/roadmap.md#phase-1--thin-vertical-slice) and [team-roles.md](docs/development/team-roles.md#team-lead--govenor).
-- **Phase 2+** — deliberately not detailed here; see [roadmap.md](docs/roadmap.md#phase-2--investigation-loop-robustness). Out of scope before 2026-10-07.
+- **Phase 2** — planned and ticketed below the Phase 1 gate; no Phase 2 ticket may begin until Phase 1 is signed off against its end-to-end Definition of Done. See [roadmap.md](docs/roadmap.md#phase-2--investigation-loop-robustness).
+
+## Phase 2 work allocation and gate
+
+Phase 2 begins only after Phase 1 is complete: the demo scenario must run once from target creation through a real report, using the real Orchestrator/specialists, real k6 execution, Celery, Postgres, and the real dashboard/API path. Govenor, as Team Lead, records the sign-off in `STATUS.md` and closes the Phase 1 milestone before Phase 2 tickets move to `status:in-progress`.
+
+Phase 2 is distributed by ticket count and expected effort:
+
+| Owner | Tickets | Allocation target | Phase 2 tickets |
+|---|---:|---:|---|
+| Thato | 3 | ~35% | [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39) |
+| Kamo | 2 | 25% | [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35) |
+| Govenor | 2 | 25% | [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36) |
+| Thatayaone | 1 | ~15% | [#33](https://github.com/thato899/perfpilot/issues/33) |
+
+Every ticket includes an owner label, `phase-2`, `status:todo`, explicit dependencies, acceptance criteria, tests, and documentation updates. Shared-contract changes require Kamo's schema sign-off and a second review.
 
 ## Process decisions on record
 

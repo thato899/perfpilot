@@ -8,7 +8,7 @@ Full contract: [docs/agents/reporting-agent.md](../../docs/agents/reporting-agen
 
 ## Status
 
-Phase 1 first slice done (issue #15): `build_report()` produces a valid, contract-checked `Report` from a fixture `InvestigationState` — no live investigation or AI call needed yet.
+Phase 1 first slice done (issue #15): `build_report()` produces a valid, contract-checked `Report` from a fixture `InvestigationState`. Live investigation wiring and AI-generated prose remain part of issue #27's integration work.
 
 - **`report_builder.py`** — `build_report(request: ReportRequest) -> ReportOutput`, plus `validate_report()`, a standalone check for the pass-through/grounding guardrails in reporting-agent.md's Failure states table (also run internally by `build_report` before it returns).
 - **`fixtures/investigation_states.py`** — `demo_scenario_request()` (the [demo scenario](../../docs/demo-scenario.md)'s DB-connection-pool-contention walkthrough, using the same numbers as reporting-agent.md's own illustrative example) and `healthy_run_request()` (the "no findings at all" case).

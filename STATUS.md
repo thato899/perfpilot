@@ -4,7 +4,9 @@ The **live** state of the project. This changes every session — for the stable
 
 **If you are an AI assistant opening this repo for a session: read this file before doing anything else.** It tells you what's currently being worked on, what's blocked, and what's next — the things a fresh chat tab has no way to know otherwise. Before you end your session (or hand off), update your developer's section below and add a line to the log. This is the whole point of the file: it only works if it stays current.
 
-**Last updated:** 2026-09-16 by Kamogelo
+**Last updated:** 2026-09-17 by Codex
+
+**Phase 2 planning status:** Ticketed but gated. Phase 2 work must not begin until Govenor signs off Phase 1's real end-to-end demo and records that sign-off below. Eight Phase 2 issues are planned: Thato 3, Kamo 2, Govenor 2, Thatayaone 1.
 
 *Note: three branches now touch this file — `feature/dashboard-mocked-api` (PR #18), `feature/reporting-agent-fixture` (PR #17), and `feature/docker-compose-stack` (issue #10) — all cut from `main` within a day of each other. Expect a small merge conflict here as each lands; resolve it by combining the entries, not by dropping any of them. Each writes to its own per-developer section and adds its own log entry, so a combine is always the correct resolution.*
 
@@ -36,12 +38,12 @@ Each section below follows the same template. Update your own section — don't 
 
 **Last updated:** 2026-09-16 by Kamogelo
 
-- **Currently working on:** issue #13 (Celery) — branch `feature/celery-execution`, off current `main`. That's my last of the four.
+- **Currently working on:** post-#13 integration support and coordination with Thatayaone, Govenor, and Thato.
 - **Just completed:** #13. `apps/api/tasks.py` takes a queued `TestRun` through `running` -> `succeeded`/`failed`/`aborted_over_limit`, writes the `Metric` and `TestStage` rows and the `clamped` flag, and advances any investigation pointing at that run. Dispatched from `POST /api/tests/{id}/run` and from an approved experiment — after the commit, never before, or a worker can beat the transaction and find no such run.
 - **Verified against a real broker and worker**, not eager mode: real Redis, a real `celery -A apps.api.celery_app worker` process, uvicorn, triggered over HTTP and polled `GET /api/test-runs/{id}` to `succeeded`. That is #13's done-when, run rather than asserted. It's also the only reason I caught the one bug that mattered — the worker came up registering just `perfpilot.ping`, because nothing imported `apps.api.tasks` in a worker process. Every dispatched run would have sat queued forever, and eager-mode tests would have sailed straight past it since the API process imports that module anyway to call `.delay()`. Fixed with `include=["apps.api.tasks"]`.
 - **Three calls worth a reviewer's eye:** `max_retries=0` (Celery's default retry would re-run a *load test* against someone's application because a DB write blipped — a failed run is recorded failed and left for a human); the allow-list is re-checked *inside* the execution wrapper, not just at the API, because a target can be revoked in the gap between approval and execution (load-engineer.md asks for exactly this); and an over-ceiling run clamps rather than rejects, per security-model.md, with the recorded `TestStage` rows showing what actually ran rather than what was planned.
 - **Blocked on:** nothing. `load_engineer_stub.py` stands in for Govenor's wrapper behind `deps.get_load_engineer()` — I see from his 09-14 entry that `feature/k6-engine` already has the real clamping and allow-list logic, so the swap is one function and the tests around those behaviours should pass against his unchanged. Worth a conversation with him about which of the two clamping implementations survives.
-- **Next up:** all four of mine are done and re-verified end to end (see the log entry below). Available to review, and to help with integration. **The one thing still genuinely unrun is #10's `docker compose --profile all up`** — the compose file validates and every service resolves, but nobody has watched all six containers come up. It needs a machine that can pull from Docker Hub.
+- **Next up:** all four backend tickets are complete and re-verified. Available to review and help integrate; the remaining backend-dependent work is connecting the real Orchestrator and pinned k6 runner through the complete investigation flow.
 
 **Needs a second opinion before merge (shared paths, per [CONTRIBUTING.md](CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging)):** `infrastructure/docker/docker-compose.yml` and the root `.dockerignore` (#10), `docs/development/local-development.md`, `docs/api/api-contract.md`, and **`.github/workflows/ci.yml`** (#12 — adds a Postgres service and an apps/api dependency install to `py-test`; that one touches everyone's CI, so please read it before merging). Govenor is the right reviewer for the docker half; anyone for the CI change.
 
@@ -52,11 +54,16 @@ Each section below follows the same template. Update your own section — don't 
 - **Currently working on:** nothing active — both PRs are merged into `main` (PR #18/issue #14 at 18:58, PR #17/issue #15 at 19:23 on 2026-09-12), CI green on both merge commits. Everything in next-steps.md's Thato backlog that doesn't depend on a teammate is done; see next-steps.md's Thato section for the exact per-item status.
 - **Just completed:** Dashboard (issue #14, PR #18, merged) — `apps/web`: Next.js + TypeScript + Tailwind + shadcn/ui, all four required flows (create target / trigger investigation / watch progress / view report) working against a mocked API (`src/lib/mock-api.ts`, `localStorage`-backed). Verified end to end with a scripted headless-browser run (screenshots + console-error check), not just `next build`. Found a schema gap (`types.ts` had no `ExpectedTraffic`) and fixed it. Tightened CI: `ts-lint` now runs `apps/web`'s own Next.js-flavored eslint config instead of only the generic root one. Added a real automated test suite — Vitest + React Testing Library (`apps/web/README.md#testing`), 21 tests covering `mock-api.ts`'s full behavior (target creation/rejection, tick-by-tick investigation advance to a completed report, finding/hypothesis timing) and the severity/status badge components — plus a new `ts-test` CI job (guarded the same way `ts-lint`/`ts-format` are). This closed the "automated frontend tests" gap the PR originally shipped with flagged as not-yet-done. (Separately, and in parallel: Reporting Agent, issue #15, PR #17, also merged — see that PR/branch for details, not duplicated here.)
 - **Blocked on:** nothing. The real `apps/api` endpoints are now on `main`; next integration work is wiring the dashboard to them while preserving the mock layer for tests.
-- **Next up:** proposed a recommendation on [issue #9](https://github.com/thato899/perfpilot/issues/9) (summary-at-completion over interval-bucketed metrics, for Phase 1) — still open, waiting on Govenor's read before treating it as settled; this is the one open item that's genuinely not mine to close. Otherwise: pick up the next unclaimed `dev:thato` issue once one exists (none currently unclaimed), or help review a teammate's PR (none currently open).
+- **Next up:** wire the dashboard/reporting runtime from fixtures to the real API once the Orchestrator flow is available, while preserving the fixture test seam. Issue #9 is settled: summary-at-completion metrics are sufficient for Phase 1.
 
 ---
 
 ## Log
+
+### 2026-09-17 — Phase 2 planning
+
+- Created the Phase 2 investigation-loop ticket register and owner allocation. Tickets cover historical baselines, multi-hypothesis experiments, deterministic comparisons, safe repeat execution, agent evaluation, timeline UI, findings UI, and side-by-side comparison UI.
+- Phase 2 is explicitly blocked on Phase 1 sign-off. Do not move any Phase 2 issue to `status:in-progress` before the real demo scenario completes with the production-shaped seams.
 
 Reverse-chronological. One entry per session — a couple of lines, not a full changelog (the git history and issue board are that).
 

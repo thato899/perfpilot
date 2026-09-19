@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-16):** Phase 0 is complete. Phase 1 foundations are on `main`: the AI provider gateway, metrics/load-engineer core, Postgres schema and API endpoints, dashboard fixture, and Reporting Agent fixture. Remaining Phase 1 work is integration: Orchestrator and specialist agents, Celery dispatch, the safe k6 runner image, and real API/dashboard/reporting wiring. **Hard completion deadline: 2026-09-30.**
+> **Current status (2026-09-17):** Phase 0 is complete. Phase 1 foundations are on `main`, including the AI provider gateway, metrics/load-engineer core, Postgres schema/API, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner image. Remaining Phase 1 work is real Orchestrator/specialist integration and the real API/dashboard/reporting path. **Hard completion deadline: 2026-09-30.**
 
 ## Phase 0 — this commit
 
@@ -19,10 +19,22 @@ Definition of done for Phase 1: the [demo scenario](demo-scenario.md) runs for r
 
 ## Phase 2 — investigation loop robustness
 
-- The full experiment loop working with more than one candidate hypothesis at a time (today's demo scenario only exercises one).
-- Regression comparison against a stored historical baseline, not just the immediately-prior run.
-- Agent evaluation suite (see [testing-strategy.md](testing/testing-strategy.md#agent-evaluation)) covering hallucination guardrails against live model output, not just schema fixtures.
-- Dashboard: investigation timeline view, live findings panel, side-by-side experiment comparison.
+Phase 2 is fully gated on Phase 1 completion. No Phase 2 implementation starts until the Phase 1 demo scenario has run once end to end with real agent wiring, k6, Celery, Postgres, API, and dashboard, and Govenor records the sign-off in `STATUS.md`.
+
+### Phase 2 ticket register
+
+| ID | Owner | Deliverable | Depends on |
+|---|---|---|---|
+| P2-API-1 ([#34](https://github.com/thato899/perfpilot/issues/34)) | Kamo | Persisted historical baselines and deterministic baseline comparison contract/API | Phase 1 sign-off; P2-METRICS-1 |
+| P2-API-2 ([#35](https://github.com/thato899/perfpilot/issues/35)) | Kamo | Robust multi-hypothesis investigation state, experiment budget, and loop API | Phase 1 sign-off; P2-EVAL-1; P2-RUNNER-1 |
+| P2-METRICS-1 ([#32](https://github.com/thato899/perfpilot/issues/32)) | Govenor | Deterministic baseline/experiment comparison metrics and regression calculations | Phase 1 sign-off |
+| P2-RUNNER-1 ([#36](https://github.com/thato899/perfpilot/issues/36)) | Govenor | Safe repeatable execution of approved follow-up experiments with real k6 results | Phase 1 sign-off; P2-API-2 contract |
+| P2-EVAL-1 ([#33](https://github.com/thato899/perfpilot/issues/33)) | Thatayaone | Agent evaluation suite for structured output, evidence grounding, and hallucination resistance | Phase 1 sign-off |
+| P2-UI-1 ([#37](https://github.com/thato899/perfpilot/issues/37)) | Thato | Investigation timeline and run-state visualization | Phase 1 sign-off; P2-API-2 |
+| P2-UI-2 ([#38](https://github.com/thato899/perfpilot/issues/38)) | Thato | Live findings/hypotheses panel with evidence and confidence states | Phase 1 sign-off; P2-API-2; P2-EVAL-1 |
+| P2-UI-3 ([#39](https://github.com/thato899/perfpilot/issues/39)) | Thato | Side-by-side baseline/experiment comparison and report integration | Phase 1 sign-off; P2-API-1; P2-METRICS-1 |
+
+GitHub issues are the execution source of truth. The eight tickets intentionally allocate 3/8 to Thato, 2/8 to Kamo, 2/8 to Govenor, and 1/8 to Thatayaone: approximately 35% / 25% / 25% / 15% by planned workload.
 
 ## Phase 3+ — deferred by design (not oversights)
 
@@ -39,4 +51,4 @@ Explicitly out of scope until there's a real need, per the project's "don't over
 ## Open questions to revisit (not blocking Phase 1)
 
 - Whether experiment approval (`POST /api/investigations/{id}/experiments`, see [api-contract.md](api/api-contract.md)) should ever auto-approve below a certain load ceiling, versus always requiring a human click — deferred to Phase 2, needs product input from a live demo, not a Phase 0 guess.
-- Whether `Metric` needs interval/time-bucketed rows (not just per-run summaries) for the dashboard's live progress view, or whether summary-at-completion is enough for the MVP — Developer 2/Govenor and Developer 4/Thato should settle this early in Phase 1 since it affects both the metrics pipeline and the dashboard's live view.
+- **Resolved:** summary-at-completion `Metric` rows are sufficient for the Phase 1 MVP; interval/time-bucketed rows are deferred to Phase 2 if the timeline or comparison UX demonstrates a need. See [database-design.md](database/database-design.md).
