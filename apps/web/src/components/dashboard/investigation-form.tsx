@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createInvestigation } from "@/lib/mock-api";
+import { createInvestigation } from "@/lib/api";
 
 const OBJECTIVES: { value: InvestigationObjective; label: string }[] = [
   { value: "determine_capacity", label: "Determine capacity — “what can this handle?”" },

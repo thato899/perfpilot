@@ -1,50 +1,56 @@
 # apps/web
 
-**Owner:** Developer 4/Thato (Frontend / Reporting)
+Next.js + TypeScript + Tailwind CSS + shadcn/ui dashboard for the PerfPilot
+Phase 1 investigation API.
 
-Next.js + TypeScript + Tailwind CSS + shadcn/ui dashboard: project/target management, investigation progress, findings, and final reports.
+## Production path
 
-Build against:
+The browser uses `src/lib/api.ts`, which calls same-origin
+`/api/perfpilot/*` routes. The catch-all Next route handler forwards those
+requests to the configured FastAPI `API_BASE_URL` and adds the server-only
+`API_AUTH_SECRET` bearer token. The secret is never placed in browser code or
+`NEXT_PUBLIC_*` configuration.
 
-- [docs/api/api-contract.md](../../docs/api/api-contract.md) — every endpoint this app calls
-- `packages/schemas/typescript/types.ts` (imported via the `@perfpilot/schemas/*` path alias in `tsconfig.json`) — the exact shapes those endpoints return
-- [docs/architecture/data-flow.md](../../docs/architecture/data-flow.md) — what an in-progress investigation looks like, for the live progress view
-- [docs/demo-scenario.md](../../docs/demo-scenario.md) — the reference walkthrough the UI needs to support end to end
+The dashboard creates or loads a project, registers an explicitly authorized
+target, creates an investigation, polls persisted investigation/test-run
+state, and renders backend Findings, Hypotheses, and Report values. It does not
+recompute metrics, confidence, capacity, or regression values.
 
-This app never calls an agent or k6 directly — only `apps/api`, per [system-architecture.md](../../docs/architecture/system-architecture.md#layering-rules).
+The API has no target-list endpoint, so targets returned by FastAPI are cached
+locally only to let the dashboard select them after a refresh. The cached
+records are not used as investigation or report data; those always come from
+FastAPI.
 
-## Status
+## Current backend boundary
 
-Phase 1 first slice done (issue #14): a minimal, working dashboard covering all four required flows — create a target, trigger an investigation, watch its progress, view the resulting report — verified end to end with a scripted headless-browser run (`next dev`, click through each step, screenshot, check console for errors).
+The merged backend currently exposes investigation creation and read/continue
+routes, but does not yet expose the initial plan/run-to-investigation link or a
+worker continuation trigger that can take a newly created investigation all
+the way to persisted Findings and Report data. The UI therefore polls the
+actual state, stops at terminal states, surfaces failures, and shows an
+explicit waiting message while that backend gap remains. It never advances a
+mock tick or falls back to fixture success data in production.
 
-- **`src/lib/mock-api.ts`** — the mocked API retained for fast fixture-based tests. Every exported function mirrors one [api-contract.md](../../docs/api/api-contract.md) operation by name/shape/async signature, backed by `localStorage` instead of `fetch`. The runtime switch to real API calls is tracked in [issue #27](https://github.com/thato899/perfpilot/issues/27) and depends on the Orchestrator/Celery execution path being live.
-- **`src/lib/fixtures.ts`** — the [demo scenario](../../docs/demo-scenario.md)'s data (DB connection pool contention at ~750 concurrent users), with the same capacity/regression/key-metrics numbers as `agents/reporting/fixtures/investigation_states.py`'s Python-side fixture — one consistent story regardless of which layer you're looking at.
-- **`src/app/page.tsx`** — register a target (or use the seeded demo target) and start an investigation.
-- **`src/app/investigations/[id]/page.tsx`** — polls the mock investigation every 1.5s (`advanceInvestigation`), rendering live progress; once it reaches `complete`, renders the full `Report` below the progress card.
-- **`src/components/dashboard/`** — the view components (forms, progress, report, severity/status badges); **`src/components/ui/`** — shadcn/ui primitives (`shadcn@latest init`/`add`).
+## Test and fixture separation
 
-## A schema gap found while building this (flagged, not silently worked around)
+`src/lib/mock-api.ts` and `src/lib/fixtures.ts` remain for fast unit tests and
+are not imported by the production pages or dashboard forms. Production API
+request/response mapping is tested in `src/lib/__tests__/api.test.ts`, and
+polling terminal/error boundaries are tested in
+`src/lib/__tests__/polling.test.ts`.
 
-`packages/schemas/typescript/types.ts` had no `ExpectedTraffic` interface at all, even though `POST /api/investigations` (which this app calls) requires an `expected_traffic` body per api-contract.md, and the Python side already has the equivalent shape (`agent_io.ExpectedTraffic`). Added it — see the type's own doc comment.
+Run the frontend checks from the repository root:
 
-## Linting
+```text
+pnpm --filter web test
+pnpm --filter web lint
+pnpm --filter web exec tsc --noEmit
+pnpm run format:check
+pnpm --filter web build
+```
 
-`apps/web` has its own `eslint.config.mjs` (`eslint-config-next` — React hooks rules, a11y, Next-specific checks), generated by `create-next-app` and run via `pnpm --filter web lint` (`pnpm run lint:web` from the repo root, or `.github/workflows/ci.yml`'s `ts-lint` job). The root `eslint.config.js` deliberately does **not** duplicate this — it only covers `packages/schemas/typescript`, which has no config of its own.
-
-## Testing
-
-`apps/web` has a Vitest + React Testing Library suite (`pnpm --filter web test`, or `pnpm run test:web` from the repo root; runs in CI as `ts-test`). It targets the two things most likely to silently regress:
-
-- **`src/lib/mock-api.ts`** (`src/lib/__tests__/mock-api.test.ts`) — the actual seam a real `apps/api` will replace: target creation's authorization-confirmed rejection, an investigation's full tick-by-tick advance through `DEMO_TICKS` to `complete` with a report attached, and that the finding/hypothesis only appear once the anomaly tick is reached. This is the highest-value coverage in the app — pin its behavior here and swapping in a real API later is a diff against a known-good contract, not a leap of faith.
-- **`src/components/dashboard/severity-badge.tsx` and `status-badge.tsx`** — every `Severity`/`InvestigationState["status"]` value renders its expected label, and the severity scale's two ends get visibly different colors.
-
-Not yet covered: the page-level components (`src/app/page.tsx`, `src/app/investigations/[id]/page.tsx`) and the remaining `dashboard/` components (forms, progress, report view) — these were verified manually via a scripted headless-browser run. Add Playwright coverage while implementing issue #27, once the real API execution path is available.
-
-Config notes for whoever touches this next: `vitest.config.ts` mirrors `tsconfig.json`'s path aliases manually (Vitest doesn't read `tsconfig.json`'s `paths` on its own). `@vitejs/plugin-react` is pinned to `^4.3.4` (not the latest major, which targets Vite 8/rolldown) and `vite`/`jsdom` are pinned below their newest majors — both because this repo's Node (20.11) predates `node:util`'s `styleText` export that the newer toolchain needs, and jsdom 30's `html-encoding-sniffer` dependency ships an ESM-only sub-dependency Vitest's CJS config loader can't `require()`. CI's `actions/setup-node@v4` with `node-version: "20"` gets a newer 20.x than local, so this may be a purely local constraint — worth revisiting (i.e. trying the latest majors again) if the team ever standardizes on a newer local Node.
-
-## Not yet done
-
-- Real API wiring once `apps/api` exists (issue #12) — swap `src/lib/mock-api.ts`'s function bodies for `fetch` calls.
-- Project CRUD (this slice assumes a single implicit project, matching the demo scenario's scope — no UI for creating/switching projects).
-- Automated tests for the page-level components and remaining dashboard components (see Testing above) — currently manual-only verification.
-- The open question with Govenor (issue #9: interval-bucketed vs. summary-at-completion metrics) — this app's progress view currently only shows VU count and a timeline of decisions, no live metric charts (Recharts is in the documented stack but not wired up yet), pending that answer.
+The FastAPI contract is documented in
+[`docs/api/api-contract.md`](../../docs/api/api-contract.md). Configure
+`API_BASE_URL` and `API_AUTH_SECRET` for the Next server. A project id may be
+provided as `NEXT_PUBLIC_PERFPILOT_PROJECT_ID`; it is an identifier, not a
+credential.
