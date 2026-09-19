@@ -169,7 +169,7 @@ interface WireReport {
     error_rate: number;
     peak_concurrency_tested: number;
   };
-  findings: Array<{
+  findings?: Array<{
     id: string;
     severity: InvestigationState["findings"][number]["severity"];
     summary: string;
@@ -180,7 +180,7 @@ interface WireReport {
     evidence: string[];
     confidence: number;
   }>;
-  recommendations: Array<{
+  recommendations?: Array<{
     finding_id: string;
     statement: string;
     priority: InvestigationState["findings"][number]["severity"];
@@ -354,7 +354,7 @@ function reportFromWire(value: WireReport): Report {
       errorRate: value.key_metrics.error_rate,
       peakConcurrencyTested: value.key_metrics.peak_concurrency_tested,
     },
-    findings: value.findings.map((finding) => ({
+    findings: (value.findings ?? []).map((finding) => ({
       id: finding.id,
       severity: finding.severity,
       summary: finding.summary,
@@ -366,7 +366,7 @@ function reportFromWire(value: WireReport): Report {
       evidence: entry.evidence,
       confidence: entry.confidence,
     })),
-    recommendations: value.recommendations.map((recommendation) => ({
+    recommendations: (value.recommendations ?? []).map((recommendation) => ({
       findingId: recommendation.finding_id,
       statement: recommendation.statement,
       priority: recommendation.priority,

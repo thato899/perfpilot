@@ -130,6 +130,37 @@ describe("production API client", () => {
     expect(report.regression.regressionPct).toBe(60);
   });
 
+  it("renders the persisted report shape when optional finding lists are omitted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response({
+          id: "report-2",
+          investigation_id: "inv-2",
+          executive_summary: "Healthy",
+          capacity: { sustainable_concurrency: 1, recommended_operating_concurrency: 1 },
+          key_metrics: {
+            throughput_rps: 503.162,
+            p50_ms: 1.314,
+            p95_ms: 2.702,
+            p99_ms: 3.703,
+            error_rate: 0,
+            peak_concurrency_tested: 1,
+          },
+          bottleneck_analysis: [],
+          regression: { previous_p95_ms: 2.702, current_p95_ms: 2.702, regression_pct: 0 },
+        }),
+      ),
+    );
+
+    await expect(getReport("inv-2")).resolves.toMatchObject({
+      investigationId: "inv-2",
+      findings: [],
+      recommendations: [],
+      keyMetrics: { p99Ms: 3.703 },
+    });
+  });
+
   it("preserves API error status and code for UI handling", async () => {
     vi.stubGlobal(
       "fetch",

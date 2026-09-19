@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { InvestigationState, Report, TestRun } from "@perfpilot/schemas/types";
@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiRequestError, getInvestigation, getReport, getTestRun } from "@/lib/api";
 import {
   isTerminalInvestigationStatus,
-  isTerminalTestRunStatus,
   MAX_CONSECUTIVE_POLL_ERRORS,
   POLL_INTERVAL_MS,
 } from "@/lib/polling";
@@ -26,10 +25,10 @@ export default function InvestigationPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
-  const inFlight = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let consecutiveErrors = 0;
 
@@ -38,8 +37,8 @@ export default function InvestigationPage() {
     };
 
     const poll = async () => {
-      if (cancelled || inFlight.current) return;
-      inFlight.current = true;
+      if (cancelled || inFlight) return;
+      inFlight = true;
       try {
         const next = await getInvestigation(investigationId);
         if (cancelled) return;
@@ -56,7 +55,7 @@ export default function InvestigationPage() {
         }
 
         const investigationDone = isTerminalInvestigationStatus(next.status);
-        const runDone = nextRun ? isTerminalTestRunStatus(nextRun.status) : false;
+        const runFailed = nextRun?.status === "failed" || nextRun?.status === "aborted_over_limit";
         if (next.status === "failed" || nextRun?.status === "failed") {
           setError("The backend reported an investigation or test-run failure.");
         } else if (nextRun?.status === "aborted_over_limit") {
@@ -83,17 +82,21 @@ export default function InvestigationPage() {
           }
         }
 
-        if (!investigationDone && !runDone) schedule();
+        if (!investigationDone && !runFailed) schedule();
       } catch (reason) {
         consecutiveErrors += 1;
         if (!cancelled) {
           setError(
-            reason instanceof Error ? reason.message : "The investigation API is unavailable.",
+            consecutiveErrors >= MAX_CONSECUTIVE_POLL_ERRORS
+              ? "The investigation API is unavailable."
+              : reason instanceof Error
+                ? reason.message
+                : "The investigation API is unavailable.",
           );
           if (consecutiveErrors < MAX_CONSECUTIVE_POLL_ERRORS) schedule();
         }
       } finally {
-        inFlight.current = false;
+        inFlight = false;
       }
     };
 
