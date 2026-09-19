@@ -8,6 +8,8 @@
 # layout so those imports resolve identically in Docker, in CI, and on a
 # developer's machine.
 
+FROM grafana/k6:0.57.0 AS k6-runtime
+
 FROM python:3.11-slim
 
 # PYTHONDONTWRITEBYTECODE: the source tree is bind-mounted from the host in
@@ -16,9 +18,17 @@ FROM python:3.11-slim
 # `docker compose logs` looks hung.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    K6_BINARY_PATH=/usr/local/bin/k6 \
     PYTHONPATH=/app
 
 WORKDIR /app
+
+# The worker invokes the same pinned k6 binary used by the dedicated runner
+# image. Keeping the binary in the worker is required by the current adapter
+# contract: it executes k6 locally and reads the summary from the shared
+# results directory. The separate k6-runner remains available for direct
+# script validation and version inspection.
+COPY --from=k6-runtime /usr/bin/k6 /usr/local/bin/k6
 
 # Dependencies first, in their own layer: application code changes far more
 # often than the dependency list, so this keeps rebuilds cheap.

@@ -20,7 +20,9 @@ Both images build from the **repository root**, not from this directory: `apps/a
 
 The stack includes real Postgres, Redis, FastAPI endpoints, Celery execution,
 the production Load Engineer adapter, and the pinned k6 runtime. The API and
-worker share the same image; the worker consumes `perfpilot.execute_test_run`.
+worker share the same image; the worker consumes `perfpilot.execute_test_run`
+and carries the same pinned k6 binary as the dedicated runner so the adapter's
+local subprocess invocation is executable.
 The end-to-end k6 smoke still requires an authorized controlled target and a
 host/port configuration without conflicts.
 

@@ -28,10 +28,20 @@ def _metric_value(metrics: dict[str, Any], metric_name: str, value_name: str) ->
     metric = metrics.get(metric_name)
     if not isinstance(metric, dict):
         raise MetricsError(f"missing k6 metric: {metric_name}")
-    values = metric.get("values")
-    if not isinstance(values, dict) or value_name not in values:
+    # Fixture summaries historically nested values under ``values``. k6's
+    # native summary-export format emits the same fields directly on the
+    # metric object, so accept both shapes at this boundary.
+    values = metric.get("values", metric)
+    if not isinstance(values, dict):
         raise MetricsError(f"missing k6 value: {metric_name}.{value_name}")
-    return _number(values[value_name], f"{metric_name}.{value_name}")
+    actual_name = value_name
+    # Native k6 exports http_req_failed as ``value``; the domain schema calls
+    # that number an error-rate, matching the fixture adapter's ``rate`` key.
+    if actual_name not in values and value_name == "rate" and "value" in values:
+        actual_name = "value"
+    if actual_name not in values:
+        raise MetricsError(f"missing k6 value: {metric_name}.{value_name}")
+    return _number(values[actual_name], f"{metric_name}.{value_name}")
 
 
 def _status_distribution(summary: dict[str, Any]) -> dict[str, int]:

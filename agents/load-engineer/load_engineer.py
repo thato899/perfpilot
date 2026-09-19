@@ -110,6 +110,13 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
         "http_req_duration": [f"p(95)<{plan.thresholds['p95_ms']}"],
         "http_req_failed": [f"rate<{plan.thresholds['max_error_rate']}"],
     }
+    options = {
+        "stages": stages,
+        "thresholds": thresholds,
+        # k6's default summary stops at p95, while the persisted Metric
+        # contract requires p99 as well.
+        "summaryTrendStats": ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
+    }
     return "\n".join(
         [
             "import http from 'k6/http';",
@@ -118,9 +125,7 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
             f"const target = {json.dumps(target.base_url.rstrip('/'))};",
             f"const path = {json.dumps(request_path)};",
             "",
-            "export const options = "
-            + json.dumps({"stages": stages, "thresholds": thresholds}, separators=(",", ":"))
-            + ";",
+            "export const options = " + json.dumps(options, separators=(",", ":")) + ";",
             "",
             "export default function () {",
             "  const response = http.get(`${target}${path}`);",

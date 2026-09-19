@@ -192,8 +192,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       PYTHONPATH: /app
-      # Where the worker looks for k6 output written by the k6-runner
-      # container through the shared bind mount below.
+      # Where the worker writes k6 output through the shared bind mount below.
       K6_RESULTS_DIR: /app/infrastructure/docker/k6/results
     depends_on:
       db:
@@ -210,8 +209,8 @@ services:
       - ../../apps/api:/app/apps/api
       - ../../packages:/app/packages
       - ../../agents:/app/agents
-      # Shared with k6-runner: k6 writes its raw JSON summaries here and
-      # packages/metrics (Govenor) reads them back. Git-ignored on the host.
+      # Shared with k6-runner for direct validation: the worker writes its raw
+      # JSON summaries here and packages/metrics reads them back. Git-ignored.
       - ./k6/results:/app/infrastructure/docker/k6/results
     healthcheck:
       # CMD-SHELL, not CMD: the destination needs a shell to substitute the
