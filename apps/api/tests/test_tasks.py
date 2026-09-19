@@ -71,8 +71,8 @@ def test_task_writes_metrics_and_stages(db_session, queued_run: m.TestRun) -> No
         .order_by(m.TestStage.sequence_index)
         .all()
     )
-    assert [s.sequence_index for s in stages] == [0, 1]
-    assert [s.target_vus for s in stages] == [500, 1000]
+    assert [s.sequence_index for s in stages] == list(range(7))
+    assert [s.target_vus for s in stages] == [10, 50, 100, 250, 500, 750, 1000]
 
 
 def test_progress_endpoint_reflects_completion(client: TestClient, queued_run: m.TestRun) -> None:
@@ -190,7 +190,7 @@ def test_over_ceiling_run_is_clamped_not_rejected(
         .order_by(m.TestStage.sequence_index)
         .all()
     )
-    assert [s.target_vus for s in stages] == [500, 600]
+    assert [s.target_vus for s in stages] == [10, 50, 100, 250, 500, 600, 600]
 
     metric = db_session.query(m.Metric).filter_by(test_run_id=run.id).one()
     assert metric.concurrency == 600
@@ -279,8 +279,9 @@ def test_completion_advances_a_linked_investigation(
     tasks.execute_test_run(str(queued_run.id))
 
     db_session.expire_all()
-    # The stub Orchestrator always answers COMPLETE with status `reporting`.
-    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.REPORTING
+    # A completed run moves the investigation from planning to investigation;
+    # the Investigator is the next explicit specialist step.
+    assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.INVESTIGATING
 
 
 def test_completion_without_an_investigation_is_fine(db_session, queued_run: m.TestRun) -> None:

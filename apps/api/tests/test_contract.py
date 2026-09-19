@@ -206,7 +206,15 @@ def test_create_test_plan(client: TestClient, test_plan: dict) -> None:
     assert test_plan["user_journeys"] == ["browse", "checkout"]
     assert test_plan["thresholds"]["p95_ms"] == 2000.0
     assert test_plan["ramp_strategy"]["type"] == "step"
-    assert len(test_plan["stages"]) == 2
+    assert [stage["target_vus"] for stage in test_plan["stages"]] == [
+        10,
+        50,
+        100,
+        250,
+        500,
+        750,
+        1000,
+    ]
 
 
 def test_create_plan_for_missing_target_404(client: TestClient, project: dict) -> None:
@@ -519,7 +527,7 @@ def test_continue_returns_an_orchestrator_decision(
     assert res.status_code == 200
     body = res.json()
     assert set(body) >= {"next_action", "updated_state"}
-    assert body["next_action"] == "complete"  # what the stub always answers
+    assert body["next_action"] == "invoke_investigator"
     assert body["updated_state"]["current_test_run_id"] == run_id
 
 
