@@ -23,8 +23,25 @@ async function proxy(
   upstreamUrl.search = new URL(request.url).search;
 
   const headers = new Headers(request.headers);
-  headers.delete("host");
-  headers.delete("authorization");
+  // These are hop-by-hop/request-framing headers. Forwarding them into
+  // Node's undici fetch can cause `UND_ERR_NOT_SUPPORTED` for browser POSTs
+  // (the upstream fetch owns its connection and content length).
+  for (const header of [
+    "authorization",
+    "connection",
+    "content-length",
+    "expect",
+    "host",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+  ]) {
+    headers.delete(header);
+  }
   headers.set("Authorization", `Bearer ${apiAuthSecret}`);
 
   const init: RequestInit = {
@@ -40,7 +57,12 @@ async function proxy(
   const responseHeaders = new Headers();
   const contentType = upstream.headers.get("content-type");
   if (contentType) responseHeaders.set("content-type", contentType);
-  return new Response(upstream.body, {
+  // Materialize the small JSON API response before returning it. This keeps
+  // the browser-facing response independent of the upstream stream lifetime
+  // in Next's development server.
+  const body = await upstream.arrayBuffer();
+  responseHeaders.set("content-length", String(body.byteLength));
+  return new Response(body, {
     status: upstream.status,
     headers: responseHeaders,
   });

@@ -43,6 +43,22 @@ def test_parse_k6_summary_returns_valid_metric(test_run_id):
     assert metric.http_status_distribution == {"200": 20_000, "500": 400}
 
 
+def test_parse_native_k6_summary_export(test_run_id):
+    payload = {
+        "metrics": {
+            "http_req_duration": {"med": 1.2, "p(90)": 1.8, "p(95)": 2.1, "p(99)": 3.0},
+            "http_reqs": {"count": 100, "rate": 10},
+            "http_req_failed": {"value": 0.02},
+        }
+    }
+
+    metric = parse_k6_summary(payload, test_run_id=test_run_id, concurrency=2)
+
+    assert metric.p95_ms == 2.1
+    assert metric.throughput_rps == 10
+    assert metric.error_rate == 0.02
+
+
 def test_parse_k6_summary_rejects_missing_k6_metric(test_run_id):
     payload = summary()
     del payload["metrics"]["http_req_failed"]

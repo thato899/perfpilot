@@ -72,6 +72,7 @@ def test_generate_k6_script_contains_stages_and_thresholds():
     assert '"target":1000' in script
     assert "p(95)<500.0" in script
     assert "rate<0.02" in script
+    assert '"summaryTrendStats":["avg","min","med","max","p(90)","p(95)","p(99)"]' in script
 
 
 def test_prepare_load_requires_stages():

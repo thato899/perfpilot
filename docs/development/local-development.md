@@ -30,7 +30,13 @@ Two images support it, both building from the repository root so `apps/api`'s ro
 | `perfpilot-api:local` | `api`, `worker` | `infrastructure/docker/api/Dockerfile` |
 | `perfpilot-web:local` | `web` | `infrastructure/docker/web/Dockerfile` |
 
-`k6-runner` is Developer 2/Govenor's ([CODEOWNERS](../../CODEOWNERS)) and builds from the pinned `grafana/k6:0.57.0` base image. The worker-facing invocation remains an idle container with `docker compose exec k6-runner k6 run ...`; spawning a fresh container per run would require mounting the Docker socket into the worker, which is a meaningful privilege escalation.
+`k6-runner` is Developer 2/Govenor's ([CODEOWNERS](../../CODEOWNERS)) and
+builds from the pinned `grafana/k6:0.57.0` base image. The API/worker image
+carries the same pinned k6 binary because the current Load Engineer adapter
+invokes k6 as a local subprocess and consumes the shared summary file. The
+runner remains useful for direct script validation and version inspection;
+spawning a fresh container per run would require mounting the Docker socket
+into the worker, which is a meaningful privilege escalation.
 
 ### Network layout
 
@@ -70,9 +76,9 @@ Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: f
 |---|---|
 | `db`, `redis` | Real. Ports 5432/6379 are published, so Alembic and a host-run `uvicorn`/`celery` can reach them without entering a container. |
 | `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
-| `api` | Starts, serves `GET /health`, nothing else. The contract endpoints are issue #12. |
-| `worker` | Starts, registers one no-op `perfpilot.ping` task. Real task dispatch is issue #13. |
-| `k6-runner` | Real pinned local image; starts idle and accepts worker-triggered k6 runs. |
+| `api` | Real FastAPI service, including the Phase 1 contract endpoints. |
+| `worker` | Real Celery worker, registering `perfpilot.execute_test_run` and `perfpilot.ping`. |
+| `k6-runner` | Real pinned local image; useful for direct script validation and version inspection. |
 
 Smoke-test the full backend path once it's up:
 
