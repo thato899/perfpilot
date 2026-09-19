@@ -1,25 +1,23 @@
-import type { InvestigationState } from "@perfpilot/schemas/types";
+import type { InvestigationState, TestRun } from "@perfpilot/schemas/types";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { InvestigationStatusBadge } from "@/components/dashboard/status-badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
-const MAX_VUS_SHOWN = 1000; // matches docs/demo-scenario.md's peak traffic
-
-/** "Watch a test run's progress" — renders live `InvestigationState`
- * exactly as `GET /api/investigations/{id}` will return it once apps/api
- * exists (docs/api/api-contract.md). This component owns none of the
- * ticking/polling itself — the page passes in whatever state it currently
- * has, same as it would after each `fetch`. */
 export function InvestigationProgress({
   investigation,
-  currentVus,
+  testRun,
 }: {
   investigation: InvestigationState;
-  currentVus: number;
+  testRun: TestRun | null;
 }) {
   const latestDecisions = [...investigation.decisions].reverse();
+  const progress = testRun?.progress;
+  const progressPercent =
+    progress && progress.targetVus > 0
+      ? Math.min(100, (progress.currentVus / progress.targetVus) * 100)
+      : 0;
 
   return (
     <Card>
@@ -31,33 +29,58 @@ export function InvestigationProgress({
         <CardDescription>Investigation {investigation.investigationId}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Concurrent users</span>
-            <span>
-              {currentVus} / {MAX_VUS_SHOWN}
-            </span>
+        {testRun ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Test run: {testRun.status}</span>
+              <span>
+                {progress?.currentVus ?? 0} / {progress?.targetVus ?? 0} concurrent users
+              </span>
+            </div>
+            <Progress value={progressPercent} />
+            {testRun.clamped && (
+              <p className="text-xs text-amber-700 dark:text-amber-300">{testRun.clamped.reason}</p>
+            )}
           </div>
-          <Progress value={(currentVus / MAX_VUS_SHOWN) * 100} />
-        </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No test run is linked to this investigation yet. Progress is reported only from the
+            backend state; no client-side completion is fabricated.
+          </p>
+        )}
 
         {investigation.findings.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">Findings</h3>
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-medium">Findings and hypotheses</h3>
             {investigation.findings.map((finding) => {
-              const hypothesis = investigation.hypotheses.find((h) => h.findingId === finding.id);
+              const hypotheses = investigation.hypotheses.filter(
+                (hypothesis) => hypothesis.findingId === finding.id,
+              );
               return (
                 <div key={finding.id} className="rounded-md border p-3 text-sm">
                   <div className="mb-1 flex items-center gap-2">
                     <SeverityBadge severity={finding.severity} />
                     <span className="font-medium">{finding.summary}</span>
                   </div>
-                  {hypothesis && (
-                    <p className="text-muted-foreground">
-                      Hypothesis: {hypothesis.statement} ({Math.round(hypothesis.confidence * 100)}%
-                      confidence, {hypothesis.status})
+                  {finding.observations.map((observation) => (
+                    <p key={observation.id} className="text-muted-foreground">
+                      {observation.statement}{" "}
+                      <span className="text-xs">({observation.metricRef})</span>
                     </p>
-                  )}
+                  ))}
+                  {hypotheses.map((hypothesis) => (
+                    <div key={hypothesis.id} className="mt-2 border-t pt-2">
+                      <p className="text-muted-foreground">
+                        Hypothesis: {hypothesis.statement} (
+                        {Math.round(hypothesis.confidence * 100)}% confidence, {hypothesis.status})
+                      </p>
+                      {hypothesis.evidence.map((evidence) => (
+                        <p key={evidence.sourceRef} className="text-xs text-muted-foreground">
+                          Evidence: {evidence.statement} ({evidence.sourceRef})
+                        </p>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               );
             })}
@@ -66,11 +89,15 @@ export function InvestigationProgress({
 
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium">Timeline</h3>
-          <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
-            {latestDecisions.map((decision, i) => (
-              <li key={`${decision.step}-${i}`}>{decision.decision}</li>
-            ))}
-          </ul>
+          {latestDecisions.length > 0 ? (
+            <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+              {latestDecisions.map((decision, index) => (
+                <li key={`${decision.step}-${index}`}>{decision.decision}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No orchestrator decisions recorded.</p>
+          )}
         </div>
       </CardContent>
     </Card>

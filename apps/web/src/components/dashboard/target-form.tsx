@@ -7,14 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createTarget } from "@/lib/mock-api";
+import { createTarget } from "@/lib/api";
 
 /** "Create a target" — registers an application and records the
  * authorization confirmation required before any load can be sent to it.
  * Mirrors POST /api/projects/{id}/targets (docs/api/api-contract.md) and
  * its security-model.md#target-authorization rule: there is no
  * "confirm later" state, so the checkbox below is required, not optional. */
-export function TargetForm({ onCreated }: { onCreated: (target: Target) => void }) {
+export function TargetForm({
+  projectId,
+  onCreated,
+}: {
+  projectId: string;
+  onCreated: (target: Target) => void;
+}) {
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [confirmedBy, setConfirmedBy] = useState("");
@@ -36,7 +42,7 @@ export function TargetForm({ onCreated }: { onCreated: (target: Target) => void 
 
     setSubmitting(true);
     try {
-      const target = await createTarget({
+      const target = await createTarget(projectId, {
         name,
         baseUrl,
         authorizationConfirmed,

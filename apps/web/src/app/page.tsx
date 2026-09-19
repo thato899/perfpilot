@@ -2,67 +2,128 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Target } from "@perfpilot/schemas/types";
+import type { Project, Target } from "@perfpilot/schemas/types";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InvestigationForm } from "@/components/dashboard/investigation-form";
 import { TargetForm } from "@/components/dashboard/target-form";
-import { ensureDemoTargetSeeded, listTargets } from "@/lib/mock-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApiRequestError, createProject, getProject } from "@/lib/api";
+
+const PROJECT_ID_KEY = "perfpilot.projectId.v1";
+const TARGET_CACHE_KEY = "perfpilot.targets.v1";
+
+function loadCachedTargets(projectId: string): Target[] {
+  try {
+    const raw = window.localStorage.getItem(TARGET_CACHE_KEY);
+    const targets = raw ? (JSON.parse(raw) as Target[]) : [];
+    return targets.filter((target) => target.projectId === projectId);
+  } catch {
+    return [];
+  }
+}
+
+function cacheTarget(target: Target): void {
+  try {
+    const raw = window.localStorage.getItem(TARGET_CACHE_KEY);
+    const targets = raw ? (JSON.parse(raw) as Target[]) : [];
+    const next = [...targets.filter((item) => item.id !== target.id), target];
+    window.localStorage.setItem(TARGET_CACHE_KEY, JSON.stringify(next));
+  } catch {
+    // The API result remains authoritative even when browser storage is unavailable.
+  }
+}
+
+async function loadOrCreateProject(): Promise<Project> {
+  const configuredId = process.env.NEXT_PUBLIC_PERFPILOT_PROJECT_ID;
+  const storedId = window.localStorage.getItem(PROJECT_ID_KEY);
+  const projectId = configuredId || storedId;
+
+  if (projectId) {
+    try {
+      return await getProject(projectId);
+    } catch (error) {
+      if (!(error instanceof ApiRequestError) || error.status !== 404) throw error;
+    }
+  }
+
+  const project = await createProject({
+    name: "PerfPilot demo project",
+    description: "Created by the Phase 1 dashboard for the configured workspace.",
+  });
+  window.localStorage.setItem(PROJECT_ID_KEY, project.id);
+  return project;
+}
 
 export default function Home() {
   const router = useRouter();
+  const [project, setProject] = useState<Project | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listTargets().then((loaded) => {
-      setTargets(loaded);
-      setSelectedTargetId(loaded[0]?.id ?? null);
-      setLoading(false);
-    });
+    let cancelled = false;
+    loadOrCreateProject()
+      .then((loadedProject) => {
+        if (cancelled) return;
+        const loadedTargets = loadCachedTargets(loadedProject.id);
+        setProject(loadedProject);
+        setTargets(loadedTargets);
+        setSelectedTargetId(loadedTargets[0]?.id ?? null);
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setError(
+            reason instanceof Error ? reason.message : "Unable to connect to PerfPilot API.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function handleUseDemoTarget() {
-    const target = await ensureDemoTargetSeeded();
-    setTargets((prev) => (prev.some((t) => t.id === target.id) ? prev : [...prev, target]));
+  function handleTargetCreated(target: Target) {
+    cacheTarget(target);
+    setTargets((prev) => [...prev.filter((item) => item.id !== target.id), target]);
     setSelectedTargetId(target.id);
   }
 
-  const selectedTarget = targets.find((t) => t.id === selectedTargetId) ?? null;
+  const selectedTarget = targets.find((target) => target.id === selectedTargetId) ?? null;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
       <div>
         <h1 className="text-2xl font-semibold">PerfPilot</h1>
         <p className="text-sm text-muted-foreground">
-          Create a target, trigger an investigation, and watch it run. Backed by a mocked API (see{" "}
-          <code>src/lib/mock-api.ts</code>) until <code>apps/api</code> exists — see{" "}
-          <a
-            className="underline"
-            href="https://github.com/thato899/perfpilot/blob/main/docs/demo-scenario.md"
-          >
-            docs/demo-scenario.md
-          </a>{" "}
-          for the reference walkthrough this mock replays.
+          Create an authorized target, start an investigation, and watch the persisted FastAPI
+          state.
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+      ) : error ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>API unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="secondary" onClick={() => window.location.reload()} className="w-fit">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      ) : !project ? (
+        <p className="text-sm text-destructive">Project setup did not complete.</p>
       ) : targets.length === 0 ? (
-        <div className="flex flex-col gap-4">
-          <TargetForm onCreated={(t) => setTargets([t])} />
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <Button variant="secondary" onClick={handleUseDemoTarget}>
-            Use the demo target ({"“"}Demo e-commerce app{"”"})
-          </Button>
-        </div>
+        <TargetForm projectId={project.id} onCreated={handleTargetCreated} />
       ) : (
         <div className="flex flex-col gap-6">
           <Card>
