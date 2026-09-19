@@ -91,7 +91,9 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 ### `POST /api/investigations`
 - **Purpose:** start a new investigation for a target (kicks off UNDERSTAND → PLAN).
 - **Request:** `{ "target_id": "tgt_...", "objective": "determine_capacity|diagnose_regression|validate_fix|baseline", "expected_traffic": { "...": "see test-planner.md" } }`
-- **Response:** `201` → `Investigation` with status `planning`.
+- **Response:** `201` → `Investigation` with status `running`; its initial
+  approved `TestPlan` and queued `TestRun` are linked through
+  `current_test_run_id`.
 
 ### `GET /api/investigations/{id}`
 - **Purpose:** fetch full investigation state (mirrors the Orchestrator's `InvestigationState`, see [data-flow.md](../architecture/data-flow.md#investigation-state)) for the dashboard's investigation view.

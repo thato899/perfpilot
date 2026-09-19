@@ -39,6 +39,34 @@ from ..tasks import execute_test_run
 log = logging.getLogger(__name__)
 
 
+def validate_run_limits(plan: m.TestPlan, settings: AppSettings) -> None:
+    """Enforce the same approval ceilings for every path that queues a run."""
+    if plan.target_concurrency > settings.max_virtual_users:
+        raise safety_limit(
+            "vus_over_limit",
+            "Requested concurrency exceeds the configured safety ceiling.",
+            {
+                "requested_vus": plan.target_concurrency,
+                "max_virtual_users": settings.max_virtual_users,
+            },
+        )
+
+    duration = plan.duration if isinstance(plan.duration, dict) else {}
+    requested_duration = duration.get("total_s")
+    if (
+        isinstance(requested_duration, int)
+        and requested_duration > settings.max_test_duration_seconds
+    ):
+        raise safety_limit(
+            "duration_over_limit",
+            "Requested duration exceeds the configured safety ceiling.",
+            {
+                "requested_seconds": requested_duration,
+                "max_test_duration_seconds": settings.max_test_duration_seconds,
+            },
+        )
+
+
 def _dispatch(run_id: UUID) -> None:
     """Enqueue execution, tolerating a broker that's down.
 
@@ -142,6 +170,12 @@ def run_test_plan(
     target = db.get(m.Target, body.target_id)
     if target is None:
         raise not_found("Target", body.target_id)
+    if plan.target_id != target.id:
+        raise conflict(
+            "invalid_plan_target",
+            "The TestPlan does not belong to the supplied target.",
+            {"test_plan_id": str(plan_id), "target_id": str(body.target_id)},
+        )
 
     # Re-checked at run time, not trusted from plan creation: the contract
     # returns 403 "if the target's authorization has been revoked since the
