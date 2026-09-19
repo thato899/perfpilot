@@ -15,16 +15,17 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from agents.orchestrator.orchestrator import Orchestrator as RealOrchestrator
+
 from .config import Settings, get_settings
 from .db.base import SessionLocal
 from .errors import unauthorized
 from .load_engineer_stub import StubLoadEngineer
-from .orchestrator_stub import StubOrchestrator
 
 # Protocols the routers and tasks depend on. Today these are only satisfied
 # by the stubs; agents/orchestrator and agents/load-engineer will satisfy
 # them too, unchanged on this side.
-Orchestrator = StubOrchestrator
+Orchestrator = RealOrchestrator
 LoadEngineer = StubLoadEngineer
 
 
@@ -60,10 +61,10 @@ def require_auth(request: Request, settings: Annotated[Settings, Depends(get_set
 def get_orchestrator() -> Orchestrator:
     """The Orchestrator seam.
 
-    Returns the stub today. When agents/orchestrator lands, this returns
-    that instead; every router keeps calling the same methods.
+    Keep the API dependent on the public orchestrator seam, not its internals.
     """
-    return StubOrchestrator()
+    settings = get_settings()
+    return RealOrchestrator(max_experiments=settings.max_experiments_per_investigation)
 
 
 def get_load_engineer() -> LoadEngineer:
