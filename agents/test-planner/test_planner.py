@@ -10,6 +10,7 @@ from packages.schemas.python.agent_io import (
     TestStagePlan,
 )
 from packages.schemas.python.entities import InvestigationObjective, TestType
+from packages.validation import invoke_with_validation
 
 __test__ = False
 
@@ -19,6 +20,34 @@ class TestPlannerError(ValueError):
 
 
 class TestPlanner:
+    def create_plan_generated(
+        self, generate, request: TestPlanRequest, *, prompt: str
+    ) -> TestPlanOutput:
+        """Parse and semantically validate an AI-produced plan through the shared seam."""
+        return invoke_with_validation(
+            generate,
+            TestPlanOutput.model_validate,
+            prompt,
+            semantic_validate=lambda plan: self.validate_plan(plan, request),
+        )
+
+    @staticmethod
+    def validate_plan(plan: TestPlanOutput, request: TestPlanRequest) -> None:
+        target = request.target_description
+        if not plan.user_journeys or set(plan.user_journeys) != set(target.user_journeys):
+            raise TestPlannerError("plan user journeys must match the request")
+        if plan.thresholds.get("p95_ms") != target.performance_requirements.p95_ms:
+            raise TestPlannerError("plan p95 threshold must match the request")
+        if plan.thresholds.get("max_error_rate") != target.performance_requirements.max_error_rate:
+            raise TestPlannerError("plan error threshold must match the request")
+        context = request.experiment_context
+        if context and context.variable_to_isolate:
+            if (
+                not plan.controlled_variable
+                or plan.controlled_variable.name != context.variable_to_isolate
+            ):
+                raise TestPlannerError("experiment plan must isolate the requested variable")
+
     def create_plan(self, request: TestPlanRequest) -> TestPlanOutput:
         target = request.target_description
         traffic = target.expected_traffic

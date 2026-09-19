@@ -14,12 +14,14 @@ Phase 1 first slice done (issue #15): `build_report()` produces a valid, contrac
 - **`fixtures/investigation_states.py`** — `demo_scenario_request()` (the [demo scenario](../../docs/demo-scenario.md)'s DB-connection-pool-contention walkthrough, using the same numbers as reporting-agent.md's own illustrative example) and `healthy_run_request()` (the "no findings at all" case).
 - **`tests/test_report_builder.py`** — both fixtures produce a valid report; recommendations are gated on `HypothesisStatus.SUPPORTED` (bottleneck_analysis is not — it renders every hypothesis); a malformed input (hypothesis pointing at a missing finding) is rejected; tampering with a pass-through value or an unevidenced recommendation is caught by `validate_report`.
 
-## What's still fixture-only (not a gap — this is the documented plan)
+## What's still fixture-only
 
 Prose generation (`_executive_summary`, `_recommendation_statement`) is templated, not AI-generated:
 
 ```text
-# BLOCKED-ON: #1 (packages/ai) — replace with AIService-generated prose once packages/ai exists.
+# The deterministic builder is production-safe for numeric truth. An optional
+# `build_report_generated()` seam validates any AI-generated ReportOutput using
+# the shared structured-output boundary before persistence.
 ```
 
 Swapping that in once Thatayaone's `packages/ai` (issue #1) lands should not require touching the structural logic (grounding, ranking, pass-through) — those two functions are the only seam that changes.

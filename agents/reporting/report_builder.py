@@ -35,6 +35,7 @@ from packages.schemas.python.entities import (
     HypothesisStatus,
     Severity,
 )
+from packages.validation import invoke_with_validation
 
 # CRITICAL -> INFO, per reporting-agent.md's "ranked CRITICAL -> INFO" responsibility.
 _SEVERITY_ORDER = [
@@ -96,6 +97,22 @@ def build_report(request: ReportRequest) -> ReportOutput:
         raise ValueError("build_report produced an invalid Report:\n" + "\n".join(violations))
 
     return report
+
+
+def build_report_generated(generate, request: ReportRequest, *, prompt: str) -> ReportOutput:
+    """Validate an AI-generated report before it can cross the persistence seam."""
+    return invoke_with_validation(
+        generate,
+        ReportOutput.model_validate,
+        prompt,
+        semantic_validate=lambda report: _validate_generated_report(report, request),
+    )
+
+
+def _validate_generated_report(report: ReportOutput, request: ReportRequest) -> None:
+    violations = validate_report(report, request)
+    if violations:
+        raise ValueError("invalid generated report: " + "; ".join(violations))
 
 
 def _bottleneck_entry(hypothesis: Hypothesis, finding: Finding) -> BottleneckAnalysisEntry:
