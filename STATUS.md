@@ -4,7 +4,7 @@
 
 ## Current phase
 
-**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #35 merged; #38 frontend implementation in review.**
+**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #35 and #38 are merged; #39 is waiting on #32/#34 contracts.**
 
 - Phase 1 implementation: complete.
 - Backend and browser E2E: verified.
@@ -12,7 +12,8 @@
 - Phase 1 sign-off: granted by Govenor/Team Lead in PR #48.
 - Phase 2 gate: open for the scoped tickets below.
 - #35: merged in PR #50 (`27e30b1da5e7450636194e1a82d173258810c7e2`); issue closed with `status:done`.
-- #38: `status:in-progress` on `feature/p2-findings-hypotheses-ui`; consumes the published state contract.
+- #38: merged in PR #51 (`status:done`); consumes the published state contract.
+- #39: `status:todo`; waiting on deterministic comparison metrics from #32 and baseline/comparison API from #34.
 
 ## Phase 2 ownership
 
@@ -50,4 +51,4 @@ Avoid dependency cycles and mega-PRs. Shared schema/database changes require aff
 
 ## Exact next action
 
-Review PR for #38. The panel consumes server-truth findings, competing hypotheses, evidence, experiment states, and budgets. #33 remains owned by Thatayaone and is not implemented here; #36, #37, and #39 remain out of scope.
+Wait for stable, review-approved #32 and #34 contracts before claiming #39. #33 remains owned by Thatayaone and #36/#37 remain out of scope.
