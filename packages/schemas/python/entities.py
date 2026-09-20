@@ -14,9 +14,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # --------------------------------------------------------------------------
 # Enums
@@ -77,6 +77,33 @@ class HypothesisStatus(str, Enum):
     TESTING = "testing"
     SUPPORTED = "supported"
     REJECTED = "rejected"
+
+
+class ExperimentStatus(str, Enum):
+    PROPOSED = "proposed"
+    APPROVED = "approved"
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    REJECTED = "rejected"
+
+
+class InvestigationEventType(str, Enum):
+    INVESTIGATION_CREATED = "investigation_created"
+    TEST_RUN_QUEUED = "test_run_queued"
+    TEST_RUN_STARTED = "test_run_started"
+    TEST_RUN_COMPLETED = "test_run_completed"
+    FINDING_RECORDED = "finding_recorded"
+    HYPOTHESIS_RECORDED = "hypothesis_recorded"
+    EXPERIMENT_PROPOSED = "experiment_proposed"
+    EXPERIMENT_APPROVED = "experiment_approved"
+    EXPERIMENT_STARTED = "experiment_started"
+    EXPERIMENT_COMPLETED = "experiment_completed"
+    RECOMMENDATION_RECORDED = "recommendation_recorded"
+    BUDGET_EXHAUSTED = "budget_exhausted"
+    CONTINUE_REQUESTED = "continue_requested"
+    REPORT_PERSISTED = "report_persisted"
 
 
 class ExperimentConclusion(str, Enum):
@@ -179,6 +206,8 @@ class Investigation(BaseModel):
     baseline_test_run_id: UUID | None = None
     current_test_run_id: UUID | None = None
     experiments_run: int = 0
+    max_experiments: int = 3
+    event_sequence: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -195,9 +224,11 @@ class Finding(BaseModel):
     severity: Severity
     summary: str
     observations: list[Observation]
+    sequence_index: int | None = None
 
 
 class Evidence(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4()))
     statement: str
     source_ref: str
 
@@ -216,16 +247,30 @@ class Hypothesis(BaseModel):
     status: HypothesisStatus
     evidence: list[Evidence]
     recommended_experiment: RecommendedExperiment | None = None
+    sequence_index: int | None = None
 
 
 class Experiment(BaseModel):
     id: UUID
     hypothesis_id: UUID
-    test_plan_id: UUID
-    test_run_id: UUID
+    test_plan_id: UUID | None = None
+    test_run_id: UUID | None = None
     variable_changed: str
-    baseline_value: Any
-    experiment_value: Any
+    baseline_value: Any | None = None
+    experiment_value: Any | None = None
+    status: ExperimentStatus = ExperimentStatus.PROPOSED
+    sequence_index: int = 0
+    idempotency_key: str | None = None
+
+
+class InvestigationEvent(BaseModel):
+    id: UUID
+    investigation_id: UUID
+    sequence: int
+    type: InvestigationEventType
+    payload: dict[str, Any] = Field(default_factory=dict)
+    idempotency_key: str | None = None
+    occurred_at: datetime
 
 
 class ExperimentResult(BaseModel):
@@ -240,6 +285,7 @@ class Recommendation(BaseModel):
     hypothesis_id: UUID
     statement: str
     priority: Severity
+    sequence_index: int | None = None
 
 
 class Report(BaseModel):

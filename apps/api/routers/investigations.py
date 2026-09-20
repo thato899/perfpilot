@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,18 +14,21 @@ from packages.schemas.python.agent_io import (
     TargetDescription,
     TestPlanRequest,
 )
-from packages.schemas.python.entities import Finding as FindingSchema
-from packages.schemas.python.entities import Investigation as InvestigationSchema
 from packages.schemas.python.entities import (
+    ExperimentStatus,
+    InvestigationEventType,
     InvestigationStatus,
     TestPlanStatus,
     TestRunStatus,
 )
+from packages.schemas.python.entities import Finding as FindingSchema
+from packages.schemas.python.entities import Investigation as InvestigationSchema
 from packages.schemas.python.entities import Report as ReportSchema
 
 from ..db import models as m
 from ..deps import AppSettings, DbSession, OrchestratorDep, require_auth
 from ..errors import conflict, forbidden_target, not_found
+from ..investigation_state import append_event, budget_contract, event_contract
 from ..schemas import (
     ApproveExperimentRequest,
     ContinueInvestigationRequest,
@@ -55,21 +58,35 @@ def _load_state(db: Session, investigation: m.Investigation) -> InvestigationSta
     the dashboard and the Orchestrator see the same shape.
     """
     findings = db.scalars(
-        select(m.Finding).where(m.Finding.investigation_id == investigation.id)
+        select(m.Finding)
+        .where(m.Finding.investigation_id == investigation.id)
+        .order_by(m.Finding.created_at, m.Finding.id)
     ).all()
     finding_ids = [f.id for f in findings]
     hypotheses = (
-        db.scalars(select(m.Hypothesis).where(m.Hypothesis.finding_id.in_(finding_ids))).all()
+        db.scalars(
+            select(m.Hypothesis)
+            .where(m.Hypothesis.finding_id.in_(finding_ids))
+            .order_by(m.Hypothesis.created_at, m.Hypothesis.id)
+        ).all()
         if finding_ids
         else []
     )
     experiments = (
         db.scalars(
-            select(m.Experiment).where(m.Experiment.hypothesis_id.in_([h.id for h in hypotheses]))
+            select(m.Experiment)
+            .where(m.Experiment.hypothesis_id.in_([h.id for h in hypotheses]))
+            .order_by(m.Experiment.created_at, m.Experiment.id)
         ).all()
         if hypotheses
         else []
     )
+
+    events = db.scalars(
+        select(m.InvestigationEvent)
+        .where(m.InvestigationEvent.investigation_id == investigation.id)
+        .order_by(m.InvestigationEvent.sequence)
+    ).all()
 
     return InvestigationState(
         investigation_id=investigation.id,
@@ -77,6 +94,7 @@ def _load_state(db: Session, investigation: m.Investigation) -> InvestigationSta
         status=investigation.status.value,
         baseline_test_run_id=investigation.baseline_test_run_id,
         current_test_run_id=investigation.current_test_run_id,
+        experiment_budget=budget_contract(investigation),
         findings=[
             {
                 "id": str(f.id),
@@ -84,8 +102,9 @@ def _load_state(db: Session, investigation: m.Investigation) -> InvestigationSta
                 "severity": f.severity.value,
                 "summary": f.summary,
                 "observations": f.observations,
+                "sequence_index": f.sequence_index or index,
             }
-            for f in findings
+            for index, f in enumerate(findings)
         ],
         hypotheses=[
             {
@@ -96,8 +115,9 @@ def _load_state(db: Session, investigation: m.Investigation) -> InvestigationSta
                 "status": h.status.value,
                 "evidence": h.evidence,
                 "recommended_experiment": h.recommended_experiment,
+                "sequence_index": h.sequence_index or index,
             }
-            for h in hypotheses
+            for index, h in enumerate(hypotheses)
         ],
         experiments=[
             {
@@ -106,10 +126,15 @@ def _load_state(db: Session, investigation: m.Investigation) -> InvestigationSta
                 "variable_changed": e.variable_changed,
                 "from": e.baseline_value,
                 "to": e.experiment_value,
-                "test_run_id": str(e.test_run_id),
+                "test_plan_id": str(e.test_plan_id) if e.test_plan_id else None,
+                "test_run_id": str(e.test_run_id) if e.test_run_id else None,
+                "status": e.status.value,
+                "sequence_index": e.sequence_index or index,
+                "created_at": e.created_at,
             }
-            for e in experiments
+            for index, e in enumerate(experiments)
         ],
+        events=[event_contract(event) for event in events],
     )
 
 
@@ -132,8 +157,17 @@ def create_investigation(
         target_id=target.id,
         objective=body.objective,
         status=InvestigationStatus.PLANNING,
+        max_experiments=settings.max_experiments_per_investigation,
     )
     db.add(investigation)
+    db.flush()
+    append_event(
+        db,
+        investigation.id,
+        InvestigationEventType.INVESTIGATION_CREATED,
+        {"target_id": str(target.id), "objective": body.objective.value},
+        idempotency_key=f"investigation-created:{investigation.id}",
+    )
     db.commit()
     db.refresh(investigation)
 
@@ -191,6 +225,13 @@ def create_investigation(
         db.flush()
         investigation.current_test_run_id = run.id
         investigation.status = InvestigationStatus.RUNNING
+        append_event(
+            db,
+            investigation.id,
+            InvestigationEventType.TEST_RUN_QUEUED,
+            {"test_run_id": str(run.id), "kind": "baseline"},
+            idempotency_key=f"test-run-queued:{run.id}",
+        )
         db.commit()
         db.refresh(investigation)
         _dispatch(run.id)
@@ -244,13 +285,16 @@ def approve_experiment(
     body: ApproveExperimentRequest,
     db: DbSession,
     settings: AppSettings,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ExperimentQueuedResponse:
     """The human-in-the-loop gate before more load is generated.
 
     security-model.md: the Orchestrator may *recommend* an experiment, but
     nothing generates additional load until it's explicitly approved here.
     """
-    investigation = db.get(m.Investigation, investigation_id)
+    investigation = db.scalar(
+        select(m.Investigation).where(m.Investigation.id == investigation_id).with_for_update()
+    )
     if investigation is None:
         raise not_found("Investigation", investigation_id)
 
@@ -271,13 +315,55 @@ def approve_experiment(
             {"hypothesis_id": str(body.hypothesis_id)},
         )
 
-    if investigation.experiments_run >= settings.max_experiments_per_investigation:
+    approval_key = body.idempotency_key or idempotency_key
+    if approval_key:
+        existing_by_key = db.scalar(
+            select(m.Experiment).where(m.Experiment.idempotency_key == approval_key)
+        )
+        if existing_by_key is not None and existing_by_key.test_run_id is not None:
+            if existing_by_key.hypothesis.finding.investigation_id != investigation.id:
+                raise conflict(
+                    "idempotency_key_reused",
+                    "The Idempotency-Key was already used by another investigation.",
+                    {"idempotency_key": approval_key},
+                )
+            return ExperimentQueuedResponse(
+                test_run_id=existing_by_key.test_run_id,
+                experiment_id=existing_by_key.id,
+                status=existing_by_key.status.value,
+            )
+
+    existing = db.scalar(
+        select(m.Experiment)
+        .where(m.Experiment.hypothesis_id == hypothesis.id)
+        .where(
+            m.Experiment.status.in_(
+                [
+                    ExperimentStatus.PROPOSED,
+                    ExperimentStatus.APPROVED,
+                    ExperimentStatus.QUEUED,
+                    ExperimentStatus.RUNNING,
+                    ExperimentStatus.SUCCEEDED,
+                ]
+            )
+        )
+        .order_by(m.Experiment.sequence_index, m.Experiment.created_at)
+        .limit(1)
+    )
+    if existing is not None and existing.test_run_id is not None:
+        return ExperimentQueuedResponse(
+            test_run_id=existing.test_run_id,
+            experiment_id=existing.id,
+            status=existing.status.value,
+        )
+
+    if investigation.experiments_run >= investigation.max_experiments:
         raise conflict(
             "experiment_budget_exhausted",
             "This investigation has already used its experiment budget.",
             {
                 "experiments_run": investigation.experiments_run,
-                "max_experiments": settings.max_experiments_per_investigation,
+                "max_experiments": investigation.max_experiments,
             },
         )
 
@@ -303,24 +389,44 @@ def approve_experiment(
     )
     db.add(run)
     db.flush()
-    db.add(
-        m.Experiment(
-            hypothesis_id=hypothesis.id,
-            test_plan_id=plan.id,
-            test_run_id=run.id,
-            variable_changed=hypothesis.recommended_experiment.get(
-                "variable_to_isolate", "unknown"
-            ),
-            baseline_value=None,
-            experiment_value=None,
-        )
+    experiment = existing or m.Experiment(
+        hypothesis_id=hypothesis.id,
+        test_plan_id=plan.id,
+        test_run_id=run.id,
+        variable_changed=hypothesis.recommended_experiment.get("variable_to_isolate", "unknown"),
+        baseline_value=None,
+        experiment_value=hypothesis.recommended_experiment.get("change"),
+        status=ExperimentStatus.QUEUED,
+        sequence_index=investigation.experiments_run,
+        idempotency_key=approval_key,
     )
+    if existing is None:
+        db.add(experiment)
+    else:
+        experiment.test_plan_id = plan.id
+        experiment.test_run_id = run.id
+        experiment.status = ExperimentStatus.QUEUED
+        experiment.idempotency_key = approval_key
     investigation.experiments_run += 1
-    investigation.status = InvestigationStatus.RUNNING
+    investigation.status = InvestigationStatus.EXPERIMENTING
     plan.status = TestPlanStatus.APPROVED
     # The approved experiment becomes the investigation's current run, which
     # is what lets the worker's completion callback find it again.
     investigation.current_test_run_id = run.id
+    append_event(
+        db,
+        investigation.id,
+        InvestigationEventType.EXPERIMENT_APPROVED,
+        {"experiment_id": str(experiment.id), "hypothesis_id": str(hypothesis.id)},
+        idempotency_key=f"experiment-approved:{experiment.id}",
+    )
+    append_event(
+        db,
+        investigation.id,
+        InvestigationEventType.TEST_RUN_QUEUED,
+        {"test_run_id": str(run.id), "experiment_id": str(experiment.id)},
+        idempotency_key=f"test-run-queued:{run.id}",
+    )
     db.commit()
     db.refresh(run)
 
@@ -328,7 +434,9 @@ def approve_experiment(
     from .tests_ import _dispatch
 
     _dispatch(run.id)
-    return ExperimentQueuedResponse(test_run_id=run.id)
+    return ExperimentQueuedResponse(
+        test_run_id=run.id, experiment_id=experiment.id, status=experiment.status.value
+    )
 
 
 @router.post("/investigations/{investigation_id}/continue", responses=ERRORS)
@@ -358,9 +466,28 @@ def continue_investigation(
             {"test_run_id": str(body.test_run_id)},
         )
 
+    continue_key = body.idempotency_key or f"continue:{body.test_run_id}"
+    if db.scalar(
+        select(m.InvestigationEvent).where(
+            m.InvestigationEvent.investigation_id == investigation.id,
+            m.InvestigationEvent.idempotency_key == continue_key,
+        )
+    ):
+        return {
+            "next_action": "wait",
+            "updated_state": _load_state(db, investigation).model_dump(mode="json"),
+        }
+
     decision = orchestrator.continue_investigation(_load_state(db, investigation), body.test_run_id)
     investigation.status = InvestigationStatus(decision.updated_state.status)
     investigation.current_test_run_id = decision.updated_state.current_test_run_id
+    append_event(
+        db,
+        investigation.id,
+        InvestigationEventType.CONTINUE_REQUESTED,
+        {"test_run_id": str(body.test_run_id), "next_action": decision.next_action.value},
+        idempotency_key=continue_key,
+    )
     db.commit()
     return decision.model_dump(mode="json")
 

@@ -37,7 +37,9 @@ from packages.schemas.python.agent_io import (
     TestStagePlan,
 )
 from packages.schemas.python.entities import (
+    ExperimentStatus,
     HypothesisStatus,
+    InvestigationEventType,
     InvestigationStatus,
     TestRunStatus,
     TestType,
@@ -47,6 +49,7 @@ from .celery_app import celery_app
 from .db import models as m
 from .db.base import SessionLocal
 from .deps import get_load_engineer, get_orchestrator
+from .investigation_state import append_event
 from .load_engineer_stub import TargetNotAllowedError
 
 log = logging.getLogger(__name__)
@@ -123,7 +126,24 @@ def execute_test_run(self, test_run_id: str) -> dict:  # noqa: ANN001, ARG001
 
         run.status = TestRunStatus.RUNNING
         run.started_at = _utcnow()
+        linked_experiment = session.scalar(
+            select(m.Experiment).where(m.Experiment.test_run_id == run.id)
+        )
+        if linked_experiment is not None:
+            linked_experiment.status = ExperimentStatus.RUNNING
         session.commit()
+        investigation = session.scalar(
+            select(m.Investigation).where(m.Investigation.current_test_run_id == run.id)
+        )
+        if investigation is not None:
+            append_event(
+                session,
+                investigation.id,
+                InvestigationEventType.TEST_RUN_STARTED,
+                {"test_run_id": str(run.id)},
+                idempotency_key=f"test-run-started:{run.id}",
+            )
+            session.commit()
 
         request = LoadExecutionRequest(
             test_plan=_plan_to_output(plan),
@@ -174,6 +194,13 @@ def _utcnow():  # noqa: ANN202
 
 
 def _fail_linked_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: ANN001
+    experiment = session.scalar(select(m.Experiment).where(m.Experiment.test_run_id == test_run_id))
+    if experiment is not None and experiment.status not in {
+        ExperimentStatus.SUCCEEDED,
+        ExperimentStatus.FAILED,
+        ExperimentStatus.REJECTED,
+    }:
+        experiment.status = ExperimentStatus.FAILED
     investigation = session.scalar(
         select(m.Investigation).where(m.Investigation.current_test_run_id == test_run_id)
     )
@@ -191,6 +218,28 @@ def _persist_result(session, run: m.TestRun, plan: m.TestPlan, result) -> None: 
     run.raw_output_ref = result.raw_output_ref
     run.clamped = result.clamped.model_dump() if result.clamped else None
     run.completed_at = _utcnow()
+    experiment = session.scalar(select(m.Experiment).where(m.Experiment.test_run_id == run.id))
+    if experiment is not None:
+        experiment.status = {
+            LoadExecutionStatus.SUCCEEDED: ExperimentStatus.SUCCEEDED,
+            LoadExecutionStatus.FAILED: ExperimentStatus.FAILED,
+            LoadExecutionStatus.ABORTED_OVER_LIMIT: ExperimentStatus.FAILED,
+        }[result.status]
+        investigation = session.scalar(
+            select(m.Investigation).where(m.Investigation.current_test_run_id == run.id)
+        )
+        if investigation is not None:
+            append_event(
+                session,
+                investigation.id,
+                InvestigationEventType.EXPERIMENT_COMPLETED,
+                {
+                    "experiment_id": str(experiment.id),
+                    "test_run_id": str(run.id),
+                    "status": experiment.status.value,
+                },
+                idempotency_key=f"experiment-completed:{experiment.id}",
+            )
 
     # Denormalized at execution time so a run's *actual* stage progression,
     # including any clamping, is recorded independently of what was planned
@@ -281,6 +330,14 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
         _persist_investigator_output(session, investigation, analysis)
         session.flush()
 
+        append_event(
+            session,
+            investigation.id,
+            InvestigationEventType.TEST_RUN_COMPLETED,
+            {"test_run_id": str(test_run_id), "status": "succeeded"},
+            idempotency_key=f"test-run-completed:{test_run_id}",
+        )
+
         decision = get_orchestrator().step(
             OrchestratorStep(
                 investigation_state=_load_state(session, investigation),
@@ -290,9 +347,30 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
                 ),
             )
         )
+        if (
+            decision.next_action.value == "invoke_reporting_agent"
+            and investigation.experiments_run >= investigation.max_experiments
+        ):
+            append_event(
+                session,
+                investigation.id,
+                InvestigationEventType.BUDGET_EXHAUSTED,
+                {
+                    "consumed": investigation.experiments_run,
+                    "max_experiments": investigation.max_experiments,
+                },
+                idempotency_key=f"budget-exhausted:{investigation.id}",
+            )
         investigation.status = InvestigationStatus(decision.updated_state.status)
         if decision.next_action.value == "invoke_reporting_agent":
             _persist_report(session, investigation, current_run, baseline_run, plan)
+            append_event(
+                session,
+                investigation.id,
+                InvestigationEventType.REPORT_PERSISTED,
+                {"investigation_id": str(investigation.id)},
+                idempotency_key=f"report-persisted:{investigation.id}",
+            )
             investigation.status = InvestigationStatus.COMPLETE
         session.commit()
     except Exception:
@@ -350,6 +428,7 @@ def _persist_investigator_output(session, investigation, output) -> None:  # noq
             severity=output.finding.severity,
             summary=output.finding.summary,
             observations=[observation.model_dump() for observation in output.observations],
+            sequence_index=0,
         )
         session.add(finding)
         session.flush()
@@ -358,7 +437,15 @@ def _persist_investigator_output(session, investigation, output) -> None:  # noq
         finding.summary = output.finding.summary
         finding.observations = [observation.model_dump() for observation in output.observations]
 
-    for hypothesis_output in output.hypotheses:
+    append_event(
+        session,
+        investigation.id,
+        InvestigationEventType.FINDING_RECORDED,
+        {"finding_id": str(finding.id)},
+        idempotency_key=f"finding-recorded:{finding.id}",
+    )
+
+    for sequence_index, hypothesis_output in enumerate(output.hypotheses):
         hypothesis = session.scalar(
             select(m.Hypothesis)
             .where(m.Hypothesis.finding_id == finding.id)
@@ -383,12 +470,58 @@ def _persist_investigator_output(session, investigation, output) -> None:  # noq
                         if hypothesis_output.recommended_experiment
                         else None
                     ),
+                    sequence_index=sequence_index,
                 )
+            )
+            session.flush()
+            hypothesis = session.scalar(
+                select(m.Hypothesis)
+                .where(m.Hypothesis.finding_id == finding.id)
+                .where(m.Hypothesis.statement == hypothesis_output.statement)
+                .limit(1)
             )
         else:
             hypothesis.confidence = hypothesis_output.confidence
             hypothesis.status = status
             hypothesis.evidence = [e.model_dump() for e in hypothesis_output.evidence]
+
+        if hypothesis is not None and hypothesis_output.recommended_experiment:
+            proposed = session.scalar(
+                select(m.Experiment)
+                .where(m.Experiment.hypothesis_id == hypothesis.id)
+                .where(m.Experiment.status == ExperimentStatus.PROPOSED)
+                .order_by(m.Experiment.sequence_index, m.Experiment.created_at)
+                .limit(1)
+            )
+            if proposed is None:
+                proposed = m.Experiment(
+                    hypothesis_id=hypothesis.id,
+                    variable_changed=hypothesis_output.recommended_experiment.variable_to_isolate,
+                    baseline_value=None,
+                    experiment_value=hypothesis_output.recommended_experiment.change,
+                    status=ExperimentStatus.PROPOSED,
+                    sequence_index=sequence_index,
+                )
+                session.add(proposed)
+                session.flush()
+                append_event(
+                    session,
+                    investigation.id,
+                    InvestigationEventType.EXPERIMENT_PROPOSED,
+                    {
+                        "experiment_id": str(proposed.id),
+                        "hypothesis_id": str(hypothesis.id),
+                    },
+                    idempotency_key=f"experiment-proposed:{proposed.id}",
+                )
+
+        append_event(
+            session,
+            investigation.id,
+            InvestigationEventType.HYPOTHESIS_RECORDED,
+            {"hypothesis_id": str(hypothesis.id)},
+            idempotency_key=f"hypothesis-recorded:{hypothesis.id}",
+        )
 
 
 def _persist_report(session, investigation, current, baseline, plan) -> None:  # noqa: ANN001
@@ -444,3 +577,45 @@ def _persist_report(session, investigation, current, baseline, plan) -> None:  #
     else:
         for key, value in values.items():
             setattr(existing, key, value)
+
+    # Recommendations keep their canonical Hypothesis relationship. Reporting
+    # emits the persisted Finding id; choose that finding's highest-confidence
+    # hypothesis rather than inventing a second recommendation relationship.
+    for sequence_index, recommendation in enumerate(report.recommendations):
+        try:
+            finding_id = uuid.UUID(recommendation.finding_id)
+        except (TypeError, ValueError):
+            continue
+        hypothesis = session.scalar(
+            select(m.Hypothesis)
+            .where(m.Hypothesis.finding_id == finding_id)
+            .order_by(m.Hypothesis.confidence.desc(), m.Hypothesis.created_at)
+            .limit(1)
+        )
+        if hypothesis is None:
+            continue
+        row = session.scalar(
+            select(m.Recommendation)
+            .where(m.Recommendation.hypothesis_id == hypothesis.id)
+            .where(m.Recommendation.statement == recommendation.statement)
+            .limit(1)
+        )
+        if row is None:
+            row = m.Recommendation(
+                hypothesis_id=hypothesis.id,
+                statement=recommendation.statement,
+                priority=recommendation.priority,
+                sequence_index=sequence_index,
+            )
+            session.add(row)
+            session.flush()
+        else:
+            row.priority = recommendation.priority
+            row.sequence_index = sequence_index
+        append_event(
+            session,
+            investigation.id,
+            InvestigationEventType.RECOMMENDATION_RECORDED,
+            {"recommendation_id": str(row.id), "hypothesis_id": str(hypothesis.id)},
+            idempotency_key=f"recommendation-recorded:{row.id}",
+        )

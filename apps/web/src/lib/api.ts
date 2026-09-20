@@ -69,6 +69,12 @@ interface WireInvestigationState {
   status: InvestigationState["status"];
   baseline_test_run_id?: string | null;
   current_test_run_id?: string | null;
+  experiment_budget?: {
+    max_experiments: number;
+    consumed: number;
+    remaining: number;
+    exhausted: boolean;
+  } | null;
   observations: Array<{
     id: string;
     statement: string;
@@ -80,6 +86,7 @@ interface WireInvestigationState {
     severity: InvestigationState["findings"][number]["severity"];
     summary: string;
     observations: Array<{ id: string; statement: string; metric_ref: string }>;
+    sequence_index?: number | null;
   }>;
   hypotheses: Array<{
     id: string;
@@ -93,6 +100,7 @@ interface WireInvestigationState {
       change: string;
       expected_signal: string;
     } | null;
+    sequence_index?: number | null;
   }>;
   experiments: Array<{
     id: string;
@@ -100,7 +108,18 @@ interface WireInvestigationState {
     variable_changed: string;
     from?: unknown;
     to?: unknown;
-    test_run_id: string;
+    test_plan_id?: string | null;
+    test_run_id?: string | null;
+    status?: InvestigationState["experiments"][number]["status"];
+    sequence_index?: number;
+  }>;
+  events?: Array<{
+    id: string;
+    sequence: number;
+    type: string;
+    payload: Record<string, unknown>;
+    idempotency_key?: string | null;
+    occurred_at: string;
   }>;
   decisions: Array<{ step: string; decision: string; made_by: string }>;
 }
@@ -231,6 +250,7 @@ function investigationFromWire(value: WireInvestigationState): InvestigationStat
         statement: item.statement,
         metricRef: item.metric_ref,
       })),
+      sequenceIndex: (finding as { sequence_index?: number }).sequence_index,
     })),
     hypotheses: value.hypotheses.map((hypothesis) => ({
       id: hypothesis.id,
@@ -249,15 +269,34 @@ function investigationFromWire(value: WireInvestigationState): InvestigationStat
             expectedSignal: hypothesis.recommended_experiment.expected_signal,
           }
         : undefined,
+      sequenceIndex: (hypothesis as { sequence_index?: number }).sequence_index,
     })),
     experiments: value.experiments.map((experiment) => ({
       id: experiment.id,
       hypothesisId: experiment.hypothesis_id,
-      testPlanId: "",
-      testRunId: experiment.test_run_id,
+      testPlanId: experiment.test_plan_id ?? undefined,
+      testRunId: experiment.test_run_id ?? undefined,
       variableChanged: experiment.variable_changed,
       baselineValue: experiment.from,
       experimentValue: experiment.to,
+      status: experiment.status ?? "proposed",
+      sequenceIndex: experiment.sequence_index ?? 0,
+    })),
+    experimentBudget: value.experiment_budget
+      ? {
+          maxExperiments: value.experiment_budget.max_experiments,
+          consumed: value.experiment_budget.consumed,
+          remaining: value.experiment_budget.remaining,
+          exhausted: value.experiment_budget.exhausted,
+        }
+      : undefined,
+    events: (value.events ?? []).map((event) => ({
+      id: event.id,
+      sequence: event.sequence,
+      type: event.type,
+      payload: event.payload,
+      idempotencyKey: event.idempotency_key ?? undefined,
+      occurredAt: event.occurred_at,
     })),
     decisions: value.decisions.map((item) => ({
       step: item.step,

@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from apps.api.db import models as m
 from packages.schemas.python.entities import (
+    ExperimentStatus,
     HypothesisStatus,
     InvestigationObjective,
     InvestigationStatus,
@@ -511,6 +512,116 @@ def test_approve_experiment_queues_a_run(
     # never bites and the loop can generate load indefinitely.
     db_session.expire_all()
     assert db_session.get(m.Investigation, inv["id"]).experiments_run == 1
+
+
+def test_investigation_state_exposes_budget_and_ordered_event_history(
+    client: TestClient, target: dict
+) -> None:
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+
+    state = client.get(f"/api/investigations/{inv['id']}", headers=AUTH).json()
+
+    assert state["experiment_budget"] == {
+        "max_experiments": 3,
+        "consumed": 0,
+        "remaining": 3,
+        "exhausted": False,
+    }
+    assert [event["sequence"] for event in state["events"]] == sorted(
+        event["sequence"] for event in state["events"]
+    )
+    assert [event["type"] for event in state["events"][:2]] == [
+        "investigation_created",
+        "test_run_queued",
+    ]
+
+
+def test_approve_experiment_is_idempotent(client: TestClient, db_session, target: dict) -> None:
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+    finding = _seed_finding(db_session, inv["id"], Severity.HIGH)
+    hypothesis = m.Hypothesis(
+        finding_id=finding.id,
+        statement="pool contention",
+        confidence=0.6,
+        status=HypothesisStatus.TESTING,
+        evidence=[],
+        recommended_experiment={"variable_to_isolate": "db_pool_size", "change": "32"},
+    )
+    db_session.add(hypothesis)
+    db_session.commit()
+
+    headers = {**AUTH, "Idempotency-Key": "approve-pool-1"}
+    first = client.post(
+        f"/api/investigations/{inv['id']}/experiments",
+        json={"hypothesis_id": str(hypothesis.id)},
+        headers=headers,
+    )
+    second = client.post(
+        f"/api/investigations/{inv['id']}/experiments",
+        json={"hypothesis_id": str(hypothesis.id)},
+        headers=headers,
+    )
+
+    assert first.status_code == second.status_code == 202
+    assert first.json()["test_run_id"] == second.json()["test_run_id"]
+    assert db_session.query(m.Experiment).filter_by(hypothesis_id=hypothesis.id).count() == 1
+    assert db_session.query(m.Experiment).filter_by(hypothesis_id=hypothesis.id).one().status in {
+        ExperimentStatus.QUEUED,
+        ExperimentStatus.RUNNING,
+        ExperimentStatus.SUCCEEDED,
+    }
+
+
+def test_experiment_budget_exhaustion_is_explicit_409(
+    client: TestClient, db_session, target: dict
+) -> None:
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+    investigation = db_session.get(m.Investigation, inv["id"])
+    investigation.max_experiments = 0
+    finding = _seed_finding(db_session, inv["id"], Severity.HIGH)
+    hypothesis = m.Hypothesis(
+        finding_id=finding.id,
+        statement="pool contention",
+        confidence=0.6,
+        status=HypothesisStatus.TESTING,
+        evidence=[],
+        recommended_experiment={"variable_to_isolate": "db_pool_size"},
+    )
+    db_session.add(hypothesis)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/investigations/{inv['id']}/experiments",
+        json={"hypothesis_id": str(hypothesis.id)},
+        headers=AUTH,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "experiment_budget_exhausted"
 
 
 def test_continue_returns_an_orchestrator_decision(
