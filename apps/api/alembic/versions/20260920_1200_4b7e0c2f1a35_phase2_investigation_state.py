@@ -57,9 +57,7 @@ def upgrade() -> None:
     op.add_column("experiment", sa.Column("idempotency_key", sa.String(length=255)))
     op.alter_column("experiment", "test_plan_id", existing_type=sa.Uuid(), nullable=True)
     op.alter_column("experiment", "test_run_id", existing_type=sa.Uuid(), nullable=True)
-    op.alter_column(
-        "experiment", "baseline_value", existing_type=postgresql.JSONB(), nullable=True
-    )
+    op.alter_column("experiment", "baseline_value", existing_type=postgresql.JSONB(), nullable=True)
     op.alter_column(
         "experiment", "experiment_value", existing_type=postgresql.JSONB(), nullable=True
     )
@@ -88,9 +86,7 @@ def upgrade() -> None:
             postgresql.ENUM(name="investigation_event_type", create_type=False),
             nullable=False,
         ),
-        sa.Column(
-            "payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False
-        ),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("idempotency_key", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
@@ -104,9 +100,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["investigation_id"], ["investigation.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["investigation_id"], ["investigation.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id", name="pk_investigation_event"),
         sa.UniqueConstraint("investigation_id", "sequence", name="uq_investigation_event_sequence"),
         sa.UniqueConstraint(

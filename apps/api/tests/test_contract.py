@@ -544,9 +544,7 @@ def test_investigation_state_exposes_budget_and_ordered_event_history(
     ]
 
 
-def test_approve_experiment_is_idempotent(
-    client: TestClient, db_session, target: dict
-) -> None:
+def test_approve_experiment_is_idempotent(client: TestClient, db_session, target: dict) -> None:
     inv = client.post(
         "/api/investigations",
         json={

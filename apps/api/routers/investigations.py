@@ -390,18 +390,16 @@ def approve_experiment(
     db.add(run)
     db.flush()
     experiment = existing or m.Experiment(
-            hypothesis_id=hypothesis.id,
-            test_plan_id=plan.id,
-            test_run_id=run.id,
-            variable_changed=hypothesis.recommended_experiment.get(
-                "variable_to_isolate", "unknown"
-            ),
-            baseline_value=None,
-            experiment_value=hypothesis.recommended_experiment.get("change"),
-            status=ExperimentStatus.QUEUED,
-            sequence_index=investigation.experiments_run,
-            idempotency_key=approval_key,
-        )
+        hypothesis_id=hypothesis.id,
+        test_plan_id=plan.id,
+        test_run_id=run.id,
+        variable_changed=hypothesis.recommended_experiment.get("variable_to_isolate", "unknown"),
+        baseline_value=None,
+        experiment_value=hypothesis.recommended_experiment.get("change"),
+        status=ExperimentStatus.QUEUED,
+        sequence_index=investigation.experiments_run,
+        idempotency_key=approval_key,
+    )
     if existing is None:
         db.add(experiment)
     else:

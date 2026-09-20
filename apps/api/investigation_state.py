@@ -33,9 +33,7 @@ def append_event(
     existing event rather than creating a second transition.
     """
     investigation = session.scalar(
-        select(m.Investigation)
-        .where(m.Investigation.id == investigation_id)
-        .with_for_update()
+        select(m.Investigation).where(m.Investigation.id == investigation_id).with_for_update()
     )
     if investigation is None:
         raise ValueError(f"unknown investigation: {investigation_id}")
