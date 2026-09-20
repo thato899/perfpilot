@@ -97,7 +97,7 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ### `GET /api/investigations/{id}`
 - **Purpose:** fetch full investigation state (mirrors the Orchestrator's `InvestigationState`, see [data-flow.md](../architecture/data-flow.md#investigation-state)) for the dashboard's investigation view.
-- **Response:** `200` → `InvestigationState`.
+- **Response:** `200` → `InvestigationState`, including the current `experiment_budget` summary and ordered `events` history. Existing Phase 1 fields remain backward compatible.
 
 ### `GET /api/investigations/{id}/findings`
 - **Purpose:** fetch just the ranked findings (lighter payload for a findings-only dashboard panel).
@@ -105,8 +105,8 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ### `POST /api/investigations/{id}/experiments`
 - **Purpose:** explicitly approve a specific recommended experiment (human-in-the-loop control point — the Orchestrator proposes, a human or an auto-approve policy confirms before load is generated again).
-- **Request:** `{ "hypothesis_id": "hyp_..." }`
-- **Response:** `202` → `{ "test_run_id": "run_..." }` (the resulting follow-up `TestRun`, queued).
+- **Request:** `{ "hypothesis_id": "hyp_...", "idempotency_key": "optional-client-key" }`; the same key may be sent as `Idempotency-Key`.
+- **Response:** `202` → `{ "test_run_id": "run_...", "experiment_id": "exp_...", "status": "queued" }` (the resulting follow-up `TestRun`, queued).
 - **Errors:** `409` if the hypothesis has no `recommended_experiment` or an experiment budget limit has already been hit.
 
 ### `POST /api/investigations/{id}/continue`

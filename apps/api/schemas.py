@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from packages.schemas.python.agent_io import ExpectedTraffic
 from packages.schemas.python.entities import (
+    ExperimentStatus,
     Finding,
     InvestigationObjective,
     Metric,
@@ -137,14 +138,18 @@ class FindingsResponse(BaseModel):
 
 class ApproveExperimentRequest(BaseModel):
     hypothesis_id: UUID
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class ExperimentQueuedResponse(BaseModel):
     test_run_id: UUID
+    experiment_id: UUID | None = None
+    status: ExperimentStatus = ExperimentStatus.QUEUED
 
 
 class ContinueInvestigationRequest(BaseModel):
     test_run_id: UUID
+    idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class ErrorDetail(BaseModel):

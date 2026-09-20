@@ -152,6 +152,8 @@ def _schema() -> Iterator[None]:
         for enum_name in (
             "agent_name",
             "experiment_conclusion",
+            "experiment_status",
+            "investigation_event_type",
             "hypothesis_status",
             "investigation_objective",
             "investigation_status",

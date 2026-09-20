@@ -24,7 +24,13 @@ from apps.api.config import Settings, get_settings
 from apps.api.db import models as m
 from apps.api.load_engineer import K6LoadEngineer
 from apps.api.load_engineer_stub import StubLoadEngineer, TargetNotAllowedError
-from packages.schemas.python.entities import InvestigationStatus, Severity, TestRunStatus
+from packages.schemas.python.entities import (
+    ExperimentStatus,
+    HypothesisStatus,
+    InvestigationStatus,
+    Severity,
+    TestRunStatus,
+)
 
 from .conftest import AUTH
 
@@ -109,6 +115,53 @@ def test_duplicate_delivery_does_not_re_run(db_session, queued_run: m.TestRun) -
     run = db_session.get(m.TestRun, queued_run.id)
     assert run.completed_at == first_completed
     assert db_session.query(m.Metric).filter_by(test_run_id=run.id).count() == 1
+
+
+def test_worker_updates_approved_experiment_lifecycle(
+    client: TestClient, db_session, target: dict
+) -> None:
+    inv = client.post(
+        "/api/investigations",
+        json={
+            "target_id": target["id"],
+            "objective": "determine_capacity",
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+        },
+        headers=AUTH,
+    ).json()
+    finding = m.Finding(
+        investigation_id=inv["id"],
+        severity=Severity.HIGH,
+        summary="pool contention",
+        observations=[{"id": "obs-1", "statement": "p95 rose", "metric_ref": "metric-1"}],
+    )
+    db_session.add(finding)
+    db_session.flush()
+    hypothesis = m.Hypothesis(
+        finding_id=finding.id,
+        statement="pool contention",
+        confidence=0.6,
+        status=HypothesisStatus.TESTING,
+        evidence=[],
+        recommended_experiment={"variable_to_isolate": "db_pool_size", "change": "32"},
+    )
+    db_session.add(hypothesis)
+    db_session.commit()
+
+    response = client.post(
+        f"/api/investigations/{inv['id']}/experiments",
+        json={"hypothesis_id": str(hypothesis.id)},
+        headers=AUTH,
+    )
+    assert response.status_code == 202
+    experiment_id = response.json()["experiment_id"]
+    run_id = response.json()["test_run_id"]
+
+    tasks.execute_test_run(run_id)
+
+    db_session.expire_all()
+    experiment = db_session.get(m.Experiment, experiment_id)
+    assert experiment.status is ExperimentStatus.SUCCEEDED
 
 
 def test_unknown_run_is_not_an_error(db_session) -> None:

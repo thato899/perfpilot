@@ -173,7 +173,17 @@ class Orchestrator:
             ]
             confidence = max((h.confidence for h in active_hypotheses), default=1.0)
             needs_experiment = confidence < self.confidence_threshold
-            if needs_experiment and len(state.experiments) < self.max_experiments:
+            consumed = (
+                state.experiment_budget.consumed
+                if state.experiment_budget is not None
+                else len(state.experiments)
+            )
+            max_experiments = (
+                state.experiment_budget.max_experiments
+                if state.experiment_budget is not None
+                else self.max_experiments
+            )
+            if needs_experiment and consumed < max_experiments:
                 state.status = InvestigationStatus.EXPERIMENTING.value
                 return self._decision(
                     state, OrchestratorAction.INVOKE_TEST_PLANNER, "confidence below threshold"

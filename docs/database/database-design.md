@@ -95,19 +95,20 @@ Decision for Phase 1: summary-at-completion is sufficient for the MVP. `Metric` 
 - `status`: `planning | running | investigating | experimenting | reporting | complete | failed`
 - `baseline_test_run_id` (FK, nullable), `current_test_run_id` (FK, nullable)
 - `experiments_run: int` (for enforcing `MAX_EXPERIMENTS_PER_INVESTIGATION`, see [orchestrator.md](../agents/orchestrator.md))
+- `max_experiments: int` (budget snapshot taken at creation), `event_sequence: int` (ordered history cursor)
 
 ### Finding
-- `id`, `investigation_id` (FK), `severity` (enum: CRITICAL/HIGH/MEDIUM/LOW/INFO), `summary`
+- `id`, `investigation_id` (FK), `severity` (enum: CRITICAL/HIGH/MEDIUM/LOW/INFO), `summary`, optional `sequence_index`
 - `observations` (JSONB — list of `{ statement, metric_ref }`, see [performance-investigator.md](../agents/performance-investigator.md))
 
 ### Hypothesis
-- `id`, `finding_id` (FK), `statement`, `confidence: float (0-1)`, `status`: `proposed | testing | supported | rejected`
+- `id`, `finding_id` (FK), `statement`, `confidence: float (0-1)`, `status`: `proposed | testing | supported | rejected`, optional `sequence_index`
 - `evidence` (JSONB — list of `{ statement, source_ref }`)
 - `recommended_experiment` (JSONB, nullable)
 
 ### Experiment
-- `id`, `hypothesis_id` (FK), `test_plan_id` (FK), `test_run_id` (FK)
-- `variable_changed`, `baseline_value`, `experiment_value`
+- `id`, `hypothesis_id` (FK), nullable `test_plan_id`/`test_run_id` until approval, `status`: `proposed | approved | queued | running | succeeded | failed | rejected`
+- `variable_changed`, nullable `baseline_value`/`experiment_value`, optional `sequence_index`, unique idempotency key
 
 ### ExperimentResult
 - `id`, `experiment_id` (FK)
@@ -115,7 +116,11 @@ Decision for Phase 1: summary-at-completion is sufficient for the MVP. `Metric` 
 - `conclusion`: `hypothesis_supported | hypothesis_rejected | inconclusive`
 
 ### Recommendation
-- `id`, `hypothesis_id` (FK), `statement`, `priority` (enum matching Finding severity)
+- `id`, `hypothesis_id` (FK), `statement`, `priority` (enum matching Finding severity), optional `sequence_index`
+
+### InvestigationEvent
+- `id`, `investigation_id` (FK), monotonic `sequence`, typed `event_type`, `payload` (JSONB), optional idempotency key
+- Append-only history for state-changing Orchestrator/API/worker boundaries. The current rows above remain the queryable projection; both are written transactionally.
 
 ### Report
 - `id`, `investigation_id` (FK, unique — one report per investigation in the MVP; re-generating supersedes rather than duplicating)

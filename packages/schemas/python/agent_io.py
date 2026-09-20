@@ -12,14 +12,16 @@ file — see packages/schemas/README.md.
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 from .entities import (
     Evidence,
+    ExperimentStatus,
     Finding,
     Hypothesis,
     InvestigationObjective,
@@ -43,6 +45,28 @@ class DecisionLogEntry(BaseModel):
     made_by: str  # "orchestrator" | an agent name, for audit
 
 
+class ExperimentBudget(BaseModel):
+    max_experiments: int = Field(ge=0)
+    consumed: int = Field(ge=0)
+    remaining: int = Field(ge=0)
+    exhausted: bool
+
+
+class ExperimentState(BaseModel):
+    id: UUID
+    # Optional on the compatibility seam: Phase 1 fixtures only carried an
+    # experiment id, while persisted Phase 2 rows populate the full shape.
+    hypothesis_id: UUID | None = None
+    test_plan_id: UUID | None = None
+    test_run_id: UUID | None = None
+    variable_changed: str = ""
+    baseline_value: Any | None = None
+    experiment_value: Any | None = None
+    status: ExperimentStatus = ExperimentStatus.PROPOSED
+    sequence_index: int = Field(default=0, ge=0)
+    created_at: datetime | None = None
+
+
 class InvestigationState(BaseModel):
     investigation_id: UUID
     target_id: UUID
@@ -52,7 +76,9 @@ class InvestigationState(BaseModel):
     observations: list[Observation] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(default_factory=list)
-    experiments: list[dict[str, Any]] = Field(default_factory=list)
+    experiments: list[ExperimentState] = Field(default_factory=list)
+    experiment_budget: ExperimentBudget | None = None
+    events: list[OrchestratorEvent] = Field(default_factory=list)
     decisions: list[DecisionLogEntry] = Field(default_factory=list)
 
 
@@ -65,11 +91,28 @@ class OrchestratorEventType(str, Enum):
     TEST_RUN_COMPLETED = "test_run_completed"
     USER_REQUESTED_CONTINUE = "user_requested_continue"
     TIMEOUT = "timeout"
+    INVESTIGATION_CREATED = "investigation_created"
+    TEST_RUN_QUEUED = "test_run_queued"
+    TEST_RUN_STARTED = "test_run_started"
+    FINDING_RECORDED = "finding_recorded"
+    HYPOTHESIS_RECORDED = "hypothesis_recorded"
+    EXPERIMENT_PROPOSED = "experiment_proposed"
+    EXPERIMENT_APPROVED = "experiment_approved"
+    EXPERIMENT_STARTED = "experiment_started"
+    EXPERIMENT_COMPLETED = "experiment_completed"
+    RECOMMENDATION_RECORDED = "recommendation_recorded"
+    BUDGET_EXHAUSTED = "budget_exhausted"
+    CONTINUE_REQUESTED = "continue_requested"
+    REPORT_PERSISTED = "report_persisted"
 
 
 class OrchestratorEvent(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    sequence: int | None = Field(default=None, ge=1)
     type: OrchestratorEventType
     payload: dict[str, Any] = Field(default_factory=dict)
+    idempotency_key: str | None = None
+    occurred_at: datetime | None = None
 
 
 class OrchestratorStep(BaseModel):

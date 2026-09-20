@@ -32,6 +32,9 @@ export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 
 export type HypothesisStatus = "proposed" | "testing" | "supported" | "rejected";
 
+export type ExperimentStatus =
+  "proposed" | "approved" | "queued" | "running" | "succeeded" | "failed" | "rejected";
+
 // ---------------------------------------------------------------------------
 // Core entities — docs/database/database-design.md
 // ---------------------------------------------------------------------------
@@ -146,9 +149,11 @@ export interface Finding {
   severity: Severity;
   summary: string;
   observations: Observation[];
+  sequenceIndex?: number;
 }
 
 export interface Evidence {
+  id?: string;
   statement: string;
   sourceRef: string;
 }
@@ -167,16 +172,35 @@ export interface Hypothesis {
   status: HypothesisStatus;
   evidence: Evidence[];
   recommendedExperiment?: RecommendedExperiment;
+  sequenceIndex?: number;
 }
 
 export interface ExperimentRecord {
   id: string;
   hypothesisId: string;
-  testPlanId: string;
-  testRunId: string;
+  testPlanId?: string;
+  testRunId?: string;
   variableChanged: string;
   baselineValue: unknown;
   experimentValue: unknown;
+  status: ExperimentStatus;
+  sequenceIndex: number;
+}
+
+export interface ExperimentBudget {
+  maxExperiments: number;
+  consumed: number;
+  remaining: number;
+  exhausted: boolean;
+}
+
+export interface InvestigationEvent {
+  id: string;
+  sequence: number;
+  type: string;
+  payload: Record<string, unknown>;
+  idempotencyKey?: string;
+  occurredAt: string;
 }
 
 export interface DecisionLogEntry {
@@ -197,6 +221,8 @@ export interface InvestigationState {
   findings: Finding[];
   hypotheses: Hypothesis[];
   experiments: ExperimentRecord[];
+  experimentBudget?: ExperimentBudget;
+  events?: InvestigationEvent[];
   decisions: DecisionLogEntry[];
 }
 
@@ -229,6 +255,7 @@ export interface RecommendationItem {
   findingId: string;
   statement: string;
   priority: Severity;
+  sequenceIndex?: number;
 }
 
 export interface RegressionSummary {

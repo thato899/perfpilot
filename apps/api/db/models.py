@@ -37,7 +37,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from packages.schemas.python.entities import (
     AgentName,
     ExperimentConclusion,
+    ExperimentStatus,
     HypothesisStatus,
+    InvestigationEventType,
     InvestigationObjective,
     InvestigationStatus,
     Severity,
@@ -296,6 +298,11 @@ class Investigation(TimestampMixin, Base):
 
     # Enforces MAX_EXPERIMENTS_PER_INVESTIGATION — see orchestrator.md.
     experiments_run: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Snapshot the configured budget so config changes cannot alter an active
+    # investigation's allowance.
+    max_experiments: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    # Monotonic sequence for the persisted Orchestrator event history.
+    event_sequence: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
     project: Mapped[Project] = relationship(back_populates="investigations")
     findings: Mapped[list[Finding]] = relationship(
@@ -305,6 +312,11 @@ class Investigation(TimestampMixin, Base):
         back_populates="investigation", cascade="all, delete-orphan"
     )
     ai_executions: Mapped[list[AIExecution]] = relationship(back_populates="investigation")
+    events: Mapped[list[InvestigationEvent]] = relationship(
+        back_populates="investigation",
+        cascade="all, delete-orphan",
+        order_by="InvestigationEvent.sequence",
+    )
 
     __table_args__ = (
         # Expressed as "not terminal" rather than listing the five in-flight
@@ -330,6 +342,7 @@ class Finding(TimestampMixin, Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     # List of {statement, metric_ref} — see performance-investigator.md.
     observations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    sequence_index: Mapped[int | None] = mapped_column(Integer)
 
     investigation: Mapped[Investigation] = relationship(back_populates="findings")
     hypotheses: Mapped[list[Hypothesis]] = relationship(
@@ -352,6 +365,7 @@ class Hypothesis(TimestampMixin, Base):
     # List of {statement, source_ref}.
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
     recommended_experiment: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    sequence_index: Mapped[int | None] = mapped_column(Integer)
 
     finding: Mapped[Finding] = relationship(back_populates="hypotheses")
     experiments: Mapped[list[Experiment]] = relationship(
@@ -377,17 +391,24 @@ class Experiment(TimestampMixin, Base):
     hypothesis_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("hypothesis.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    test_plan_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("test_plan.id", ondelete="CASCADE"), nullable=False
+    test_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("test_plan.id", ondelete="CASCADE"), nullable=True
     )
-    test_run_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("test_run.id", ondelete="CASCADE"), nullable=False
+    test_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("test_run.id", ondelete="CASCADE"), nullable=True
     )
     variable_changed: Mapped[str] = mapped_column(String(255), nullable=False)
     # Typed `Any` in the contract — a pool size, a flag, a string. JSONB
     # keeps the original type instead of stringifying it.
-    baseline_value: Mapped[Any] = mapped_column(JSONB, nullable=False)
-    experiment_value: Mapped[Any] = mapped_column(JSONB, nullable=False)
+    baseline_value: Mapped[Any | None] = mapped_column(JSONB)
+    experiment_value: Mapped[Any | None] = mapped_column(JSONB)
+    status: Mapped[ExperimentStatus] = mapped_column(
+        pg_enum(ExperimentStatus, "experiment_status"),
+        nullable=False,
+        server_default=ExperimentStatus.PROPOSED.value,
+    )
+    sequence_index: Mapped[int | None] = mapped_column(Integer)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), unique=True)
 
     hypothesis: Mapped[Hypothesis] = relationship(back_populates="experiments")
     result: Mapped[ExperimentResult | None] = relationship(
@@ -424,8 +445,33 @@ class Recommendation(TimestampMixin, Base):
     # matching Finding severity)", so it shares the type rather than
     # declaring a parallel one that could drift.
     priority: Mapped[Severity] = mapped_column(pg_enum(Severity, "severity"), nullable=False)
+    sequence_index: Mapped[int | None] = mapped_column(Integer)
 
     hypothesis: Mapped[Hypothesis] = relationship(back_populates="recommendations")
+
+
+class InvestigationEvent(TimestampMixin, Base):
+    """Append-only ordered history for the Orchestrator boundary."""
+
+    __tablename__ = "investigation_event"
+
+    id: Mapped[uuid.UUID] = pk()
+    investigation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("investigation.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[InvestigationEventType] = mapped_column(
+        pg_enum(InvestigationEventType, "investigation_event_type"), nullable=False
+    )
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
+
+    investigation: Mapped[Investigation] = relationship(back_populates="events")
+
+    __table_args__ = (
+        UniqueConstraint("investigation_id", "sequence"),
+        UniqueConstraint("investigation_id", "idempotency_key"),
+    )
 
 
 class Report(TimestampMixin, Base):
