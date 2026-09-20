@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 1 implementation and real E2E complete; Team Lead sign-off pending. Phase 2 is ticketed but gated. See [PLANNING.md](PLANNING.md), [STATUS.md](STATUS.md), and the [Phase 2 ticket register](docs/roadmap.md#phase-2-ticket-register).
+**Status:** Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 planning is complete and implementation is beginning through scoped owner-specific tickets. See [PLANNING.md](PLANNING.md), [STATUS.md](STATUS.md), and the [Phase 2 ticket register](docs/roadmap.md#phase-2-ticket-register).
 
 ---
 

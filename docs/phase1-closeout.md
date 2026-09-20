@@ -2,9 +2,7 @@
 
 ## Decision requested
 
-Govenor/Team Lead: **Do you grant Phase 1 sign-off and approve opening the Phase 2 implementation gate?**
-
-Until that answer is explicit, Phase 2 remains gated and no Phase 2 issue may move to `status:in-progress`.
+Govenor/Team Lead granted Phase 1 sign-off in the approved [PR #48](https://github.com/thato899/perfpilot/pull/48), opening the Phase 2 implementation gate. The eight Phase 2 issues remain individually scoped and `status:todo` until their owners actually begin work.
 
 ## Implementation status
 
@@ -61,5 +59,5 @@ merge, and its stale remote branch was deleted.
 Issues #32–#39 remain open with `phase-2` and `status:todo`. Their dependency
 order is documented in [PLANNING.md](../PLANNING.md) and each issue defines
 scope, contracts, impacts, security, failure behavior, tests, acceptance, and
-Definition of Done. The first dependency-ready issues after sign-off are #32
-and #33.
+Definition of Done. The first Wave 1 starts are #32, #33, #35 architecture/
+state work, and #34 persistence/API groundwork.

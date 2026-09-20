@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-17):** Phase 0 is complete. Phase 1 foundations are on `main`, including the AI provider gateway, metrics/load-engineer core, Postgres schema/API, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner image. Remaining Phase 1 work is real Orchestrator/specialist integration and the real API/dashboard/reporting path. **Hard completion deadline: 2026-09-30.**
+> **Current status (2026-09-20):** Phase 1 implementation and real backend/browser E2E are complete. Govenor/Team Lead granted sign-off in PR #48. The exact DB-pool reference demo was not reproduced. Phase 2 planning and ownership are complete; implementation remains ticket-scoped and starts only through the dependency waves below.
 
 ## Phase 0 — this commit
 
@@ -19,22 +19,22 @@ Definition of done for Phase 1: the [demo scenario](demo-scenario.md) runs for r
 
 ## Phase 2 — investigation loop robustness
 
-Phase 2 is fully gated on Phase 1 completion. No Phase 2 implementation starts until the Phase 1 demo scenario has run once end to end with real agent wiring, k6, Celery, Postgres, API, and dashboard, and Govenor records the sign-off in `STATUS.md`.
+Phase 2 is authorized after the Phase 1 sign-off recorded in `STATUS.md`. All eight tickets remain individually `status:todo` until their owners actually begin work. No ticket is considered complete until its own Definition of Done is met and its PR is merged and verified.
 
 ### Phase 2 ticket register
 
 | ID | Owner | Deliverable | Depends on |
 |---|---|---|---|
-| P2-API-1 ([#34](https://github.com/thato899/perfpilot/issues/34)) | Kamo | Persisted historical baselines and deterministic baseline comparison contract/API | Phase 1 sign-off; P2-METRICS-1 |
-| P2-API-2 ([#35](https://github.com/thato899/perfpilot/issues/35)) | Kamo | Robust multi-hypothesis investigation state, experiment budget, and loop API | Phase 1 sign-off; P2-EVAL-1; P2-RUNNER-1 |
+| P2-API-1 ([#34](https://github.com/thato899/perfpilot/issues/34)) | Kamogelo | Persisted historical baselines and deterministic baseline comparison contract/API | #32 stable; Phase 1 sign-off |
+| P2-API-2 ([#35](https://github.com/thato899/perfpilot/issues/35)) | Thato | Robust multi-hypothesis investigation state, experiment budget, and loop API | Phase 1 sign-off; #33 semantics where applicable |
 | P2-METRICS-1 ([#32](https://github.com/thato899/perfpilot/issues/32)) | Govenor | Deterministic baseline/experiment comparison metrics and regression calculations | Phase 1 sign-off |
 | P2-RUNNER-1 ([#36](https://github.com/thato899/perfpilot/issues/36)) | Govenor | Safe repeatable execution of approved follow-up experiments with real k6 results | Phase 1 sign-off; P2-API-2 contract |
 | P2-EVAL-1 ([#33](https://github.com/thato899/perfpilot/issues/33)) | Thatayaone | Agent evaluation suite for structured output, evidence grounding, and hallucination resistance | Phase 1 sign-off |
-| P2-UI-1 ([#37](https://github.com/thato899/perfpilot/issues/37)) | Thato | Investigation timeline and run-state visualization | Phase 1 sign-off; P2-API-2 |
-| P2-UI-2 ([#38](https://github.com/thato899/perfpilot/issues/38)) | Thato | Live findings/hypotheses panel with evidence and confidence states | Phase 1 sign-off; P2-API-2; P2-EVAL-1 |
+| P2-UI-1 ([#37](https://github.com/thato899/perfpilot/issues/37)) | Kamogelo | Investigation timeline and run-state visualization | #35 stable timeline/state API |
+| P2-UI-2 ([#38](https://github.com/thato899/perfpilot/issues/38)) | Thato | Live findings/hypotheses panel with evidence and confidence states | #35; relevant #33 semantics |
 | P2-UI-3 ([#39](https://github.com/thato899/perfpilot/issues/39)) | Thato | Side-by-side baseline/experiment comparison and report integration | Phase 1 sign-off; P2-API-1; P2-METRICS-1 |
 
-GitHub issues are the execution source of truth. The eight tickets intentionally allocate 3/8 to Thato, 2/8 to Kamo, 2/8 to Govenor, and 1/8 to Thatayaone: approximately 35% / 25% / 25% / 15% by planned workload.
+GitHub issues are the execution source of truth. The authoritative allocation is Thato: #35/#38/#39; Kamogelo: #34/#37; Govenor: #32/#36; Thatayaone: #33. See [PLANNING.md](../PLANNING.md) for the dependency waves and handoff contracts.
 
 ## Phase 3+ — deferred by design (not oversights)
 
