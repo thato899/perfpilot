@@ -17,6 +17,7 @@ PerfPilot's core function — generating real load against a real application �
 
 - `MAX_VIRTUAL_USERS` and `MAX_TEST_DURATION_SECONDS` (`.env.example`) are enforced by the Load Engineer at execution time. A `TestPlan` requesting more is clamped, not silently honored and not silently rejected — the run proceeds at the ceiling and is flagged `clamped` in its result (see [load-engineer.md](../agents/load-engineer.md#output-schema)).
 - `MAX_EXPERIMENTS_PER_INVESTIGATION` bounds how many follow-up load tests a single investigation can trigger on its own initiative, so a mis-calibrated confidence loop can't keep generating load indefinitely (see [orchestrator.md](../agents/orchestrator.md#continuation-policy)).
+- The continuation budget is enforced by deterministic server-side code; an AI response cannot raise the VU ceiling, duration ceiling, or experiment budget, and the system does not permit uncontrolled recursive load execution.
 - `POST /api/investigations/{id}/experiments` is a human-in-the-loop confirmation point: the Orchestrator/Investigator can *recommend* an experiment, but nothing generates additional load until that recommendation is explicitly approved (a human today; potentially a configurable auto-approve policy later, documented as a future decision, not a default).
 
 ## Sandboxing
@@ -28,6 +29,7 @@ PerfPilot's core function — generating real load against a real application �
 
 - Never log: API keys, database credentials, AI provider keys, the API auth token, or any target application credential.
 - All secrets are supplied via environment variables (`.env`, git-ignored — see `.env.example` for the documented set) and are never embedded in a k6 script, a stored `TestPlan`, or a prompt sent to an AI provider. A target's auth is referenced by a stored credential ID in `LoadExecutionRequest` (see [load-engineer.md](../agents/load-engineer.md#input-schema)), never inlined as plaintext in agent input/output that gets persisted or logged.
+- `API_AUTH_SECRET` is server-only. The Next.js proxy adds it when forwarding to FastAPI; browser JavaScript receives no privileged API secret and no `NEXT_PUBLIC_*` copy of it.
 - `AIExecution` records (the audit trail, see [database design](../database/database-design.md#aiexecution)) store references to request/response payloads, not raw secrets — anything redacted before being sent to a provider must also be redacted in what gets persisted for audit.
 
 ## Redaction

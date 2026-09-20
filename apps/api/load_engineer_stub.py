@@ -1,17 +1,14 @@
-"""Canned k6 execution wrapper, standing in for agents/load-engineer.
+"""Deterministic test/development double for the real Load Engineer.
 
-Issue #13 wires Celery so that Developer 2/Govenor's execution wrapper can
-run as a background job instead of inline. The wrapper itself is his
-(CODEOWNERS: agents/load-engineer/), and it doesn't exist yet — so this
-stands in, behind the same kind of seam the Orchestrator uses.
+Production uses ``apps.api.load_engineer.K6LoadEngineer`` and the pinned k6
+runtime. This explicit double remains for contract tests that must not launch
+load; it is never selected by the default production configuration.
 
 What it does NOT fake is the safety behaviour. security-model.md puts the
 ceiling enforcement *at execution time*, in the Load Engineer, and
 load-engineer.md requires the allow-list to be re-checked immediately
-before invoking k6. Both are implemented here for real, because they're the
-part that must not quietly go missing when the stub is swapped out — the
-replacement has to keep them, and the tests that cover them should keep
-passing unchanged.
+before invoking k6. Both are implemented here too, so tests retain the same
+safety contract as production.
 
 Metric values mirror docs/demo-scenario.md so a dashboard driving this
 shows the numbers the demo narrative describes.

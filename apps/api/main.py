@@ -6,8 +6,8 @@ handlers that give every failure the contract's documented envelope.
 The HTTP layer owns request/response validation, auth and persistence. It
 does not own what happens *inside* a planning or continuation call beyond
 invoking the Orchestrator and storing what comes back — that reasoning is
-Developer 1/Thatayaone's (api-contract.md#ownership-note). Today the
-Orchestrator is a stub; see apps/api/orchestrator_stub.py.
+Developer 1/Thatayaone's (api-contract.md#ownership-note). Production uses the
+real Orchestrator; the stub remains an explicit test double.
 """
 
 from __future__ import annotations

@@ -65,7 +65,7 @@ Solid arrows are data-flow dependencies (A's output is B's input); dashed arrows
 | Thato (Reporting Agent) | Thatayaone (Orchestrator) | The assembled `InvestigationState` — the one agent allowed the full state | No — build against a fixture `InvestigationState` first |
 | Thato (Reporting Agent) | Govenor (`packages/metrics`) | Capacity estimate and regression % — computed once, never recomputed by the agent | No — same fixture covers it |
 | Kamogelo (`apps/api`) | Thatayaone (Orchestrator) | Every domain decision — the API calls it and persists what comes back | No — stub the Orchestrator's response shape |
-| Thato (`apps/web`) | Kamogelo (`apps/api`) | Everything the dashboard shows, including live `TestRun`/`Metric` views | No — build against a mocked API |
+| Thato (`apps/web`) | Kamogelo (`apps/api`) | Everything the dashboard shows, including live `TestRun`/`Metric` views | Fixture API remains a test seam; production consumes the real API |
 | Everyone (every agent) | Thatayaone (`packages/ai`) | `AIService` — the only sanctioned path to an LLM call, per [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md) | **Yes, at the code level** — it's a required import, not a fixture-able boundary. `packages/ai` should be the first thing Thatayaone ships. |
 | Everyone (every schema consumer) | Kamogelo (`packages/schemas`, canonical file location) | The file lives here, but sign-off on an *agent's own* input/output schema shape comes from that agent's owner, not automatically from Kamogelo — see [Shared / jointly-owned paths](#shared--jointly-owned-paths) below | Contract-change only |
 | Govenor ↔ Kamogelo | each other (`infrastructure/docker/`) | Govenor owns the `k6-runner` container; Kamogelo owns the overall `docker-compose.yml` wiring it into | Mutual — flag changes before merging |
@@ -112,7 +112,7 @@ Once this Phase 0 documentation is agreed:
 - Developer 3/Kamogelo can build every `apps/api` endpoint against `packages/schemas` with the Orchestrator stubbed to return canned responses matching its documented output schema.
 - Developer 1/Thatayaone can build and test each agent in isolation against its own input/output schema, using fixture inputs, without a working API or frontend.
 - Developer 2/Govenor can build k6 generation and the metrics pipeline against a fixture `TestPlan` and recorded k6 output, without waiting on the Test Planner or Investigator to exist.
-- Developer 4/Thato can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads, and build the Reporting Agent against fixture `InvestigationState` input, without waiting on a real investigation ever having run.
+- Developer 4/Thato can test the dashboard against fixture `InvestigationState`/`Report` payloads, while the verified production path consumes the real API and persisted report; the Reporting Agent also retains fixture inputs for deterministic tests.
 
 This is the entire point of freezing `packages/schemas` and `docs/agents/*.md` before implementation starts — see [CONTRIBUTING.md](../../CONTRIBUTING.md#before-you-write-code).
 
