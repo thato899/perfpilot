@@ -1,6 +1,5 @@
 import type { InvestigationState, TestRun } from "@perfpilot/schemas/types";
 
-import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { InvestigationStatusBadge } from "@/components/dashboard/status-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -47,44 +46,6 @@ export function InvestigationProgress({
             No test run is linked to this investigation yet. Progress is reported only from the
             backend state; no client-side completion is fabricated.
           </p>
-        )}
-
-        {investigation.findings.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">Findings and hypotheses</h3>
-            {investigation.findings.map((finding) => {
-              const hypotheses = investigation.hypotheses.filter(
-                (hypothesis) => hypothesis.findingId === finding.id,
-              );
-              return (
-                <div key={finding.id} className="rounded-md border p-3 text-sm">
-                  <div className="mb-1 flex items-center gap-2">
-                    <SeverityBadge severity={finding.severity} />
-                    <span className="font-medium">{finding.summary}</span>
-                  </div>
-                  {finding.observations.map((observation) => (
-                    <p key={observation.id} className="text-muted-foreground">
-                      {observation.statement}{" "}
-                      <span className="text-xs">({observation.metricRef})</span>
-                    </p>
-                  ))}
-                  {hypotheses.map((hypothesis) => (
-                    <div key={hypothesis.id} className="mt-2 border-t pt-2">
-                      <p className="text-muted-foreground">
-                        Hypothesis: {hypothesis.statement} (
-                        {Math.round(hypothesis.confidence * 100)}% confidence, {hypothesis.status})
-                      </p>
-                      {hypothesis.evidence.map((evidence) => (
-                        <p key={evidence.sourceRef} className="text-xs text-muted-foreground">
-                          Evidence: {evidence.statement} ({evidence.sourceRef})
-                        </p>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
         )}
 
         <div className="flex flex-col gap-2">
