@@ -13,9 +13,22 @@ This document covers *code* ownership. For the non-coding process roles (Team Le
 | **Developer 3/Kamogelo — Backend / Data** | `apps/api/`, database migrations, `packages/schemas/` | FastAPI endpoints; auth; persistence; background job wiring (Celery); owns the canonical schema definitions everyone else builds against |
 | **Developer 4/Thato — Frontend / Reporting** | `apps/web/`, `agents/reporting/` | Dashboard; charts; live test/investigation progress views; the Reporting Agent (report synthesis is presentation-adjacent, and pairs naturally with the person building the report's UI) |
 
+## Phase 2 ownership
+
+| Owner | GitHub | Tickets | Primary area |
+|---|---|---|---|
+| Thato | `thato899` | #35, #38, #39 | investigation state and frontend integration |
+| Kamogelo | `Kamogelo-Skhosana` | #34, #37 | data/API and timeline integration |
+| Govenor | `malumzz` | #32, #36 | deterministic metrics and safe k6 execution |
+| Thatayaone | `Thatayaone910` | #33 | bounded agent evaluation |
+
+All Phase 2 issues are individually assigned, labeled `phase-2` and
+`status:todo`, and implementation-ready. Assignment does not itself change a
+ticket to `status:in-progress`.
+
 ## Who depends on whom
 
-Ownership tells you which files are yours. It doesn't tell you whose work blocks yours, or whose contract you're consuming. This section makes that explicit — most of these dependencies are already "soft" (buildable against a fixture or a stub, per [roadmap.md](../roadmap.md#phase-1--thin-vertical-slice)), but you still need to know whose schema you're building against so you know who to ask when it needs to change.
+Ownership tells you which files are yours. It doesn't tell you whose work blocks yours, or whose contract you're consuming. This section makes that explicit — many dependencies are buildable against a fixture or an explicit stub, but final integration must wait for the named upstream contract.
 
 ```mermaid
 graph LR
@@ -66,12 +79,23 @@ Solid arrows are data-flow dependencies (A's output is B's input); dashed arrows
 | Thato (Reporting Agent) | Govenor (`packages/metrics`) | Capacity estimate and regression % — computed once, never recomputed by the agent | No — same fixture covers it |
 | Kamogelo (`apps/api`) | Thatayaone (Orchestrator) | Every domain decision — the API calls it and persists what comes back | No — stub the Orchestrator's response shape |
 | Thato (`apps/web`) | Kamogelo (`apps/api`) | Everything the dashboard shows, including live `TestRun`/`Metric` views | Fixture API remains a test seam; production consumes the real API |
-| Everyone (every agent) | Thatayaone (`packages/ai`) | `AIService` — the only sanctioned path to an LLM call, per [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md) | **Yes, at the code level** — it's a required import, not a fixture-able boundary. `packages/ai` should be the first thing Thatayaone ships. |
+| Everyone (every agent) | Thatayaone (`packages/ai`) | `AIService` — the only sanctioned path to an LLM call, per [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md) | Phase 1 contract is merged; changes require affected-owner review |
 | Everyone (every schema consumer) | Kamogelo (`packages/schemas`, canonical file location) | The file lives here, but sign-off on an *agent's own* input/output schema shape comes from that agent's owner, not automatically from Kamogelo — see [Shared / jointly-owned paths](#shared--jointly-owned-paths) below | Contract-change only |
 | Govenor ↔ Kamogelo | each other (`infrastructure/docker/`) | Govenor owns the `k6-runner` container; Kamogelo owns the overall `docker-compose.yml` wiring it into | Mutual — flag changes before merging |
 | Govenor ↔ Thato | each other (no owner yet — [open question](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1)) | Whether `Metric` needs interval/time-bucketed rows for the dashboard's live progress view, or summary-at-completion is enough | Settle early — a wrong guess here means one of you reworks a shape mid-Phase-1 |
 
-If one of these turns from a soft, fixture-able dependency into something actually blocking you, that's not a silent problem — see [coding-standards.md §5](coding-standards.md#5-note-it-when-something-is-waiting-on-your-code) for how to flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code. The same rule applies to Phase 2: all eight Phase 2 issues are gated on Phase 1 sign-off, and their dependency order is recorded in [roadmap.md](../roadmap.md#phase-2-ticket-register).
+If one of these turns from a soft, fixture-able dependency into something actually blocking you, flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code. Phase 2 is authorized, but each ticket remains `status:todo` until its owner starts it; the dependency order is recorded in [roadmap.md](../roadmap.md#phase-2-ticket-register).
+
+### Phase 2 handoff contracts
+
+- #32 → #34/#39: typed comparison schema, units, precision, sign semantics, and unavailable/incompatible behavior.
+- #35 → #36/#37/#38: investigation event schema, hypothesis/experiment identity, approval, budget, ordering, idempotency, and terminal states.
+- #34 → #39: baseline identity, retrieval, comparison response, and error envelopes.
+- #33 → #35/#38: grounded versus unsupported interpretation, evidence references, confidence constraints, and hostile-target-data cases.
+
+Shared schemas, database models, and shared TypeScript contracts require a
+contract-change note, consumer-impact statement, backward-compatibility note,
+and review from an affected owner.
 
 ### A gap we found and closed during architecture review
 

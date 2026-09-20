@@ -4,62 +4,49 @@
 
 ## Current phase
 
-**Phase 1 implementation and real E2E complete; Team Lead sign-off pending.**
+**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 planning complete; implementation not started.**
 
-- Implementation: complete.
-- Backend real E2E: verified.
-- Browser real E2E: verified.
-- Automated verification: passing.
+- Phase 1 implementation: complete.
+- Backend and browser E2E: verified.
 - Exact DB-pool reference demo: **not reproduced**.
-- Formal Govenor/Team Lead sign-off: pending.
-- Phase 2: **GATED**.
+- Phase 1 sign-off: granted by Govenor/Team Lead in PR #48.
+- Phase 2 gate: open for the scoped tickets below.
+- Phase 2 implementation: not started; all tickets remain `status:todo`.
 
-Do not begin Phase 2 or reopen Phase 1 feature work unless a real regression is found. Do not call formal sign-off complete until Govenor explicitly grants it.
+## Phase 2 ownership
 
-## Completed implementation
+| Owner | GitHub | Tickets | Primary area |
+|---|---|---|---|
+| Thato | `thato899` | #35, #38, #39 | investigation state and frontend integration |
+| Kamogelo | `Kamogelo-Skhosana` | #34, #37 | data/API and timeline integration |
+| Govenor | `malumzz` | #32, #36 | deterministic metrics and safe k6 execution |
+| Thatayaone | `Thatayaone910` | #33 | bounded agent evaluation |
 
-The Phase 1 implementation is on `main` through merged PRs #42, #43, #44, #45, #46, and #47, together with the earlier foundation PRs. Primary Phase 1 issues #1–#15 and #27 are closed. Issue #13 was reconciled from `status:todo` to `status:done` after confirming the real Celery evidence; #9 remains a resolved architecture question and is intentionally not assigned a lifecycle status.
+No subjective capability or tooling assessments belong in project documentation. Each owner is responsible for the tickets assigned above.
 
-PR #41 (`feat: add deterministic orchestrator policy`) was closed without merge. PRs #42 and #45 superseded its Phase 1 lifecycle work. Its remaining top-finding/recommended-experiment details are future Phase 2 behavior documented against #35/#36; the stale branch was removed.
+## Phase 1 record
 
-## Verified real E2E
+Merged implementation PRs: #42, #43, #44, #45, #46, and #47, plus earlier foundation PRs. Primary Phase 1 issues #1–#15 and #27 are closed. Issue #13 is `status:done`; #9 is a resolved architecture question without a lifecycle status.
 
-The verified healthy run traversed:
+The verified healthy E2E run used FastAPI, PostgreSQL, Redis, Celery, pinned k6 v0.57.0, deterministic metrics, Investigator, persisted Finding/Report, and the Next.js browser path. Evidence remains in [docs/phase1-closeout.md](docs/phase1-closeout.md). Do not describe it as the exact DB-pool degradation demo.
 
-`FastAPI → PostgreSQL → Redis → Celery → k6 v0.57.0 → packages/metrics → Investigator → persisted Finding → persisted Report`
+## Phase 2 dependency waves
 
-The verified browser run traversed:
+```text
+Wave 1: #32, #33, #35 architecture/state work, #34 persistence/API groundwork
+Wave 2: #36 after #32/#35; #37 after #35; #38 after #35 and relevant #33 semantics
+Wave 3: #39 after #32/#34 and any required stable #35 run identity
+```
 
-`Browser → Next proxy → FastAPI → real Investigation → real TestRun → real Report → rendered UI`
+Handoff contracts are documented in [PLANNING.md](PLANNING.md), [docs/roadmap.md](docs/roadmap.md), and the issue bodies:
 
-Evidence:
+- #32 → #34/#39: comparison schema, units, sign semantics, and unavailable/incompatible behavior.
+- #35 → #36/#37/#38: event schema, hypothesis/experiment identity, approval, budget, ordering, and terminal states.
+- #34 → #39: baseline identity, retrieval, comparison response, and error envelopes.
+- #33 → #35/#38: grounded/unsupported interpretation, evidence references, and confidence constraints.
 
-- Investigation: `ecc197c8-ac5b-41d4-9c96-b61a2186d669`
-- TestRun: `9585061e-0390-4ed1-9068-c8a8c5804efc`
-- throughput: `633.2573633816329 req/s`
-- p95: `2.0225256 ms`
-- p99: `2.5756977299999995 ms`
-- error rate: `0`
-- capacity: `1`
+Avoid dependency cycles and mega-PRs. Shared schema/database changes require affected-owner review and a backward-compatibility statement.
 
-This is a **verified healthy E2E run**, not the documented DB-pool degradation demo.
+## Exact next action
 
-## Phase 2 gate
-
-Issues #32–#39 remain open with labels `phase-2` and `status:todo`. They are **GATED BY PHASE 1 SIGN-OFF**. The dependency order is:
-
-`#32 → #34 → #39`
-
-`#32 → #36 → (#37, #38)`
-
-`#33 → #35 → (#36, #37, #38)`
-
-`#34 + stable contracts → #39`
-
-The first dependency-ready issues after explicit sign-off are #32 and #33. No Phase 2 issue should move to `status:in-progress` before that decision.
-
-## Decision requested
-
-Govenor/Team Lead: **Do you grant Phase 1 sign-off and approve opening the Phase 2 implementation gate?**
-
-Until that answer is explicit, the exact next action is to review this closeout PR and record the sign-off decision.
+Begin only the owner-specific Phase 2 ticket that its dependency contracts permit. Recommended Wave 1 starts are #32, #33, #35 architecture/state work, and #34 persistence/API groundwork. Keep each implementation in its own branch and PR.

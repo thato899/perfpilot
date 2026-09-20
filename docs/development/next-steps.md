@@ -1,72 +1,58 @@
-# Phase 1 handoff
+# Phase 2 next steps
 
-Phase 1 implementation and real E2E are complete; Team Lead sign-off is
-pending. The board remains the source of truth for issue state. Do not start
-Phase 2 until Govenor explicitly grants sign-off.
+Phase 1 implementation and real E2E are complete, and Govenor/Team Lead
+granted sign-off in PR #48. The exact DB-pool reference demo remains **not
+reproduced**. Phase 2 planning is complete; implementation remains scoped to
+the eight existing issues.
 
-## Completed Phase 1 path
+## Ownership
 
-The merged implementation covers:
+| Owner | GitHub | Tickets |
+|---|---|---|
+| Thato | `thato899` | #35, #38, #39 |
+| Kamogelo | `Kamogelo-Skhosana` | #34, #37 |
+| Govenor | `malumzz` | #32, #36 |
+| Thatayaone | `Thatayaone910` | #33 |
 
-- AI provider abstraction and shared structured-output validation/retry.
-- Deterministic Orchestrator, Test Planner, Performance Investigator, and Reporting boundaries.
-- FastAPI, PostgreSQL, Redis, Celery, real k6 v0.57.0, and persistence.
-- Next.js same-origin proxy and browser lifecycle from a real Investigation to a persisted Report.
-- Deterministic `packages/metrics` calculations; AI interprets validated values but does not calculate them.
+All eight issues remain open with `phase-2` and `status:todo` until the owner
+actually starts work. Assignment alone does not mean implementation began.
 
-Merged PRs: #42, #43, #44, #45, #46, and #47, plus the earlier foundation PRs. Primary Phase 1 issues #1–#15 and #27 are closed. Issue #13 is `status:done`. Issue #9 is a resolved architecture question and intentionally has no lifecycle status.
+## Dependency waves
 
-## Evidence
+### Wave 1
 
-Verified healthy browser run:
+- Govenor: #32, deterministic comparison metrics.
+- Thatayaone: #33, bounded offline agent evaluation.
+- Thato: #35 architecture/state groundwork.
+- Kamogelo: #34 persistence/API groundwork.
 
-- Investigation `ecc197c8-ac5b-41d4-9c96-b61a2186d669`
-- TestRun `9585061e-0390-4ed1-9068-c8a8c5804efc`
-- k6 `v0.57.0`
-- throughput `633.2573633816329 req/s`
-- p95 `2.0225256 ms`; p99 `2.5756977299999995 ms`
-- error rate `0`; capacity `1`
+### Wave 2
 
-The exact DB-pool degradation reference demo was not reproduced.
+- Govenor: #36 after #32 and #35 contracts stabilize.
+- Kamogelo: #37 after the #35 timeline/state API stabilizes.
+- Thato: #38 after the #35 contract and relevant #33 grounding semantics stabilize.
 
-## Local verification
+### Wave 3
 
-From the repository root:
+- Thato: #39 after #32/#34 comparison contracts stabilize, plus experiment/run identity if supplied by #35.
 
-```bash
-pytest
-ruff check .
-black --check .
-pnpm --filter web test -- --run
-pnpm --filter web exec tsc --noEmit
-pnpm --filter web lint
-pnpm format:check
-pnpm --filter web build
-git diff --check
-```
+Preparatory work may proceed in parallel, but each owner must keep the final
+integration boundary explicit and avoid cycles or mega-PRs.
 
-For the local stack, follow [local-development.md](local-development.md).
-The controlled target must be explicitly authorized and included in
-`ALLOWED_TARGET_HOSTS`.
+## Handoff contracts
 
-## Phase 2 handoff
+- #32 → #34/#39: comparison schema, units, sign semantics, metric coverage, and unavailable/incompatible behavior.
+- #35 → #36/#37/#38: event/state schema, hypothesis and experiment identity, approval, budget, ordering, idempotency, and terminal states.
+- #34 → #39: baseline identity, retrieval, comparison response, and error envelopes.
+- #33 → #35/#38: grounded versus unsupported interpretation, evidence references, confidence constraints, and hostile target-data cases.
 
-Issues #32–#39 remain open, labeled `phase-2` and `status:todo`, and are gated
-by Phase 1 sign-off. The dependency order is:
+## Ready and done
 
-```text
-#32 → #34 → #39
-#32 → #36
-#33 → #35 → #36
-#35 → #37, #38
-#34 + stable contracts → #39
-```
+A ticket is ready when its owner/assignee, dependencies, blocks, preconditions,
+scope, exclusions, contracts, security, failure behavior, tests, acceptance
+criteria, Definition of Done, and PR boundary are explicit. A ticket is done
+only after applicable implementation/tests, documentation, CI, human review,
+merge to `main`, and post-merge verification.
 
-The first dependency-ready issues after sign-off are #32 and #33. Keep all
-other Phase 2 work gated until its dependencies and contracts are stable.
-
-## Closeout next action
-
-Review the Phase 1 closeout PR and answer:
-
-> Do you grant Phase 1 sign-off and approve opening the Phase 2 implementation gate?
+See the issue bodies for the detailed contract. Do not create replacement
+tickets or start work outside the assigned owner-specific branch and PR.
