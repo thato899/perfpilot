@@ -1,100 +1,51 @@
-# PLANNING.md
+# PerfPilot planning
 
-The stable plan: phases, timeline, Definition of Done, where the detail actually lives. This changes rarely — for what's happening *right now*, read [STATUS.md](STATUS.md) instead. For task-level scope, read [docs/roadmap.md](docs/roadmap.md) and [docs/development/next-steps.md](docs/development/next-steps.md); this doc doesn't repeat their content, it dates it and points at it.
+`STATUS.md` is the live state. This file records the stable phase handoff and the dependency order for future work.
 
-**If you are an AI assistant opening this repo for the first time this session:** read this file, then [STATUS.md](STATUS.md), then the [issue board](https://github.com/thato899/perfpilot/issues), in that order, before touching code. That's the whole state of the project.
+## Current completion state
 
----
-
-## Where the authoritative detail lives
-
-| Question | Answer lives in |
+| Area | State |
 |---|---|
-| What are we building, and why | [README.md](README.md) |
-| What's in Phase 1 vs. Phase 2 | [docs/roadmap.md](docs/roadmap.md) |
-| Who owns what code | [docs/development/team-workflow.md](docs/development/team-workflow.md#ownership-map) |
-| Who owns what *process* (Team Lead, PM, Reviewer, Reporter) | [docs/development/team-roles.md](docs/development/team-roles.md) |
-| Per-developer task checklist | [docs/development/next-steps.md](docs/development/next-steps.md) |
-| How to claim a task, branch, PR, review | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Testing expectations per layer | [docs/testing/testing-strategy.md](docs/testing/testing-strategy.md) |
-| What's happening *right now* | [STATUS.md](STATUS.md) |
+| Phase 0 | COMPLETE |
+| Phase 1 foundations | COMPLETE |
+| Phase 1 backend integration | COMPLETE |
+| Phase 1 runtime E2E | COMPLETE |
+| Phase 1 browser E2E | COMPLETE |
+| Exact DB-pool reference scenario | NOT REPRODUCED |
+| Phase 1 formal sign-off | PENDING Govenor/Team Lead approval |
+| Phase 2 | GATED BY PHASE 1 SIGN-OFF |
 
-## Timeline
+Phase 1 implementation and real E2E are complete. The verified run used the repo-owned FastAPI, PostgreSQL, Redis, Celery, pinned k6 v0.57.0, deterministic metrics, Investigator, persisted Finding/Report, and Next.js browser path. It was a healthy run; it must not be described as the DB-pool degradation reference scenario.
 
-Current checkpoint: **2026-09-16**. Hard completion deadline: **2026-09-30**. No Phase 1 feature work should be carried into October.
+## Phase 1 implementation record
 
-| Date | Milestone | Tracking |
-|---|---|---|
-| 2026-09-16 | Checkpoint 1 — **substantially complete**: local stack, AI gateway, k6 script-generation/metrics prototypes, dashboard, Postgres migrations, and API endpoints are on `main`. Remaining: settle metric granularity and complete integration seams. | #1, #6, #9, #10, #11, #12, #14, #15 |
-| 2026-09-23 | Integration checkpoint — Orchestrator, Test Planner, Investigator, Celery, k6 execution, and the real API/dashboard path are working together in a local run. | #2, #3, #4, #7, #9, #13, #27 |
-| **2026-09-30 — hard deadline** | **Full Phase 1 completion**: the [demo scenario](docs/demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. | #2, #3, #4, #5, #9, #13, #27 |
+Merged implementation PRs: #42, #43, #44, #45, #46, and #47, plus the earlier foundation PRs. Primary issues #1–#15 and #27 are closed. Issue #13 is `status:done`; #9 is a resolved architecture question without a lifecycle status. PR #41 was closed without merge because its Phase 1 work was superseded and its remaining policy details belong to Phase 2 investigation-loop work.
 
-Issue numbers above are a planning aid; the [issue board](https://github.com/thato899/perfpilot/issues) is authoritative for task status. Update this table when scope or ownership changes.
+## Phase 2 register and dependency graph
 
-## Ownership and next actions
+Issues #32–#39 remain open, labeled `phase-2` and `status:todo`, until formal Phase 1 sign-off. They must be implementation-ready before work begins and must retain explicit scope boundaries, contracts, persistence/API/UI impacts, security and failure behavior, deterministic-vs-AI ownership, tests, documentation, compatibility, acceptance criteria, Definition of Done, and expected PR scope.
 
-The four developers own independent surfaces, but integration is shared. Each owner should keep their section in [STATUS.md](STATUS.md) current, claim an issue before starting, and request review before changing shared contracts or root configuration.
+Dependency order:
 
-| Developer | Owns | Next required outcome |
-|---|---|---|
-| **Thatayaone — AI / Orchestration** | `packages/ai/`, `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/` | AI provider gateway is implemented on `main`. Next, finish the deterministic orchestrator state machine, fixture-valid Test Planner and Investigator outputs, and the seam Kamogelo's API can call by Sep 23. |
-| **Govenor — Performance Engine / Team Lead** | `packages/metrics/`, `agents/load-engineer/`, `infrastructure/docker/k6/` | Phase 1 metrics decision and pinned k6 runner are complete. Next, connect the validated runner to the real API/worker investigation flow and make the final Phase 1 readiness call by Sep 30. |
-| **Kamogelo — Backend / Data** | `apps/api/`, database migrations, canonical `packages/schemas/` ownership | Finish #13 Celery dispatch and connect the worker to the load-engineer wrapper by Sep 23; validate the API-to-orchestrator-to-worker path against Postgres by Sep 30. Approve or coordinate all schema changes. |
-| **Thato — Frontend / Reporting** | `apps/web/`, `agents/reporting/` | Complete issue #27: replace mocked runtime calls with the real API, connect report display to real output, preserve fixtures, and run the integrated demo by Sep 30. |
+```text
+#32 ──→ #34 ──→ #39
+ │
+ ├──→ #36
+ │      ↑
+ └──→ #35 ──→ #37
+             └→ #38
+```
 
-### Integration order
+More explicitly:
 
-1. Thatayaone publishes stable agent contracts and orchestrator calls.
-2. Govenor exposes the safe load-execution/metrics interface and k6 runner.
-3. Kamogelo dispatches queued runs through Celery and connects those interfaces in the API.
-4. Thato switches the dashboard from mock data to the API and verifies the report flow.
-5. Everyone runs the demo scenario, fixes integration defects, and signs off by the 2026-09-30 hard deadline.
+- #32 → #34, #36, #39
+- #33 → #35, #38
+- #35 → #36, #37, #38
+- #34 plus stable contracts → #39
+- Do not create a #35 ↔ #36 cycle.
 
-## Remaining ticket schedule
+After explicit sign-off, #32 and #33 may begin in parallel. #34/#35 wait for their foundations; #36 waits for #32 and #35; UI work follows the stabilized contracts.
 
-The existing role structure does not change. These are the open tickets and the time each owner has to deliver them. All work must be complete by **2026-09-30**.
+## Handoff rule
 
-| Window | Owner | Existing tickets | Required deliverable | Technology stack |
-|---|---|---|---|---|
-| Sep 16–18 | Govenor + Thato | #9 | **Complete:** summary-at-completion is sufficient for Phase 1; interval metrics are deferred to Phase 2. | Python metrics models, Pydantic schemas, TypeScript dashboard types. |
-| Sep 16–23 | Thatayaone | #2, #3, #4, #5 | Implement the deterministic Orchestrator, schema-valid Test Planner and Investigator fixture flows, and validation coverage for all agent contracts. | Python agents, Pydantic contracts in `packages/schemas`, TypeScript/Python `AIService`, Gemini provider. |
-| Sep 16–23 | Govenor | #7 plus k6 runner follow-up | **Mostly complete:** safety execution and pinned runner are validated; remaining work is wiring the real API/worker path. | Python subprocess wrapper, k6, Docker, JSON metrics parsing, PostgreSQL-compatible result contracts. |
-| Sep 16–23 | Kamogelo | #13 | **Complete on `main`**: consume queued `TestRun` records, dispatch the load-engineer seam, persist progress/results, and expose failures through the API. Remaining integration is the real k6 runner and agent flow. | FastAPI, SQLAlchemy, Alembic/PostgreSQL, Celery, Redis, Docker. |
-| Sep 18–30 | Thato | #27 | Replace mocked runtime calls with the real API, connect real investigation/report output, preserve fixtures, and verify the dashboard flow end to end. | Next.js, TypeScript, React, Tailwind/shadcn/ui, Vitest/RTL, FastAPI JSON API. |
-| Sep 24–30 | Everyone | #2, #3, #4, #5, #9, #13, #27 | Integrate the full demo scenario, fix cross-surface defects, run CI and local Docker smoke tests, and obtain Team Lead sign-off. | Full stack: Next.js + TypeScript, Python/FastAPI, Pydantic, PostgreSQL, Celery/Redis, k6, Docker. |
-
-### Ticket ownership rule
-
-The issue board remains authoritative. Do not create replacement tickets for #2–#5, #9, #13, or #27. Owners should update their existing issue, keep status labels accurate, and link implementation PRs. A ticket is complete only when its acceptance behavior is demonstrated and the relevant tests/documentation are updated.
-
-## Definition of Done per phase
-
-- **Phase 0** — done. See [README.md's Phase 0 checklist](README.md#phase-0-definition-of-done), fully checked off.
-- **Phase 1** — the demo scenario runs end-to-end for real, once (see table above). Team Lead (Govenor) makes the final call on when it's actually done, not just individually checked off per owner — see [roadmap.md](docs/roadmap.md#phase-1--thin-vertical-slice) and [team-roles.md](docs/development/team-roles.md#team-lead--govenor).
-- **Phase 2** — planned and ticketed below the Phase 1 gate; no Phase 2 ticket may begin until Phase 1 is signed off against its end-to-end Definition of Done. See [roadmap.md](docs/roadmap.md#phase-2--investigation-loop-robustness).
-
-## Phase 2 work allocation and gate
-
-Phase 2 begins only after Phase 1 is complete: the demo scenario must run once from target creation through a real report, using the real Orchestrator/specialists, real k6 execution, Celery, Postgres, and the real dashboard/API path. Govenor, as Team Lead, records the sign-off in `STATUS.md` and closes the Phase 1 milestone before Phase 2 tickets move to `status:in-progress`.
-
-Phase 2 is distributed by ticket count and expected effort:
-
-| Owner | Tickets | Allocation target | Phase 2 tickets |
-|---|---:|---:|---|
-| Thato | 3 | ~35% | [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39) |
-| Kamo | 2 | 25% | [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35) |
-| Govenor | 2 | 25% | [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36) |
-| Thatayaone | 1 | ~15% | [#33](https://github.com/thato899/perfpilot/issues/33) |
-
-Every ticket includes an owner label, `phase-2`, `status:todo`, explicit dependencies, acceptance criteria, tests, and documentation updates. Shared-contract changes require Kamo's schema sign-off and a second review.
-
-## Process decisions on record
-
-Written down so a future session doesn't silently re-litigate them:
-
-- **No GitHub branch-protection rules on `main`.** Deliberate team call — this is a group project and the team preferred convention over a hard lock. Enforcement is: PR-based workflow documented in CONTRIBUTING.md, plus `.github/workflows/claim-check.yml` (informational, non-blocking).
-- **Claiming a task = self-assigning its GitHub issue.** `.github/workflows/issue-automation.yml` flips `status:todo` → `status:in-progress` automatically on assignment. See [CONTRIBUTING.md#claim-a-task-before-you-start](CONTRIBUTING.md#claim-a-task-before-you-start).
-- **One root `pyproject.toml`** configures Ruff/Black/pytest/mypy for the whole Python side of the monorepo, rather than one per package. Simpler while `apps/api`, `agents/*`, `packages/*` don't yet have divergent dependencies. Revisit once they do.
-- **`render.yaml` is a template, not an active deployment.** It's correct against `.env.example` and the planned service layout, but points at `apps/api`/`apps/web` code that doesn't exist yet. Kamogelo activates it (see the TODOs inside the file).
-- **CI's `audit` stage (dependency + secret scanning) is informational (non-blocking) for now** — nothing is deployed yet, so nothing is currently at stake beyond code hygiene. Revisit once `render.yaml` is actually activated.
-- **This PR itself lands as a branch → PR into `main`, not `develop`.** `CONTRIBUTING.md` and `team-workflow.md` describe a `main → develop → feature/*` model, but `develop` has never actually existed in this repo — every commit so far has gone straight to `main`. That's a pre-existing gap between documented process and actual practice, not something this PR resolves unilaterally. The team should decide, deliberately: stand up `develop` for real, or update those two docs to describe what's actually happening (PR-into-`main`). Until decided, treat `main` as the PR target.
+Do not start Phase 2 implementation, move Phase 2 tickets to `status:in-progress`, or claim formal completion on Govenor’s behalf. The next required action is human review of the Phase 1 closeout and an explicit sign-off decision.

@@ -1,9 +1,9 @@
 """Shared FastAPI dependencies: auth, database session, Orchestrator.
 
-The Orchestrator is injected here rather than imported directly by routers,
-so swapping the stub for Thatayaone's real implementation is a one-line
-change in this file and touches no endpoint code — the seam
-team-workflow.md#how-the-contracts-enable-parallel-work describes.
+The Orchestrator is injected here rather than imported directly by routers.
+Production resolves the real implementation while tests can install an
+explicit stub, preserving the seam described in
+team-workflow.md#how-the-contracts-enable-parallel-work.
 """
 
 from __future__ import annotations

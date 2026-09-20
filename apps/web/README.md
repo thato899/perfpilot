@@ -21,15 +21,14 @@ locally only to let the dashboard select them after a refresh. The cached
 records are not used as investigation or report data; those always come from
 FastAPI.
 
-## Current backend boundary
+## Verified backend boundary
 
-The merged backend currently exposes investigation creation and read/continue
-routes, but does not yet expose the initial plan/run-to-investigation link or a
-worker continuation trigger that can take a newly created investigation all
-the way to persisted Findings and Report data. The UI therefore polls the
-actual state, stops at terminal states, surfaces failures, and shows an
-explicit waiting message while that backend gap remains. It never advances a
-mock tick or falls back to fixture success data in production.
+The merged backend creates a real investigation, queues and executes a real
+TestRun through Celery/k6, persists Findings and a Report, and exposes the
+state consumed by the result page. The UI polls persisted state, handles
+planning/running/investigating/reporting transitions, stops at terminal states,
+and surfaces bounded API failures. It never advances a mock tick or falls back
+to fixture success data in production.
 
 ## Test and fixture separation
 

@@ -1,6 +1,6 @@
 # Local Development
 
-**Status:** partly live. `infrastructure/docker/docker-compose.yml` stands up the real `db`, `redis`, `web`, `api`, `worker`, and pinned `k6-runner` services. The API and worker contract paths are implemented; the remaining Phase 1 gap is connecting the real Orchestrator/specialists and runner into the complete investigation flow. See [Running the pieces](#running-the-pieces) for exactly what works now.
+**Status:** verified Phase 1 local stack. `infrastructure/docker/docker-compose.yml` stands up the real `db`, `redis`, `web`, `api`, `worker`, and pinned `k6-runner` services. The real Orchestrator/specialists, persistence, Celery execution, k6 metrics, and browser result path have been verified together against a controlled target. See [Running the pieces](#running-the-pieces).
 
 ## Prerequisites
 
@@ -75,10 +75,25 @@ Requires Docker Compose **v2.24+** (the compose file uses `env_file: required: f
 | Service | Status |
 |---|---|
 | `db`, `redis` | Real. Ports 5432/6379 are published, so Alembic and a host-run `uvicorn`/`celery` can reach them without entering a container. |
-| `web` | Real — `apps/web` runs against its mocked API. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
+| `web` | Real Next.js frontend using the same-origin proxy to FastAPI. Source is bind-mounted with `WATCHPACK_POLLING` set, so hot reload works through Docker Desktop's bind mounts. |
 | `api` | Real FastAPI service, including the Phase 1 contract endpoints. |
 | `worker` | Real Celery worker, registering `perfpilot.execute_test_run` and `perfpilot.ping`. |
 | `k6-runner` | Real pinned local image; useful for direct script validation and version inspection. |
+
+### Verified Phase 1 browser E2E
+
+The repo-owned stack was verified with a controlled authorized target using
+k6 `v0.57.0`. The browser visibly progressed from `Running` to `Complete`,
+rendered a real Finding and persisted Report, and matched API/DB metrics:
+
+- Investigation `ecc197c8-ac5b-41d4-9c96-b61a2186d669`
+- TestRun `9585061e-0390-4ed1-9068-c8a8c5804efc`
+- throughput `633.2573633816329 req/s`
+- p95 `2.0225256 ms`; p99 `2.5756977299999995 ms`
+- error rate `0`; capacity `1`
+
+This was a verified healthy run, not the exact DB-pool degradation reference
+demo. Do not present it as that scenario.
 
 Smoke-test the full backend path once it's up:
 

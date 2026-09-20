@@ -4,7 +4,7 @@
 
 The `AIService` provider abstraction every agent calls instead of an AI provider SDK directly (`GeminiProvider`, `DeepSeekProvider`, future providers). Structured-output generation + validation-retry lives here once, not duplicated per agent.
 
-This package is scaffolded with a working Gemini provider path and a shared `AIService`, matching the intended architecture described in [ADR-004](../../docs/decisions/ADR-004-ai-provider-abstraction.md).
+This package contains the working Gemini provider path and shared `AIService`, matching the architecture described in [ADR-004](../../docs/decisions/ADR-004-ai-provider-abstraction.md). Agents use its structured-output boundary; deterministic metrics and lifecycle decisions remain in code.
 
 ## Current shape
 

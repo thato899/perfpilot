@@ -49,7 +49,7 @@ PerfPilot is a modular monolith for the hackathon phase: one deployable backend,
 
 ## Layering rules
 
-1. **`apps/web` never talks to agents or k6 directly.** It only calls `apps/api` over the documented REST contract. This is the boundary that lets frontend work proceed against a mocked API before the backend is finished.
+1. **`apps/web` never talks to agents or k6 directly.** It only calls `apps/api` over the documented REST contract. The fixture API remains a test seam, while the verified Phase 1 production path uses the real API.
 2. **`apps/api` never contains agent reasoning.** It receives HTTP requests, validates them against `packages/schemas`, persists state, enqueues background jobs, and invokes the Orchestrator. It does not itself decide test strategy or interpret metrics.
 3. **Agents never call each other directly.** Every hand-off goes through the Orchestrator, which is the only component that reads and writes investigation state. This is what keeps the pipeline deterministic instead of becoming a swarm (see [ADR-002](../decisions/ADR-002-multi-agent-architecture.md)).
 4. **k6 is invoked, not reimplemented.** The Load Engineer agent generates a k6 script and hands it to a thin execution wrapper in `packages/metrics` / `infrastructure/docker` that runs the real `k6` binary and parses its output. No custom load-generation engine.

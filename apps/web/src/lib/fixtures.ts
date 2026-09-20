@@ -1,9 +1,8 @@
 /**
- * Canned demo data — the docs/demo-scenario.md walkthrough (DB connection
- * pool contention at ~750 concurrent users), used by lib/mock-api.ts until
- * a real apps/api exists (see docs/development/next-steps.md: "build the
- * dashboard against a mocked API returning fixture InvestigationState/Report
- * payloads").
+ * Canned demo data for dashboard tests — the docs/demo-scenario.md walkthrough
+ * (DB connection pool contention at ~750 concurrent users). Production uses
+ * the real FastAPI path; these values are intentionally isolated from
+ * production imports.
  *
  * The numbers here match agents/reporting/fixtures/investigation_states.py's
  * demo_scenario_request() on the Python side — same narrative, same

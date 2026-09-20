@@ -8,13 +8,17 @@ Full contract: [docs/agents/reporting-agent.md](../../docs/agents/reporting-agen
 
 ## Status
 
-Phase 1 first slice done (issue #15): `build_report()` produces a valid, contract-checked `Report` from a fixture `InvestigationState`. Live investigation wiring and AI-generated prose remain part of issue #27's integration work.
+Phase 1 is complete: `build_report()` produces a valid, contract-checked
+`Report` from the real persisted investigation state, and the API persists the
+result for the browser. The verified healthy E2E uses the deterministic report
+builder; the optional AI-generated prose seam remains schema-validated and is
+not required for numeric truth.
 
 - **`report_builder.py`** — `build_report(request: ReportRequest) -> ReportOutput`, plus `validate_report()`, a standalone check for the pass-through/grounding guardrails in reporting-agent.md's Failure states table (also run internally by `build_report` before it returns).
 - **`fixtures/investigation_states.py`** — `demo_scenario_request()` (the [demo scenario](../../docs/demo-scenario.md)'s DB-connection-pool-contention walkthrough, using the same numbers as reporting-agent.md's own illustrative example) and `healthy_run_request()` (the "no findings at all" case).
 - **`tests/test_report_builder.py`** — both fixtures produce a valid report; recommendations are gated on `HypothesisStatus.SUPPORTED` (bottleneck_analysis is not — it renders every hypothesis); a malformed input (hypothesis pointing at a missing finding) is rejected; tampering with a pass-through value or an unevidenced recommendation is caught by `validate_report`.
 
-## What's still fixture-only
+## Deterministic and optional AI paths
 
 Prose generation (`_executive_summary`, `_recommendation_statement`) is templated, not AI-generated:
 
@@ -24,7 +28,9 @@ Prose generation (`_executive_summary`, `_recommendation_statement`) is template
 # the shared structured-output boundary before persistence.
 ```
 
-Swapping that in once Thatayaone's `packages/ai` (issue #1) lands should not require touching the structural logic (grounding, ranking, pass-through) — those two functions are the only seam that changes.
+The deterministic builder is already the production-safe default. The optional
+AI seam can change prose without touching structural grounding, ranking, or
+numeric pass-through.
 
 ## A schema gap found while implementing this (flagged, not silently worked around)
 
@@ -32,7 +38,8 @@ Swapping that in once Thatayaone's `packages/ai` (issue #1) lands should not req
 
 Also noted in `reporting-agent.md`: `packages/schemas/typescript/types.ts`'s dashboard-facing `Report`/`CapacitySummary` types use different field names again (e.g. `estimatedSustainableUsers` vs. this agent's `sustainable_concurrency`) — a deliberate separate layer, not a second drift to reconcile here. Whoever builds `apps/api`'s `ReportOutput` → `entities.Report` → frontend `Report` mapping (issue #12) needs to know all three shapes name the same concepts differently on purpose.
 
-## Not yet done
+## Phase 2 boundary
 
-- Wiring to a real `InvestigationState` once the Orchestrator (issue #2) and Performance Investigator (issue #4) exist.
-- The AI-generated prose swap noted above.
+Historical comparisons, richer investigation-loop UI, and additional AI
+evaluation belong to the gated Phase 2 issues. They are not prerequisites for
+the verified Phase 1 report path.

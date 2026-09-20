@@ -1,77 +1,72 @@
-# Next Steps — Phase 1 Kickoff
+# Phase 1 handoff
 
-Phase 0 (documentation and contracts) is done — see the [Phase 0 definition of done](../../README.md#phase-0-definition-of-done) in the README, all checked off. This document is the practical "what do I do Monday morning" companion to [team-workflow.md](team-workflow.md) (ownership map, git flow) and [roadmap.md](../roadmap.md) (Phase 1 scope). Read those two first if you haven't — this doc doesn't repeat their content, it turns it into a checklist.
+Phase 1 implementation and real E2E are complete; Team Lead sign-off is
+pending. The board remains the source of truth for issue state. Do not start
+Phase 2 until Govenor explicitly grants sign-off.
 
-Every checklist item below is also tracked as an issue on the [task board](https://github.com/thato899/perfpilot/issues) (`Phase 1 — thin vertical slice` milestone), labeled by owner (`dev:thatayaone`/`dev:govenor`/`dev:kamogelo`/`dev:thato`) and status (`status:todo` → `status:in-progress` → `status:done`, or `status:blocked`). **The board is the live source of truth for status** — this file is the plan, the board is what's actually done. See [coding-standards.md](coding-standards.md) for how to use it and the rules for working across four different AI assistants on one codebase.
+## Completed Phase 1 path
 
-## Everyone, before writing code
+The merged implementation covers:
 
-1. Read [STATUS.md](../../STATUS.md) — what's already in progress, what's blocked, what's next. Update your section before you end your session, or the next one (yours or a teammate's) starts blind.
-2. Re-read [CONTRIBUTING.md](../../CONTRIBUTING.md#before-you-write-code) — in particular, don't invent a local data shape if it should live in `packages/schemas`.
-3. `cp .env.example .env` and fill in the keys you need (see [local-development.md](local-development.md#environment-setup)).
-4. Branch off `develop`, never off `main`: `feature/<short-description>` (see [team-workflow.md](team-workflow.md#git-workflow)).
-5. **Claim your task first** — self-assign its issue before starting (see [CONTRIBUTING.md#claim-a-task-before-you-start](../../CONTRIBUTING.md#claim-a-task-before-you-start)).
-6. Post in the team channel before touching a shared path (`packages/schemas/`, `packages/common/`, `docs/`, root config) — see [CONTRIBUTING.md](../../CONTRIBUTING.md#shared-paths--get-a-second-opinion-before-merging).
+- AI provider abstraction and shared structured-output validation/retry.
+- Deterministic Orchestrator, Test Planner, Performance Investigator, and Reporting boundaries.
+- FastAPI, PostgreSQL, Redis, Celery, real k6 v0.57.0, and persistence.
+- Next.js same-origin proxy and browser lifecycle from a real Investigation to a persisted Report.
+- Deterministic `packages/metrics` calculations; AI interprets validated values but does not calculate them.
 
-## Thatayaone — Developer 1 (AI / Orchestration)
+Merged PRs: #42, #43, #44, #45, #46, and #47, plus the earlier foundation PRs. Primary Phase 1 issues #1–#15 and #27 are closed. Issue #13 is `status:done`. Issue #9 is a resolved architecture question and intentionally has no lifecycle status.
 
-Owns: `agents/orchestrator/`, `agents/test-planner/`, `agents/performance-investigator/`, `packages/ai/`
+## Evidence
 
-- [x] Stand up `packages/ai` with one working provider (`GeminiProvider`) through `AIService`, including centralized structured-output validation and retry tests. Ticket #1 implementation is complete; focused PR cleanup and review remain.
-- [ ] Build the Orchestrator's deterministic continuation policy (state machine, not prompted) — see [orchestrator.md](../agents/orchestrator.md).
-- [ ] Test Planner: produce a valid `TestPlan` for the [demo scenario](../demo-scenario.md)'s inputs.
-- [ ] Performance Investigator: produce a valid `Finding` from **fixture** metrics first, then wire to real ones — see [performance-investigator.md](../agents/performance-investigator.md).
-- [ ] Structured-output validation for all four specialist agents' schemas against `packages/schemas`.
-- Unblocks Kamogelo: your agents can be stubbed with canned responses so Developer 3/Kamogelo doesn't wait on you — confirm the stub shape with them early.
+Verified healthy browser run:
 
-## Govenor — Developer 2 (Performance Engine)
+- Investigation `ecc197c8-ac5b-41d4-9c96-b61a2186d669`
+- TestRun `9585061e-0390-4ed1-9068-c8a8c5804efc`
+- k6 `v0.57.0`
+- throughput `633.2573633816329 req/s`
+- p95 `2.0225256 ms`; p99 `2.5756977299999995 ms`
+- error rate `0`; capacity `1`
 
-Owns: `agents/load-engineer/`, `packages/metrics/`, `infrastructure/docker/k6/`
+The exact DB-pool degradation reference demo was not reproduced.
 
-- [ ] k6 script generation for one journey type (start with whatever the [demo scenario](../demo-scenario.md) needs).
-- [ ] Execution wrapper with the safety ceiling enforced — see [load-engineer.md](../agents/load-engineer.md) and [security-model.md](../security/security-model.md).
-- [ ] `packages/metrics`: compute p50/p95/p99, error rate, threshold pass/fail, and regression % from **real** k6 JSON output (this is deterministic code, not an LLM call — see [system-architecture.md#ai-output-reliability](../architecture/system-architecture.md)).
-- [x] Open question settled with Thato: summary-at-completion is enough for the MVP; interval/time-bucketed rows are deferred to Phase 2, not required for the dashboard's live view. See [roadmap.md](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1) and [database-design.md](../database/database-design.md).
+## Local verification
 
-## Kamogelo — Developer 3 (Backend / Data)
+From the repository root:
 
-Owns: `apps/api/`, database migrations, `packages/schemas/`
+```bash
+pytest
+ruff check .
+black --check .
+pnpm --filter web test -- --run
+pnpm --filter web exec tsc --noEmit
+pnpm --filter web lint
+pnpm format:check
+pnpm --filter web build
+git diff --check
+```
 
-- [x] Stand up `infrastructure/docker/docker-compose.yml` per the service layout in [local-development.md](local-development.md#service-layout-infrastructuredocker) — you're first to need it, so you're building it. Done: issue #10 — all six services wired behind profiles, on two networks so the load generator has no route to the database or broker. `db`/`redis`/`web` real, `api` real as of #12, `worker` real as of #13. The remaining placeholder is `k6-runner`'s upstream image, which is Govenor's `infrastructure/docker/k6/Dockerfile` (#6/#7), not this issue.
-- [x] Migrate the Postgres schema per [database-design.md](../database/database-design.md) (Alembic or equivalent). Done: issue #11 — SQLAlchemy models for all 14 entities in `apps/api/db/models.py` (enums imported from `packages/schemas`, not redeclared) plus an Alembic environment at `apps/api/alembic.ini`. Verified against a real Postgres 16: applies to a fresh database, schema matches the doc column by column, autogenerate reports no drift, and down/up cycles are clean. See [local-development.md#database-migrations](local-development.md#database-migrations).
-- [x] Build the `apps/api` endpoints in [api-contract.md](../api/api-contract.md) that the Phase 1 slice actually needs: projects, targets, test plan/run, investigation create/get. Done: issue #12 — all 13 documented endpoints, not just the Phase 1 subset, behind bearer auth with the contract's error envelope and both security-model gates. Built against a stub Orchestrator (`apps/api/orchestrator_stub.py`, injected via `deps.get_orchestrator()`), with 46 endpoint tests running against real Postgres in CI. Still to do: Celery dispatch (#13) — a run is persisted `queued` but nothing consumes it.
-- [x] Wire Celery for async test execution. Done: issue #13 — `apps/api/tasks.py` takes a queued `TestRun` through to a terminal state, dispatched from `POST /api/tests/{id}/run` and from an approved experiment. Verified against a real Redis broker and a real `celery` worker process, not just in-process: triggered over HTTP, polled to `succeeded`. The k6 wrapper itself is stubbed behind `deps.get_load_engineer()` pending Govenor's `agents/load-engineer`, but the safety clamping and allow-list re-check are real.
-- [ ] You own `packages/schemas` canonically — when Thatayaone, Govenor, or Thato need a contract change, that's a sign-off from you, not a unilateral edit on their part (see [team-workflow.md](team-workflow.md#shared--jointly-owned-paths)).
-- You can build every endpoint against `packages/schemas` with the Orchestrator stubbed — you don't need to wait on Thatayaone's agents to be finished.
-
-## Thato — Developer 4 (Frontend / Reporting)
-
-Owns: `apps/web/`, `agents/reporting/`
-
-- [x] Minimal dashboard: create a target, trigger an investigation, watch a test run's progress, view the resulting report. Done: `apps/web` (issue #14) — Next.js + TypeScript + Tailwind + shadcn/ui, all four flows working against a mocked API (`src/lib/mock-api.ts`), verified end to end with a scripted headless-browser run, plus an automated Vitest/RTL suite (`apps/web/README.md#testing`) covering the mock API and badge components. Not yet done: real `apps/api` wiring, project CRUD, automated tests for the page/form components (still manual-only), live metric charts (pending issue #9).
-- [x] Reporting Agent: produce a valid `Report` from **fixture** `InvestigationState` first, then wire to a real one. Done: `agents/reporting/report_builder.py` (issue #15, PR #17, merged into `main`) — deterministic `build_report`/`validate_report` per [reporting-agent.md](../agents/reporting-agent.md), fixtures for the demo scenario and the "healthy run" case, 8 passing tests. Not yet done: swapping the two LLM-shaped prose functions (marked `# BLOCKED-ON: #1`) for real `AIService` output once `packages/ai` (#1) exists.
-- [x] You can build the dashboard against a mocked API returning fixture `InvestigationState`/`Report` payloads — don't wait on a real investigation ever having run.
-- [x] Open question settled with Govenor: summary-at-completion is enough for the MVP; interval/time-bucketed metrics are deferred to Phase 2. *(Decision written into [database-design.md](../database/database-design.md).)*
-
-## Current implementation update (2026-09-16)
-
-The AI provider gateway in `packages/ai` is complete on `main`: Gemini integration, `AIService`, structured-output validation, and validation-feedback retries are implemented and tested. The API, database migrations, Celery dispatch, dashboard fixture, Reporting Agent fixture, and pinned k6 runner are also merged. Remaining work is Orchestrator and specialist-agent integration, connecting the real runner through the worker, and switching the dashboard/reporting flow from fixtures to real API output.
-
-## Definition of done for Phase 1
-
-The [demo scenario](../demo-scenario.md) runs for real, once, start to finish, producing a report a stakeholder could read. See [roadmap.md](../roadmap.md) for what's explicitly deferred to Phase 2+ — don't build ahead of that list.
+For the local stack, follow [local-development.md](local-development.md).
+The controlled target must be explicitly authorized and included in
+`ALLOWED_TARGET_HOSTS`.
 
 ## Phase 2 handoff
 
-Phase 2 work is ticketed but gated. Do not claim or start Phase 2 implementation until Govenor records Phase 1 sign-off in `STATUS.md` and the Phase 1 milestone is closed. The Phase 2 tickets are:
+Issues #32–#39 remain open, labeled `phase-2` and `status:todo`, and are gated
+by Phase 1 sign-off. The dependency order is:
 
-- Thato: [#37](https://github.com/thato899/perfpilot/issues/37), [#38](https://github.com/thato899/perfpilot/issues/38), [#39](https://github.com/thato899/perfpilot/issues/39)
-- Kamogelo: [#34](https://github.com/thato899/perfpilot/issues/34), [#35](https://github.com/thato899/perfpilot/issues/35)
-- Govenor: [#32](https://github.com/thato899/perfpilot/issues/32), [#36](https://github.com/thato899/perfpilot/issues/36)
-- Thatayaone: [#33](https://github.com/thato899/perfpilot/issues/33)
+```text
+#32 → #34 → #39
+#32 → #36
+#33 → #35 → #36
+#35 → #37, #38
+#34 + stable contracts → #39
+```
 
-Each issue contains its own dependencies, acceptance criteria, tests, documentation requirements, and Definition of Done. Follow the normal claim → branch → implementation → tests/docs → PR/review → merge → status-label workflow.
+The first dependency-ready issues after sign-off are #32 and #33. Keep all
+other Phase 2 work gated until its dependencies and contracts are stable.
 
-## Daily sync
+## Closeout next action
 
-10 minutes, covering: (1) anything you changed in a shared path, (2) any contract you need changed, (3) anything blocking you on another owner's surface. See [team-workflow.md](team-workflow.md#communication).
+Review the Phase 1 closeout PR and answer:
+
+> Do you grant Phase 1 sign-off and approve opening the Phase 2 implementation gate?

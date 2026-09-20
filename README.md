@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 1 (thin vertical slice) is in integration and Phase 2 is ticketed but gated. The dashboard, API layer, database schema/migrations, AI provider gateway, metrics engine, and local Docker stack are implemented; real end-to-end agent/k6/dashboard wiring must be signed off before Phase 2 begins. See [PLANNING.md](PLANNING.md), [STATUS.md](STATUS.md), and the [Phase 2 ticket register](docs/roadmap.md#phase-2-ticket-register).
+**Status:** Phase 1 implementation and real E2E complete; Team Lead sign-off pending. Phase 2 is ticketed but gated. See [PLANNING.md](PLANNING.md), [STATUS.md](STATUS.md), and the [Phase 2 ticket register](docs/roadmap.md#phase-2-ticket-register).
 
 ---
 
@@ -24,6 +24,24 @@ UNDERSTAND → PLAN → GENERATE → EXECUTE → OBSERVE → INVESTIGATE → EXP
 ```
 
 The system doesn't blindly run one predefined test. It reasons about what to test, how much load to generate, when more testing is warranted, what anomalies appear, and what experiment would validate or reject a hypothesis about their cause. See [docs/architecture/data-flow.md](docs/architecture/data-flow.md) for the full loop.
+
+## Verified Phase 1 pipeline
+
+The merged Phase 1 path is a real vertical slice:
+
+```text
+Next.js browser
+  → FastAPI
+  → PostgreSQL investigation state
+  → Redis/Celery
+  → pinned k6 v0.57.0
+  → packages/metrics deterministic calculations
+  → Performance Investigator
+  → persisted Finding and Report
+  → rendered browser result page
+```
+
+The verified healthy run recorded throughput `633.2573633816329 req/s`, p95 `2.0225256 ms`, p99 `2.5756977299999995 ms`, error rate `0`, and capacity `1`. The exact DB-pool reference demo was not reproduced and remains explicitly separate from this evidence.
 
 ## Multi-agent architecture
 
@@ -115,6 +133,7 @@ Full rationale for this layout — in particular why it's optimized for four peo
 |---|---|
 | **Live status — read this first each session** | [STATUS.md](STATUS.md) |
 | **Plan — phases, timeline, Definition of Done** | [PLANNING.md](PLANNING.md) |
+| Phase 1 closeout and sign-off request | [docs/phase1-closeout.md](docs/phase1-closeout.md) |
 | System architecture | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) |
 | Multi-agent architecture | [docs/architecture/agent-architecture.md](docs/architecture/agent-architecture.md) |
 | Investigation data flow | [docs/architecture/data-flow.md](docs/architecture/data-flow.md) |
