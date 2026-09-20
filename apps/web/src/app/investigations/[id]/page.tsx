@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { InvestigationState, Report, TestRun } from "@perfpilot/schemas/types";
 
 import { InvestigationProgress } from "@/components/dashboard/investigation-progress";
+import { FindingsPanel } from "@/components/dashboard/findings-panel";
 import { ReportView } from "@/components/dashboard/report-view";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,6 +138,7 @@ export default function InvestigationPage() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <InvestigationProgress investigation={investigation} testRun={testRun} />
+      <FindingsPanel investigation={investigation} />
       {reportError && <p className="text-sm text-destructive">{reportError}</p>}
       {report && <ReportView report={report} />}
 

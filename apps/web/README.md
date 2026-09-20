@@ -13,8 +13,11 @@ requests to the configured FastAPI `API_BASE_URL` and adds the server-only
 
 The dashboard creates or loads a project, registers an explicitly authorized
 target, creates an investigation, polls persisted investigation/test-run
-state, and renders backend Findings, Hypotheses, and Report values. It does not
-recompute metrics, confidence, capacity, or regression values.
+state, and renders backend Findings, Hypotheses, and Report values. The result
+page separates deterministic measurement observations from AI interpretation,
+supports multiple hypotheses per finding, and displays persisted evidence,
+experiment state, and experiment budget. It does not recompute metrics,
+confidence, capacity, regression values, or budget state.
 
 The API has no target-list endpoint, so targets returned by FastAPI are cached
 locally only to let the dashboard select them after a refresh. The cached

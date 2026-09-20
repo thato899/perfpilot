@@ -4,14 +4,15 @@
 
 ## Current phase
 
-**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 planning complete; implementation not started.**
+**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #35 merged; #38 frontend implementation in review.**
 
 - Phase 1 implementation: complete.
 - Backend and browser E2E: verified.
 - Exact DB-pool reference demo: **not reproduced**.
 - Phase 1 sign-off: granted by Govenor/Team Lead in PR #48.
 - Phase 2 gate: open for the scoped tickets below.
-- Phase 2 implementation: not started; all tickets remain `status:todo`.
+- #35: merged in PR #50 (`27e30b1da5e7450636194e1a82d173258810c7e2`); issue closed with `status:done`.
+- #38: `status:in-progress` on `feature/p2-findings-hypotheses-ui`; consumes the published state contract.
 
 ## Phase 2 ownership
 
@@ -49,4 +50,4 @@ Avoid dependency cycles and mega-PRs. Shared schema/database changes require aff
 
 ## Exact next action
 
-Begin only the owner-specific Phase 2 ticket that its dependency contracts permit. Recommended Wave 1 starts are #32, #33, #35 architecture/state work, and #34 persistence/API groundwork. Keep each implementation in its own branch and PR.
+Review PR for #38. The panel consumes server-truth findings, competing hypotheses, evidence, experiment states, and budgets. #33 remains owned by Thatayaone and is not implemented here; #36, #37, and #39 remain out of scope.
