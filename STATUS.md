@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-20 by Codex
+**Last updated:** 2026-09-22 by Govenor
 
 ## Current phase
 
@@ -13,7 +13,8 @@
 - Phase 2 gate: open for the scoped tickets below.
 - #35: merged in PR #50 (`27e30b1da5e7450636194e1a82d173258810c7e2`); issue closed with `status:done`.
 - #38: merged in PR #51 (`status:done`); consumes the published state contract.
-- #39: `status:todo`; waiting on deterministic comparison metrics from #32 and baseline/comparison API from #34.
+- #32: `status:in-progress`; comparison contract implemented locally, pending PR review and merge.
+- #39: `status:todo`; waiting on the #32 comparison contract and baseline/comparison API from #34.
 
 ## Phase 2 ownership
 
@@ -49,6 +50,24 @@ Handoff contracts are documented in [PLANNING.md](PLANNING.md), [docs/roadmap.md
 
 Avoid dependency cycles and mega-PRs. Shared schema/database changes require affected-owner review and a backward-compatibility statement.
 
+## Govenor — #32 progress
+
+Implemented locally in `packages/metrics`: `MetricComparison` now provides a
+typed, JSON-serializable result with available/incompatible/unavailable status,
+metric and test-run identity, concurrency context, p50/p90/p95/p99 latency
+deltas, throughput delta, error-rate delta, and baseline-relative percentage
+deltas. Positive latency/error deltas mean worse performance; positive
+throughput deltas mean better performance. Different concurrency values remain
+valid for capacity-stage comparisons; endpoint-scope mismatches are rejected.
+
+Validation: focused comparison/API tests pass (`10 passed`), full Python suite
+passes (`60 passed, 64 skipped`), and Ruff passes on all touched Python files.
+The current checkout is on `main`; the work must be moved to the owner-specific
+feature branch and submitted for review before #32 can be marked done.
+
 ## Exact next action
 
-Wait for stable, review-approved #32 and #34 contracts before claiming #39. #33 remains owned by Thatayaone and #36/#37 remain out of scope.
+Open the owner-specific #32 PR with the comparison contract and notify
+Kamogelo/#34 and Thato/#39 of the serialized handoff shape. Then wait for the
+#35 investigation-state contract before starting #36. #33 remains owned by
+Thatayaone and #37 remains out of scope.

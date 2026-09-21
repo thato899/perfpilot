@@ -7,15 +7,66 @@ objects.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from packages.schemas.python.entities import Metric
 
 
 class MetricsError(ValueError):
     """Raised when k6 output is missing required metric data."""
+
+
+class ComparisonStatus(str, Enum):
+    """Whether two metrics can be compared as a performance pair."""
+
+    AVAILABLE = "available"
+    INCOMPATIBLE = "incompatible"
+    UNAVAILABLE = "unavailable"
+
+
+class MetricComparison(BaseModel):
+    """Typed, serializable comparison contract for baseline and current metrics.
+
+    Delta sign convention: current minus baseline. A positive latency/error
+    delta is worse; a positive throughput delta is better. Percent deltas use
+    the baseline value as the denominator and are rounded to six decimals.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: ComparisonStatus
+    reason: str | None = None
+    baseline_metric_id: UUID | None = None
+    current_metric_id: UUID | None = None
+    baseline_test_run_id: UUID | None = None
+    current_test_run_id: UUID | None = None
+    baseline_concurrency: int | None = Field(default=None, ge=0)
+    current_concurrency: int | None = Field(default=None, ge=0)
+    p50_delta_ms: float | None = None
+    p50_delta_pct: float | None = None
+    p90_delta_ms: float | None = None
+    p90_delta_pct: float | None = None
+    p95_delta_ms: float | None = None
+    p95_delta_pct: float | None = None
+    p99_delta_ms: float | None = None
+    p99_delta_pct: float | None = None
+    throughput_delta_rps: float | None = None
+    throughput_delta_pct: float | None = None
+    error_rate_delta: float | None = None
+    error_rate_delta_pct: float | None = None
+
+    def __getitem__(self, key: str) -> float | str | UUID | int | None:
+        """Keep Phase 1 dictionary-style consumers source-compatible."""
+        return getattr(self, key)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.model_dump())
 
 
 def _number(value: Any, field_name: str) -> float:
@@ -108,17 +159,75 @@ def threshold_passed(metric: Metric, *, p95_ms: float, max_error_rate: float) ->
     return metric.p95_ms <= p95_ms and metric.error_rate <= max_error_rate
 
 
-def compare_metrics(baseline: Metric, current: Metric) -> dict[str, float]:
-    """Calculate deterministic p95 deltas and regression percentage."""
+def _delta(current: float, baseline: float) -> tuple[float, float | None]:
+    delta = current - baseline
+    if baseline == 0:
+        return delta, None
+    return delta, round((delta / baseline) * 100, 6)
+
+
+def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
+    """Compare compatible baseline/current metrics deterministically.
+
+    Metrics must describe the same endpoint scope. Concurrency is retained in
+    the result because capacity-stage comparisons intentionally compare
+    different concurrency levels. A missing baseline denominator is
+    represented as ``unavailable`` rather than an invented percentage;
+    incompatible records return a typed reason without calculating misleading
+    deltas.
+    """
+    if baseline.endpoint != current.endpoint:
+        return MetricComparison(
+            status=ComparisonStatus.INCOMPATIBLE,
+            reason="metrics must have the same endpoint scope",
+            baseline_metric_id=baseline.id,
+            current_metric_id=current.id,
+            baseline_test_run_id=baseline.test_run_id,
+            current_test_run_id=current.test_run_id,
+            baseline_concurrency=baseline.concurrency,
+            current_concurrency=current.concurrency,
+        )
     if baseline.p95_ms <= 0:
-        raise MetricsError("baseline p95_ms must be greater than zero")
-    delta_ms = current.p95_ms - baseline.p95_ms
-    return {
-        "p95_delta_ms": delta_ms,
-        "p95_delta_pct": (delta_ms / baseline.p95_ms) * 100,
-        "error_rate_delta": current.error_rate - baseline.error_rate,
-        "throughput_delta_rps": current.throughput_rps - baseline.throughput_rps,
-    }
+        return MetricComparison(
+            status=ComparisonStatus.UNAVAILABLE,
+            reason="baseline p95_ms must be greater than zero",
+            baseline_metric_id=baseline.id,
+            current_metric_id=current.id,
+            baseline_test_run_id=baseline.test_run_id,
+            current_test_run_id=current.test_run_id,
+            baseline_concurrency=baseline.concurrency,
+            current_concurrency=current.concurrency,
+        )
+
+    p50_delta_ms, p50_delta_pct = _delta(current.p50_ms, baseline.p50_ms)
+    p90_delta_ms, p90_delta_pct = _delta(current.p90_ms, baseline.p90_ms)
+    p95_delta_ms, p95_delta_pct = _delta(current.p95_ms, baseline.p95_ms)
+    p99_delta_ms, p99_delta_pct = _delta(current.p99_ms, baseline.p99_ms)
+    throughput_delta_rps, throughput_delta_pct = _delta(
+        current.throughput_rps, baseline.throughput_rps
+    )
+    error_rate_delta, error_rate_delta_pct = _delta(current.error_rate, baseline.error_rate)
+    return MetricComparison(
+        status=ComparisonStatus.AVAILABLE,
+        baseline_metric_id=baseline.id,
+        current_metric_id=current.id,
+        baseline_test_run_id=baseline.test_run_id,
+        current_test_run_id=current.test_run_id,
+        baseline_concurrency=baseline.concurrency,
+        current_concurrency=current.concurrency,
+        p50_delta_ms=p50_delta_ms,
+        p50_delta_pct=p50_delta_pct,
+        p90_delta_ms=p90_delta_ms,
+        p90_delta_pct=p90_delta_pct,
+        p95_delta_ms=p95_delta_ms,
+        p95_delta_pct=p95_delta_pct,
+        p99_delta_ms=p99_delta_ms,
+        p99_delta_pct=p99_delta_pct,
+        throughput_delta_rps=throughput_delta_rps,
+        throughput_delta_pct=throughput_delta_pct,
+        error_rate_delta=error_rate_delta,
+        error_rate_delta_pct=error_rate_delta_pct,
+    )
 
 
 def estimate_capacity(
