@@ -260,16 +260,31 @@ export function latestSequence(entries: readonly TimelineEntry[]): number | unde
 }
 
 /**
- * What the investigation is doing right now, read from the server's status.
+ * What the investigation is doing right now.
  *
- * Derived from `status` rather than from the last event on purpose: the status
+ * Read from the server's `status` rather than from the last event: the status
  * column is what the Orchestrator owns and writes, while the last event is
  * only the most recent thing that happened to have been recorded. When a run
  * is mid-flight those two can disagree, and the status is the one the backend
  * considers authoritative.
+ *
+ * `experimenting` is the one status whose *name* is misleading, and it is
+ * worth being explicit about why. The Orchestrator sets it together with
+ * `INVOKE_TEST_PLANNER` (agents/orchestrator/orchestrator.py), so it means
+ * "an experiment is being worked out", not "an approved experiment is
+ * running". Human approval is a separate boundary —
+ * `POST /api/investigations/{id}/experiments` — which security-model.md
+ * requires before any additional load is generated. Labelling the status
+ * "Running an approved experiment" would assert an approval that may not have
+ * happened and load that may not be running: precisely the invented
+ * progression this ticket forbids.
+ *
+ * So for that status the wording comes from the persisted experiment rows,
+ * which carry the real lifecycle, and falls back to neutral wording when
+ * there are none to read.
  */
-export function currentAction(status: InvestigationState["status"]): string {
-  switch (status) {
+export function currentAction(investigation: InvestigationState): string {
+  switch (investigation.status) {
     case "planning":
       return "Planning the next test";
     case "running":
@@ -277,7 +292,7 @@ export function currentAction(status: InvestigationState["status"]): string {
     case "investigating":
       return "Analysing results";
     case "experimenting":
-      return "Running an approved experiment";
+      return experimentStageAction(investigation.experiments);
     case "reporting":
       return "Writing the report";
     case "complete":
@@ -285,8 +300,30 @@ export function currentAction(status: InvestigationState["status"]): string {
     case "failed":
       return "Failed";
     default:
-      return humanise(status);
+      return humanise(investigation.status);
   }
+}
+
+/**
+ * Describe the experiment stage from the experiment rows themselves.
+ *
+ * Ordered most-advanced-first, because an investigation can hold several
+ * experiments at once and the furthest-along one is what the stage is really
+ * doing. Anything not covered falls through to neutral wording rather than to
+ * a guess.
+ */
+function experimentStageAction(experiments: InvestigationState["experiments"]): string {
+  const statuses = new Set((experiments ?? []).map((experiment) => experiment.status));
+
+  if (statuses.has("running")) return "Running an approved experiment";
+  if (statuses.has("queued")) return "Approved experiment queued";
+  if (statuses.has("approved")) return "Experiment approved, waiting to start";
+  if (statuses.has("proposed")) return "Experiment proposed, waiting for approval";
+
+  // Either no experiment row exists yet (the Test Planner is still being
+  // invoked) or every one is terminal. Neither justifies claiming that load
+  // is being generated.
+  return "Working out the next experiment";
 }
 
 export function isTerminalStatus(status: InvestigationState["status"]): boolean {

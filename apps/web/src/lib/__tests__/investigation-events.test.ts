@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { InvestigationEvent } from "@perfpilot/schemas/types";
+import type {
+  ExperimentRecord,
+  InvestigationEvent,
+  InvestigationState,
+} from "@perfpilot/schemas/types";
 
 import {
   currentAction,
@@ -235,14 +239,89 @@ describe("unknown event types", () => {
 });
 
 describe("current action", () => {
-  it("describes each server status", () => {
-    expect(currentAction("planning")).toBe("Planning the next test");
-    expect(currentAction("running")).toBe("Running a test");
-    expect(currentAction("investigating")).toBe("Analysing results");
-    expect(currentAction("experimenting")).toBe("Running an approved experiment");
-    expect(currentAction("reporting")).toBe("Writing the report");
-    expect(currentAction("complete")).toBe("Complete");
-    expect(currentAction("failed")).toBe("Failed");
+  function state(
+    status: InvestigationState["status"],
+    experiments: InvestigationState["experiments"] = [],
+  ): InvestigationState {
+    return {
+      investigationId: "inv-1",
+      targetId: "target-1",
+      status,
+      observations: [],
+      findings: [],
+      hypotheses: [],
+      experiments,
+      decisions: [],
+    };
+  }
+
+  function experiment(status: ExperimentRecord["status"], id: string = status): ExperimentRecord {
+    return {
+      id,
+      hypothesisId: "hyp-1",
+      variableChanged: "pool size",
+      baselineValue: 10,
+      experimentValue: 40,
+      status,
+      sequenceIndex: 0,
+    };
+  }
+
+  it("describes the unambiguous statuses", () => {
+    expect(currentAction(state("planning"))).toBe("Planning the next test");
+    expect(currentAction(state("running"))).toBe("Running a test");
+    expect(currentAction(state("investigating"))).toBe("Analysing results");
+    expect(currentAction(state("reporting"))).toBe("Writing the report");
+    expect(currentAction(state("complete"))).toBe("Complete");
+    expect(currentAction(state("failed"))).toBe("Failed");
+  });
+
+  describe("the experimenting status", () => {
+    // The Orchestrator sets `experimenting` together with INVOKE_TEST_PLANNER,
+    // *before* the human approval boundary. Claiming an approved experiment is
+    // running at that point asserts both an approval and load generation that
+    // may not have happened.
+    it("does not claim an approval when no experiment row exists yet", () => {
+      expect(currentAction(state("experimenting"))).toBe("Working out the next experiment");
+    });
+
+    it("says a proposal is waiting for approval", () => {
+      expect(currentAction(state("experimenting", [experiment("proposed")]))).toBe(
+        "Experiment proposed, waiting for approval",
+      );
+    });
+
+    it("distinguishes approved-but-not-yet-started from running", () => {
+      expect(currentAction(state("experimenting", [experiment("approved")]))).toBe(
+        "Experiment approved, waiting to start",
+      );
+      expect(currentAction(state("experimenting", [experiment("queued")]))).toBe(
+        "Approved experiment queued",
+      );
+      expect(currentAction(state("experimenting", [experiment("running")]))).toBe(
+        "Running an approved experiment",
+      );
+    });
+
+    it("reports the most advanced experiment when several coexist", () => {
+      expect(
+        currentAction(
+          state("experimenting", [
+            experiment("proposed", "a"),
+            experiment("running", "b"),
+            experiment("approved", "c"),
+          ]),
+        ),
+      ).toBe("Running an approved experiment");
+    });
+
+    it("falls back to neutral wording when every experiment is terminal", () => {
+      expect(
+        currentAction(
+          state("experimenting", [experiment("succeeded", "a"), experiment("rejected", "b")]),
+        ),
+      ).toBe("Working out the next experiment");
+    });
   });
 });
 

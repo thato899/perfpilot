@@ -88,6 +88,14 @@ describe("InvestigationTimeline — required states", () => {
     expect(screen.getByTestId("timeline-list")).toBeInTheDocument();
   });
 
+  it("shows the reconnect notice alongside a first-load failure", () => {
+    // The case the notice exists for: nothing has arrived yet and the page is
+    // still retrying. A bare error here reads as "this is over".
+    render(<InvestigationTimeline investigation={null} error="network down" reconnecting />);
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
+    expect(screen.getByTestId("timeline-reconnecting")).toHaveTextContent(/Reconnecting/);
+  });
+
   it("shows a reconnecting notice", () => {
     render(<InvestigationTimeline investigation={baseState()} reconnecting />);
     expect(screen.getByTestId("timeline-reconnecting")).toHaveTextContent(/Reconnecting/);
@@ -200,14 +208,27 @@ describe("InvestigationTimeline — server truth", () => {
 
   it("reports the current action from the server status, not from the last event", () => {
     // The last event here is a baseline run being queued; the server says the
-    // investigation is experimenting. The status wins.
+    // investigation is running. The status wins.
+    render(
+      <InvestigationTimeline
+        investigation={baseState({ status: "running", events: FULL_HISTORY.slice(0, 2) })}
+      />,
+    );
+    expect(screen.getByTestId("current-action")).toHaveTextContent("Now: Running a test");
+  });
+
+  it("does not claim an approved experiment is running during the experimenting status", () => {
+    // `experimenting` is set when the Test Planner is invoked, before the
+    // human approval boundary, so the status alone justifies nothing about
+    // approval or load. With no experiment rows to read, the wording stays
+    // neutral.
     render(
       <InvestigationTimeline
         investigation={baseState({ status: "experimenting", events: FULL_HISTORY.slice(0, 2) })}
       />,
     );
     expect(screen.getByTestId("current-action")).toHaveTextContent(
-      "Now: Running an approved experiment",
+      "Now: Working out the next experiment",
     );
   });
 });

@@ -148,16 +148,30 @@ export function InvestigationTimeline({
 
   // Failed before anything arrived. Showing an empty timeline here would imply
   // an investigation with no history, which is a different claim.
+  //
+  // The reconnect notice belongs in this branch too. Without it the very case
+  // it exists for — the first request failed and the page is still retrying —
+  // rendered as a bare error, which reads as "this is over" rather than "we
+  // are still trying".
   if (!investigation) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Investigation timeline</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p role="alert" className="text-sm text-destructive">
+        <CardContent className="flex flex-col gap-2">
+          <p role="alert" className="text-sm text-destructive" data-testid="timeline-error">
             {error ?? "The investigation timeline is unavailable."}
           </p>
+          {reconnecting && (
+            <p
+              role="status"
+              className="text-sm text-muted-foreground"
+              data-testid="timeline-reconnecting"
+            >
+              Reconnecting to the investigation API…
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -180,9 +194,7 @@ export function InvestigationTimeline({
               region updates on every poll and an assertive live region would
               interrupt a screen-reader user mid-sentence. */}
           <span aria-live="polite" data-testid="current-action">
-            {terminal
-              ? currentAction(investigation.status)
-              : `Now: ${currentAction(investigation.status)}`}
+            {terminal ? currentAction(investigation) : `Now: ${currentAction(investigation)}`}
           </span>
         </CardDescription>
       </CardHeader>

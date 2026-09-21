@@ -43,13 +43,23 @@ export default function InvestigationPage() {
   // matters: when polling has given up entirely and nothing re-renders at all.
   const [now, setNow] = useState<number | null>(null);
 
+  // A terminal investigation is finished, not out of date. Polling stops at
+  // complete/failed by design, so a clock that kept running would eventually
+  // put "It may be out of date" on a final result that is not going to change
+  // — directly contradicting the timeline's own "no further events will be
+  // recorded" notice. Staleness means "an update was expected and did not
+  // arrive", which is only meaningful while updates are still expected.
+  const expectingUpdates =
+    investigation === null || !isTerminalInvestigationStatus(investigation.status);
+
   useEffect(() => {
+    if (!expectingUpdates) return;
     const tick = setInterval(() => setNow(Date.now()), POLL_INTERVAL_MS);
     return () => clearInterval(tick);
-  }, []);
+  }, [expectingUpdates]);
 
   // Recomputes to false the moment a poll lands, because lastUpdatedAt moves.
-  const stale = now !== null && isStale(lastUpdatedAt, now);
+  const stale = expectingUpdates && now !== null && isStale(lastUpdatedAt, now);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,24 +146,18 @@ export default function InvestigationPage() {
     };
   }, [investigationId]);
 
-  if (error && !investigation) {
-    return (
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 p-8">
-        <p className="text-sm text-destructive">{error}</p>
-        <Link href="/" className={cn(buttonVariants({ variant: "secondary" }), "w-fit")}>
-          Back home
-        </Link>
-      </main>
-    );
-  }
-
-  if (!investigation) {
-    return (
-      <main className="mx-auto flex max-w-3xl p-8">
-        <p className="text-sm text-muted-foreground">Loading investigation…</p>
-      </main>
-    );
-  }
+  // No early return while `investigation` is null.
+  //
+  // The timeline component implements the loading, first-failure and
+  // reconnecting states together with their aria roles, and returning a bare
+  // paragraph here meant the page never rendered any of them: the documented
+  // accessibility behaviour existed only in the component's own tests. The
+  // page now always renders the timeline and lets it own those states.
+  //
+  // The cards that require a loaded investigation stay conditional, because
+  // they have no meaningful empty rendering — that is a different thing from
+  // suppressing the timeline.
+  const loading = investigation === null && error === null;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
@@ -164,19 +168,22 @@ export default function InvestigationPage() {
         </Link>
       </div>
 
+      {investigation && <InvestigationProgress investigation={investigation} testRun={testRun} />}
+
       {/* The polling/run error is presented once, by the timeline card, which
           gives it role="alert" next to the history it applies to. Rendering it
-          here as well produced two identical alerts, which a screen reader
-          announces twice. */}
-      <InvestigationProgress investigation={investigation} testRun={testRun} />
+          on the page as well produced two identical alerts, which a screen
+          reader announces twice. */}
       <InvestigationTimeline
         investigation={investigation}
+        loading={loading}
         error={error}
         stale={stale}
         lastUpdatedAt={lastUpdatedAt}
         reconnecting={reconnecting}
       />
-      <FindingsPanel investigation={investigation} />
+
+      {investigation && <FindingsPanel investigation={investigation} />}
       {reportError && <p className="text-sm text-destructive">{reportError}</p>}
       {report && <ReportView report={report} />}
     </main>

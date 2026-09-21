@@ -116,7 +116,7 @@ describe("real completed investigation", () => {
 
   it("describes the terminal status", () => {
     expect(state.status).toBe("complete");
-    expect(currentAction(state.status)).toBe("Complete");
+    expect(currentAction(state)).toBe("Complete");
   });
 });
 
@@ -146,7 +146,7 @@ describe("real failed investigation", () => {
     const entries = toTimeline(state.events);
     expect(entries.map((entry) => entry.type)).not.toContain("test_run_completed");
     expect(state.status).toBe("failed");
-    expect(currentAction(state.status)).toBe("Failed");
+    expect(currentAction(state)).toBe("Failed");
   });
 
   it("does not report a gap just because the history is short", () => {

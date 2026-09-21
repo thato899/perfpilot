@@ -78,6 +78,30 @@ The status column is what the Orchestrator owns and writes; the last event is
 merely the most recent thing recorded. Mid-run those can disagree, and the
 status is the one the backend treats as authoritative.
 
+With one exception, which is worth spelling out because the status name is
+misleading. `experimenting` does **not** mean an approved experiment is
+running. `Orchestrator.continue_investigation` sets it together with
+`INVOKE_TEST_PLANNER`, so it means "an experiment is being worked out"; human
+approval is a separate boundary (`POST /api/investigations/{id}/experiments`)
+that security-model.md requires before any additional load is generated. At
+that point the experiment may only be *proposed*, with no follow-up TestRun
+and no budget consumed.
+
+So the wording for that stage is read from the persisted `experiments[]` rows,
+which carry the real lifecycle, taking the most advanced one:
+
+| Experiment rows | Wording |
+|---|---|
+| any `running` | Running an approved experiment |
+| any `queued` | Approved experiment queued |
+| any `approved` | Experiment approved, waiting to start |
+| any `proposed` | Experiment proposed, waiting for approval |
+| none, or all terminal | Working out the next experiment |
+
+An earlier revision labelled the bare status "Running an approved experiment",
+which asserted both an approval and load generation that may not have
+happened — the exact invented progression this ticket forbids.
+
 Likewise, **a failed run produces no `test_run_completed` event** —
 `apps/api/tasks.py` appends that only on the success path. The timeline shows
 the history ending where it really ended and reports the failure from the
@@ -98,9 +122,16 @@ terminal investigation status or a terminal run status, and giving up after
   separate from the error text. The user is told we are still trying, not just
   that something broke.
 - **Stale** appears once `STALE_AFTER_MS` (four poll intervals) has elapsed
-  since the last successful poll. The last known history stays on screen — it
-  is real data, just not current, and that is a different claim from either
-  hiding it or implying it is live.
+  since the last successful poll **while updates are still expected**. The last
+  known history stays on screen — it is real data, just not current, and that
+  is a different claim from either hiding it or implying it is live.
+
+  Staleness is suppressed entirely once the investigation reaches `complete` or
+  `failed`. Polling stops at a terminal status by design, so a clock that kept
+  running would eventually put "It may be out of date" on a final result that
+  is never going to change, directly contradicting the terminal notice beside
+  it. A terminal result is finished, not stale. The clock itself also stops, so
+  a completed page is not left ticking.
 
 Staleness is derived during render from two pieces of state (`lastUpdatedAt`
 and a `now` clock ticked by an interval) rather than by calling `Date.now()`
@@ -114,6 +145,15 @@ Read retries are bounded and idempotent; the timeline issues no mutations, so
 there is nothing for a reconnect to duplicate.
 
 ## Accessibility states
+
+These are implemented by the timeline card and rendered by the page in every
+case, including before the first response arrives. The page deliberately has
+**no early return** while `investigation` is null: an earlier revision returned
+a bare paragraph in that case, so the loading, first-failure and reconnecting
+states existed only in the component's own tests and never reached a browser.
+The cards that genuinely require a loaded investigation stay conditional; the
+timeline does not.
+
 
 - The event list is an `<ol>` labelled by the card heading, so it is reachable
   as *"Investigation timeline, list"*.
@@ -138,7 +178,17 @@ Tests are in three layers, and only the first uses invented data:
 |---|---|---|
 | Unit | `lib/__tests__/investigation-events.test.ts` | Hand-written events, for mapping and ordering edge cases |
 | Component / a11y | `components/dashboard/__tests__/investigation-timeline.test.tsx` | Hand-written state, one case per required UI state |
+| **Page** | `app/investigations/[id]/page.states.test.tsx` | Mocked API, driving the real page through each state |
 | Contract | `lib/__tests__/investigation-events.contract.test.ts` | **Real captured server responses** |
+
+The page layer is not redundant with the component layer, and the reason is
+the bug that produced it: the component's loading, first-failure and
+reconnecting states were fully tested in isolation while the page returned
+early and rendered none of them. A component test cannot catch a caller that
+never renders the component. These cover initial loading, a first request that
+fails and retries, recovery, an exhausted retry budget, staleness during a
+genuine non-terminal outage, and the absence of staleness on both terminal
+statuses.
 
 The two files in `lib/__tests__/fixtures/` are the verbatim body of
 `GET /api/investigations/{id}`, captured from a running `apps/api` against real
@@ -164,3 +214,8 @@ real Postgres with a real Celery worker, and `next dev` driving a real browser:
 - Killing the API under a polling page produces, in order: the reconnecting
   notice, the error text, then the stale notice naming the last good poll —
   with the history retained throughout. No console errors.
+
+That browser pass predates review feedback and did not cover three cases it
+should have: the experimenting wording, terminal staleness, and the page's own
+first-load and reconnect states. Those are now covered by the page-level suite
+listed above. No fresh browser run is claimed for them.
