@@ -107,7 +107,7 @@ export default function Home() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : error ? (
         <Card>
           <CardHeader>

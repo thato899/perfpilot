@@ -49,7 +49,7 @@ export function InvestigationProgress({
         )}
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Timeline</h3>
+          <h3 className="text-sm font-medium">Orchestrator decisions</h3>
           {latestDecisions.length > 0 ? (
             <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
               {latestDecisions.map((decision, index) => (

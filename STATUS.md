@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-20 by Codex
+**Last updated:** 2026-09-21 by Kamogelo
 
 ## Current phase
 
@@ -14,6 +14,9 @@
 - #35: merged in PR #50 (`27e30b1da5e7450636194e1a82d173258810c7e2`); issue closed with `status:done`.
 - #38: merged in PR #51 (`status:done`); consumes the published state contract.
 - #39: `status:todo`; waiting on deterministic comparison metrics from #32 and baseline/comparison API from #34.
+- #37: implemented on `feature/p2-investigation-timeline`; renders #35's ordered `events`, `experiment_budget` and typed statuses. Verified against a real apps/api (real Postgres, Redis and Celery worker) driven to both `complete` and `failed`, then in a real browser — not only against fixtures. See [docs/phase2/p2-ui-1-investigation-timeline.md](docs/phase2/p2-ui-1-investigation-timeline.md).
+- #34: blocked in practice. Its stated dependency #32 is `status:todo` and unstarted, and #34 must consume #32 for all comparison arithmetic, so the contract it depends on does not exist yet.
+- Contract note for #35's owner: `apps/api/tasks.py` appends `test_run_completed` only on the success path, so a failed run's event history ends at `test_run_started`. #37 reports the failure from `status` rather than synthesising the missing event; worth deciding whether the event should also be emitted on failure.
 
 ## Phase 2 ownership
 

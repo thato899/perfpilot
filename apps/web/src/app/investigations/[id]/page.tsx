@@ -6,12 +6,13 @@ import { useParams } from "next/navigation";
 import type { InvestigationState, Report, TestRun } from "@perfpilot/schemas/types";
 
 import { InvestigationProgress } from "@/components/dashboard/investigation-progress";
+import { InvestigationTimeline } from "@/components/dashboard/investigation-timeline";
 import { FindingsPanel } from "@/components/dashboard/findings-panel";
 import { ReportView } from "@/components/dashboard/report-view";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiRequestError, getInvestigation, getReport, getTestRun } from "@/lib/api";
 import {
+  isStale,
   isTerminalInvestigationStatus,
   MAX_CONSECUTIVE_POLL_ERRORS,
   POLL_INTERVAL_MS,
@@ -26,6 +27,29 @@ export default function InvestigationPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  // Timestamp of the last poll that actually returned state, so the timeline
+  // can distinguish "this is live" from "this is the last thing we heard".
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  // A retry is in flight after at least one failure. Separate from `error`:
+  // the user should be told we are still trying, not just that it broke.
+  const [reconnecting, setReconnecting] = useState(false);
+  // A clock in state, ticked by an interval, so staleness can be *derived*
+  // during render from two pieces of state rather than computed by calling
+  // Date.now() in the render body.
+  //
+  // Calling Date.now() while rendering is impure, and it would also only be
+  // re-evaluated when React re-renders — which here happens when a poll
+  // succeeds. The screen would never be marked stale at the one moment it
+  // matters: when polling has given up entirely and nothing re-renders at all.
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), POLL_INTERVAL_MS);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Recomputes to false the moment a poll lands, because lastUpdatedAt moves.
+  const stale = now !== null && isStale(lastUpdatedAt, now);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +69,8 @@ export default function InvestigationPage() {
         if (cancelled) return;
         setInvestigation(next);
         setError(null);
+        setLastUpdatedAt(Date.now());
+        setReconnecting(false);
         consecutiveErrors = 0;
 
         let nextRun: TestRun | null = null;
@@ -94,7 +120,9 @@ export default function InvestigationPage() {
                 ? reason.message
                 : "The investigation API is unavailable.",
           );
-          if (consecutiveErrors < MAX_CONSECUTIVE_POLL_ERRORS) schedule();
+          const willRetry = consecutiveErrors < MAX_CONSECUTIVE_POLL_ERRORS;
+          setReconnecting(willRetry);
+          if (willRetry) schedule();
         }
       } finally {
         inFlight = false;
@@ -122,7 +150,7 @@ export default function InvestigationPage() {
   if (!investigation) {
     return (
       <main className="mx-auto flex max-w-3xl p-8">
-        <p className="text-sm text-muted-foreground">Loading investigationâ€¦</p>
+        <p className="text-sm text-muted-foreground">Loading investigation…</p>
       </main>
     );
   }
@@ -132,28 +160,25 @@ export default function InvestigationPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Investigation</h1>
         <Link href="/" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          â† Back home
+          ← Back home
         </Link>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {/* The polling/run error is presented once, by the timeline card, which
+          gives it role="alert" next to the history it applies to. Rendering it
+          here as well produced two identical alerts, which a screen reader
+          announces twice. */}
       <InvestigationProgress investigation={investigation} testRun={testRun} />
+      <InvestigationTimeline
+        investigation={investigation}
+        error={error}
+        stale={stale}
+        lastUpdatedAt={lastUpdatedAt}
+        reconnecting={reconnecting}
+      />
       <FindingsPanel investigation={investigation} />
       {reportError && <p className="text-sm text-destructive">{reportError}</p>}
       {report && <ReportView report={report} />}
-
-      {investigation.status === "planning" && !investigation.currentTestRunId && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Waiting for backend execution</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            This page is reading persisted API state. The current backend contract does not yet
-            expose the initial plan/run link or a worker continuation trigger, so the UI will not
-            simulate progress or show a fabricated report.
-          </CardContent>
-        </Card>
-      )}
     </main>
   );
 }

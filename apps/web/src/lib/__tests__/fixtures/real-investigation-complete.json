@@ -1,0 +1,98 @@
+{
+  "baseline_test_run_id": null,
+  "current_test_run_id": "dba21a8a-e7d7-46ec-9343-357a248195ef",
+  "decisions": [],
+  "events": [
+    {
+      "id": "f8680939-a74d-4bf0-819f-599a0c287989",
+      "idempotency_key": "investigation-created:51bc0992-e7c6-4464-915b-e7691c5dae43",
+      "occurred_at": "2026-09-21T06:53:42.335595Z",
+      "payload": {
+        "objective": "determine_capacity",
+        "target_id": "c0762c42-f3b3-4c90-be02-7a5c0596d882"
+      },
+      "sequence": 1,
+      "type": "investigation_created"
+    },
+    {
+      "id": "ef3b3ca7-c567-4e01-93dd-2c3d007524e8",
+      "idempotency_key": "test-run-queued:dba21a8a-e7d7-46ec-9343-357a248195ef",
+      "occurred_at": "2026-09-21T06:53:42.352813Z",
+      "payload": {
+        "kind": "baseline",
+        "test_run_id": "dba21a8a-e7d7-46ec-9343-357a248195ef"
+      },
+      "sequence": 2,
+      "type": "test_run_queued"
+    },
+    {
+      "id": "98f1bed3-e0e3-4696-837c-b3c8292f4408",
+      "idempotency_key": "test-run-started:dba21a8a-e7d7-46ec-9343-357a248195ef",
+      "occurred_at": "2026-09-21T06:53:42.502378Z",
+      "payload": {
+        "test_run_id": "dba21a8a-e7d7-46ec-9343-357a248195ef"
+      },
+      "sequence": 3,
+      "type": "test_run_started"
+    },
+    {
+      "id": "8f29e10c-9f6f-4c97-ab87-94caf0caf000",
+      "idempotency_key": "finding-recorded:a1ccd689-a1ca-4306-996d-b4ecf7e9520e",
+      "occurred_at": "2026-09-21T06:53:42.520900Z",
+      "payload": {
+        "finding_id": "a1ccd689-a1ca-4306-996d-b4ecf7e9520e"
+      },
+      "sequence": 4,
+      "type": "finding_recorded"
+    },
+    {
+      "id": "b006f570-3b7b-4ef3-a2cb-eb3e2b7430b4",
+      "idempotency_key": "test-run-completed:dba21a8a-e7d7-46ec-9343-357a248195ef",
+      "occurred_at": "2026-09-21T06:53:42.520900Z",
+      "payload": {
+        "status": "succeeded",
+        "test_run_id": "dba21a8a-e7d7-46ec-9343-357a248195ef"
+      },
+      "sequence": 5,
+      "type": "test_run_completed"
+    },
+    {
+      "id": "f528fe00-1b21-455c-b07d-b3b497e73bf6",
+      "idempotency_key": "report-persisted:51bc0992-e7c6-4464-915b-e7691c5dae43",
+      "occurred_at": "2026-09-21T06:53:42.520900Z",
+      "payload": {
+        "investigation_id": "51bc0992-e7c6-4464-915b-e7691c5dae43"
+      },
+      "sequence": 6,
+      "type": "report_persisted"
+    }
+  ],
+  "experiment_budget": {
+    "consumed": 0,
+    "exhausted": false,
+    "max_experiments": 3,
+    "remaining": 3
+  },
+  "experiments": [],
+  "findings": [
+    {
+      "id": "a1ccd689-a1ca-4306-996d-b4ecf7e9520e",
+      "investigation_id": "51bc0992-e7c6-4464-915b-e7691c5dae43",
+      "observations": [
+        {
+          "id": "obs-19b5d827-0d0d-4e1b-81d6-8ac735c748a1",
+          "metric_ref": "19b5d827-0d0d-4e1b-81d6-8ac735c748a1",
+          "statement": "The highest tested load exceeds the supplied performance requirement."
+        }
+      ],
+      "sequence_index": 0,
+      "severity": "HIGH",
+      "summary": "Performance degradation detected at the highest tested load."
+    }
+  ],
+  "hypotheses": [],
+  "investigation_id": "51bc0992-e7c6-4464-915b-e7691c5dae43",
+  "observations": [],
+  "status": "complete",
+  "target_id": "c0762c42-f3b3-4c90-be02-7a5c0596d882"
+}
