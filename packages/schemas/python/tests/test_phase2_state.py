@@ -17,7 +17,7 @@ def test_legacy_experiment_fixture_remains_valid() -> None:
         investigation_id=uuid4(),
         target_id=uuid4(),
         status="investigating",
-        experiments=[{"id": uuid4()}],
+        experiments=[ExperimentState(id=uuid4())],
     )
 
     assert state.experiments[0].status is ExperimentStatus.PROPOSED
@@ -49,6 +49,7 @@ def test_budget_and_event_contract_are_typed_and_orderable() -> None:
         events=[event],
     )
 
+    assert state.experiment_budget is not None
     assert state.experiment_budget.remaining == 1
     assert state.events[0].sequence == 2
     assert state.experiments[0].status is ExperimentStatus.QUEUED
