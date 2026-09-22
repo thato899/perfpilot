@@ -410,7 +410,7 @@ def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
     request = InvestigationAnalysisRequest(
         test_run=TestRunMetricsRef(id=current.id, metrics=current_metrics),
         baseline_test_run=TestRunMetricsRef(id=baseline.id, metrics=baseline_metrics),
-        comparison=comparison,
+        comparison=comparison.model_dump(mode="json"),
         thresholds=dict(plan.thresholds),
         prior_hypotheses=state.hypotheses or None,
         infrastructure_metrics=None,
@@ -550,7 +550,7 @@ def _persist_report(session, investigation, current, baseline, plan) -> None:  #
             regression_comparison=RegressionComparison(
                 previous_p95_ms=baseline_metric.p95_ms,
                 current_p95_ms=current_metric.p95_ms,
-                regression_pct=compare_metrics(baseline_metric, current_metric)["p95_delta_pct"],
+                regression_pct=compare_metrics(baseline_metric, current_metric).p95_delta_pct,
             ),
             key_metrics={
                 "throughput_rps": current_metric.throughput_rps,

@@ -84,7 +84,7 @@ def test_real_adapter_generates_parses_and_returns_metrics(tmp_path, monkeypatch
     analysis_request = InvestigationAnalysisRequest(
         test_run=TestRunMetricsRef(id=run_id, metrics=result.metrics),
         baseline_test_run=TestRunMetricsRef(id=run_id, metrics=result.metrics),
-        comparison=compare_metrics(result.metrics[0], result.metrics[0]),
+        comparison=compare_metrics(result.metrics[0], result.metrics[0]).model_dump(mode="json"),
         thresholds=plan.thresholds,
     )
     analysis = investigator.PerformanceInvestigator().analyze(analysis_request)
