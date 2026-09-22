@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-20 by Codex
+**Last updated:** 2026-09-22 by Codex
 
 ## Current phase
 
@@ -13,6 +13,7 @@
 - Phase 2 gate: open for the scoped tickets below.
 - #35: merged in PR #50 (`27e30b1da5e7450636194e1a82d173258810c7e2`); issue closed with `status:done`.
 - #38: merged in PR #51 (`status:done`); consumes the published state contract.
+- #33: implementation complete on `feature/p2-eval-1-agent-evaluation`; PR pending. The deterministic suite passes without credentials, and the bounded live adapter is opt-in.
 - #39: `status:todo`; waiting on deterministic comparison metrics from #32 and baseline/comparison API from #34.
 
 ## Phase 2 ownership
@@ -51,4 +52,4 @@ Avoid dependency cycles and mega-PRs. Shared schema/database changes require aff
 
 ## Exact next action
 
-Wait for stable, review-approved #32 and #34 contracts before claiming #39. #33 remains owned by Thatayaone and #36/#37 remain out of scope.
+Open the P2-EVAL-1 pull request from `feature/p2-eval-1-agent-evaluation` and complete review/merge verification. #33 remains owned by Thatayaone; #36/#37 remain out of scope.
