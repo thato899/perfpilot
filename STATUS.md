@@ -16,6 +16,11 @@
 - #33: implementation complete on `feature/p2-eval-1-agent-evaluation`; PR pending. The deterministic suite passes without credentials, and the bounded live adapter is opt-in.
 - #39: `status:todo`; waiting on deterministic comparison metrics from #32 and baseline/comparison API from #34.
 
+P2-EVAL-1 review note: deterministic tests, Python lint/format, documentation,
+and `STATUS.md` are updated. Because the change touches `docs/` and root
+`pyproject.toml`, a second opinion from another owner remains required before
+merge.
+
 ## Phase 2 ownership
 
 | Owner | GitHub | Tickets | Primary area |
