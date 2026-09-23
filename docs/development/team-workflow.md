@@ -22,9 +22,11 @@ This document covers *code* ownership. For the non-coding process roles (Team Le
 | Govenor | `malumzz` | #32, #36 | deterministic metrics and safe k6 execution |
 | Thatayaone | `Thatayaone910` | #33 | bounded agent evaluation |
 
-All Phase 2 issues are individually assigned, labeled `phase-2` and
-`status:todo`, and implementation-ready. Assignment does not itself change a
-ticket to `status:in-progress`.
+All Phase 2 issues are individually assigned and labeled `phase-2`; their
+workflow labels must reflect the evidence on the board. As last verified on
+2026-09-22, #32/#35/#38 were merged and verified, #33's implementation was
+merged in PR #55, #34/#37 remained open and unmerged, and #39 was blocked on
+#34. Assignment does not itself change a ticket to `status:in-progress`.
 
 ## Who depends on whom
 
@@ -84,7 +86,7 @@ Solid arrows are data-flow dependencies (A's output is B's input); dashed arrows
 | Govenor ↔ Kamogelo | each other (`infrastructure/docker/`) | Govenor owns the `k6-runner` container; Kamogelo owns the overall `docker-compose.yml` wiring it into | Mutual — flag changes before merging |
 | Govenor ↔ Thato | each other (no owner yet — [open question](../roadmap.md#open-questions-to-revisit-not-blocking-phase-1)) | Whether `Metric` needs interval/time-bucketed rows for the dashboard's live progress view, or summary-at-completion is enough | Settle early — a wrong guess here means one of you reworks a shape mid-Phase-1 |
 
-If one of these turns from a soft, fixture-able dependency into something actually blocking you, flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code. Phase 2 is authorized, but each ticket remains `status:todo` until its owner starts it; the dependency order is recorded in [roadmap.md](../roadmap.md#phase-2-ticket-register).
+If one of these turns from a soft, fixture-able dependency into something actually blocking you, flag it on the [issue board](https://github.com/thato899/perfpilot/issues) and in code. Phase 2 is authorized; unstarted tickets are `status:todo`, claimed work is `status:in-progress`, dependency-blocked work is `status:blocked`, and completed work is `status:done`. The dependency order is recorded in [roadmap.md](../roadmap.md#phase-2-ticket-register).
 
 ### Phase 2 handoff contracts
 
