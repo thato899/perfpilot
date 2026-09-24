@@ -37,6 +37,7 @@ from packages.schemas.python.agent_io import (
     TestStagePlan,
 )
 from packages.schemas.python.entities import (
+    ExperimentConclusion,
     ExperimentStatus,
     HypothesisStatus,
     InvestigationEventType,
@@ -328,6 +329,7 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
             _load_state(session, investigation),
         )
         _persist_investigator_output(session, investigation, analysis)
+        _persist_experiment_result(session, investigation, baseline_run, current_run)
         session.flush()
 
         append_event(
@@ -400,6 +402,36 @@ def _metric_schema(row: m.Metric):
     from packages.schemas.python.entities import Metric
 
     return Metric.model_validate(row, from_attributes=True)
+
+
+def _persist_experiment_result(
+    session, investigation, baseline_run, current_run
+) -> None:  # noqa: ANN001
+    """Persist the deterministic comparison for an approved experiment run."""
+    experiment = session.scalar(
+        select(m.Experiment).where(m.Experiment.test_run_id == current_run.id)
+    )
+    if experiment is None or experiment.result is not None:
+        return
+
+    comparison = compare_metrics(
+        _metric_schema(baseline_run.metrics[-1]),
+        _metric_schema(current_run.metrics[-1]),
+    )
+    hypothesis = session.get(m.Hypothesis, experiment.hypothesis_id)
+    if hypothesis is None or hypothesis.status is HypothesisStatus.TESTING:
+        conclusion = ExperimentConclusion.INCONCLUSIVE
+    elif hypothesis.status is HypothesisStatus.SUPPORTED:
+        conclusion = ExperimentConclusion.HYPOTHESIS_SUPPORTED
+    else:
+        conclusion = ExperimentConclusion.HYPOTHESIS_REJECTED
+    session.add(
+        m.ExperimentResult(
+            experiment_id=experiment.id,
+            comparison=comparison.model_dump(mode="json"),
+            conclusion=conclusion,
+        )
+    )
 
 
 def _run_investigator(current, baseline, plan, state):  # noqa: ANN001

@@ -143,7 +143,11 @@ def test_worker_updates_approved_experiment_lifecycle(
         confidence=0.6,
         status=HypothesisStatus.TESTING,
         evidence=[],
-        recommended_experiment={"variable_to_isolate": "db_pool_size", "change": "32"},
+        recommended_experiment={
+            "variable_to_isolate": "db_pool_size",
+            "change": "32",
+            "expected_signal": "p95 improves",
+        },
     )
     db_session.add(hypothesis)
     db_session.commit()
@@ -156,12 +160,21 @@ def test_worker_updates_approved_experiment_lifecycle(
     assert response.status_code == 202
     experiment_id = response.json()["experiment_id"]
     run_id = response.json()["test_run_id"]
+    # This unit test exercises follow-up persistence without running a real
+    # baseline first; production investigations always populate this link.
+    investigation = db_session.get(m.Investigation, inv["id"])
+    investigation.baseline_test_run_id = None
+    db_session.commit()
 
     tasks.execute_test_run(run_id)
 
     db_session.expire_all()
     experiment = db_session.get(m.Experiment, experiment_id)
     assert experiment.status is ExperimentStatus.SUCCEEDED
+    assert experiment.result is not None
+    assert experiment.result.comparison["status"] == "available"
+    assert experiment.result.comparison["p95_delta_ms"] == 0.0
+    assert experiment.result.conclusion.value == "inconclusive"
 
 
 def test_unknown_run_is_not_an_error(db_session) -> None:

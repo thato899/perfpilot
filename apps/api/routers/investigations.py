@@ -223,6 +223,7 @@ def create_investigation(
         )
         db.add(run)
         db.flush()
+        investigation.baseline_test_run_id = run.id
         investigation.current_test_run_id = run.id
         investigation.status = InvestigationStatus.RUNNING
         append_event(
@@ -407,6 +408,7 @@ def approve_experiment(
         experiment.test_run_id = run.id
         experiment.status = ExperimentStatus.QUEUED
         experiment.idempotency_key = approval_key
+    db.flush()
     investigation.experiments_run += 1
     investigation.status = InvestigationStatus.EXPERIMENTING
     plan.status = TestPlanStatus.APPROVED
