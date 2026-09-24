@@ -1,0 +1,52 @@
+{
+  "baseline_test_run_id": null,
+  "current_test_run_id": "48b7c560-da45-4c20-a988-761895ebc2dd",
+  "decisions": [],
+  "events": [
+    {
+      "id": "0f201120-8f6f-40c2-b2e2-1f5cecaed17c",
+      "idempotency_key": "investigation-created:f39bb89e-2a04-43e5-b7b4-b5aff8985166",
+      "occurred_at": "2026-09-21T06:54:26.244592Z",
+      "payload": {
+        "objective": "determine_capacity",
+        "target_id": "b9b55c83-9c51-4003-934d-b25c93362716"
+      },
+      "sequence": 1,
+      "type": "investigation_created"
+    },
+    {
+      "id": "600c14cc-defb-4656-81eb-11774d2bcd59",
+      "idempotency_key": "test-run-queued:48b7c560-da45-4c20-a988-761895ebc2dd",
+      "occurred_at": "2026-09-21T06:54:26.266380Z",
+      "payload": {
+        "kind": "baseline",
+        "test_run_id": "48b7c560-da45-4c20-a988-761895ebc2dd"
+      },
+      "sequence": 2,
+      "type": "test_run_queued"
+    },
+    {
+      "id": "20a8da76-5965-4f81-9996-5e8f1f149ea4",
+      "idempotency_key": "test-run-started:48b7c560-da45-4c20-a988-761895ebc2dd",
+      "occurred_at": "2026-09-21T06:54:26.428162Z",
+      "payload": {
+        "test_run_id": "48b7c560-da45-4c20-a988-761895ebc2dd"
+      },
+      "sequence": 3,
+      "type": "test_run_started"
+    }
+  ],
+  "experiment_budget": {
+    "consumed": 0,
+    "exhausted": false,
+    "max_experiments": 3,
+    "remaining": 3
+  },
+  "experiments": [],
+  "findings": [],
+  "hypotheses": [],
+  "investigation_id": "f39bb89e-2a04-43e5-b7b4-b5aff8985166",
+  "observations": [],
+  "status": "failed",
+  "target_id": "b9b55c83-9c51-4003-934d-b25c93362716"
+}

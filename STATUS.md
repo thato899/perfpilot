@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-24 by Govenor
+**Last updated:** 2026-09-24 by Kamogelo
 
 ## Current phase
 
@@ -17,6 +17,8 @@
 - #36: `status:in-progress` on `feature/p2-runner-1`; approved follow-up execution now persists one deterministic `ExperimentResult` per run.
 - #33: implementation complete on `feature/p2-eval-1-agent-evaluation`; PR pending. The deterministic suite passes without credentials, and the bounded live adapter is opt-in.
 - #39: `status:todo`; waiting on the #32 comparison contract and baseline/comparison API from #34.
+- #37: `status:in-progress` on `feature/p2-investigation-timeline`, rebuilt on current `main`. Renders #35's ordered `events`, `experiment_budget` and typed statuses; review feedback on the earlier attempt is incorporated (experiment wording no longer asserts an approval the server has not recorded, terminal snapshots are never marked stale, and the page renders the timeline's loading/reconnect states instead of returning early). See [docs/phase2/p2-ui-1-investigation-timeline.md](docs/phase2/p2-ui-1-investigation-timeline.md).
+- #34: unblocked now that #32 has merged; not yet started.
 
 P2-EVAL-1 review note: deterministic tests, Python lint/format, documentation,
 and `STATUS.md` are updated. Because the change touches `docs/` and root
