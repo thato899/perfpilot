@@ -14,6 +14,7 @@ Convert an approved `TestPlan` into an executable k6 script, run it against a co
 - Enforce the safety ceiling (`MAX_VIRTUAL_USERS`, `MAX_TEST_DURATION_SECONDS`) at execution time regardless of what the plan requests — if a plan exceeds the ceiling, this agent clamps and flags it rather than silently running the full request or silently failing.
 - Collect k6's raw output and hand it to `packages/metrics` for parsing into validated `Metric` records (p50/p90/p95/p99, throughput, error rate, HTTP status distribution, endpoint-level breakdown).
 - Report execution status back to the Orchestrator (`succeeded`, `failed`, `aborted_over_limit`) with the resulting `TestRun` and its metrics.
+- For an approved Phase 2 follow-up experiment, reuse the existing `Experiment` and linked `TestRun` identity; persist exactly one `ExperimentResult` containing the deterministic comparison from `packages/metrics`.
 
 ## Non-responsibilities
 
@@ -66,3 +67,20 @@ Convert an approved `TestPlan` into an executable k6 script, run it against a co
 | Plan requests more VUs/duration than the configured ceiling | Clamp to the ceiling, execute the clamped test, and report `clamped` in the result — never silently execute the full request. |
 | Target fails the allow-list re-check at execution time | Execution refused before any traffic is sent; `TestRun` marked `failed` with reason `target_not_authorized`. |
 | k6 process crashes or times out mid-run | `TestRun` marked `failed`; partial metrics (if any were flushed) are still parsed and retained rather than discarded, and the failure is surfaced, not hidden. |
+
+## Phase 2 approved experiment execution
+
+The API approval endpoint is the human authorization boundary. It creates the
+approved/queued `Experiment` and linked `TestRun`; the Celery worker owns the
+later execution boundary. The worker must refuse a non-queued run, re-check
+authorization and the target allow-list immediately before invoking k6, and
+apply the configured VU, duration, and timeout ceilings regardless of the
+approved plan.
+
+On successful completion, the worker stores the raw k6 summary, generated
+script reference, actual stages, parsed `Metric` rows, and exactly one
+`ExperimentResult`. That result contains the serialized `MetricComparison`
+from `packages/metrics` and a typed conclusion. A duplicate Celery delivery
+returns the existing terminal state and never invokes k6 again. Execution
+failures transition the existing `Experiment`/`TestRun` to a terminal failure
+state and do not retry load generation automatically.
