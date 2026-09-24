@@ -356,6 +356,7 @@ def test_create_investigation(client: TestClient, db_session, target: dict) -> N
     assert body["objective"] == InvestigationObjective.DETERMINE_CAPACITY.value
     assert body["experiments_run"] == 0
     assert body["current_test_run_id"] is not None
+    assert body["baseline_test_run_id"] == body["current_test_run_id"]
     run = db_session.get(m.TestRun, body["current_test_run_id"])
     assert run is not None
     assert str(run.target_id) == target["id"]
@@ -561,7 +562,11 @@ def test_approve_experiment_is_idempotent(client: TestClient, db_session, target
         confidence=0.6,
         status=HypothesisStatus.TESTING,
         evidence=[],
-        recommended_experiment={"variable_to_isolate": "db_pool_size", "change": "32"},
+        recommended_experiment={
+            "variable_to_isolate": "db_pool_size",
+            "change": "32",
+            "expected_signal": "p95 improves",
+        },
     )
     db_session.add(hypothesis)
     db_session.commit()
@@ -580,6 +585,9 @@ def test_approve_experiment_is_idempotent(client: TestClient, db_session, target
 
     assert first.status_code == second.status_code == 202
     assert first.json()["test_run_id"] == second.json()["test_run_id"]
+    events = client.get(f"/api/investigations/{inv['id']}", headers=AUTH).json()["events"]
+    approval_events = [event for event in events if event["type"] == "experiment_approved"]
+    assert approval_events[-1]["payload"]["experiment_id"] == first.json()["experiment_id"]
     assert db_session.query(m.Experiment).filter_by(hypothesis_id=hypothesis.id).count() == 1
     assert db_session.query(m.Experiment).filter_by(hypothesis_id=hypothesis.id).one().status in {
         ExperimentStatus.QUEUED,
