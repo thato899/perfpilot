@@ -2,12 +2,12 @@
 
 ## Decision requested
 
-Govenor/Team Lead granted Phase 1 sign-off in the approved [PR #48](https://github.com/thato899/perfpilot/pull/48), opening the Phase 2 implementation gate. The eight Phase 2 issues remain individually scoped and `status:todo` until their owners actually begin work.
+Govenor/Team Lead granted Phase 1 sign-off in the approved [PR #48](https://github.com/thato899/perfpilot/pull/48), opening the Phase 2 implementation gate. The Phase 2 issues remain individually scoped, with current labels maintained on GitHub.
 
 ## Implementation status
 
-Phase 1 implementation and real E2E are complete; Team Lead sign-off is
-pending. The implementation is on `main` through PRs #42, #43, #44, #45, #46,
+Phase 1 implementation and real E2E are complete; Team Lead sign-off was
+granted in PR #48. The implementation is on `main` through PRs #42, #43, #44, #45, #46,
 and #47, together with the earlier foundation PRs. Issues #1–#15 and #27 are
 closed. Issue #13 was reconciled to `status:done` after confirming the real
 Celery evidence. Issue #9 is a resolved architecture question and is not
@@ -56,8 +56,15 @@ merge, and its stale remote branch was deleted.
 
 ## Phase 2 gate
 
+The gate is open. As last verified on 2026-09-22, #32, #35, and #38 were
+merged and verified; #33's implementation was merged in PR #55; #34 and #37
+remained open and unmerged; and #39 remained blocked on #34. The dependency
+order and ticket definitions are maintained in [PLANNING.md](../PLANNING.md).
+The older sentence immediately below records the gate's original opening state
+and is historical, not the current issue-board state.
+
 Issues #32–#39 remain open with `phase-2` and `status:todo`. Their dependency
 order is documented in [PLANNING.md](../PLANNING.md) and each issue defines
 scope, contracts, impacts, security, failure behavior, tests, acceptance, and
-Definition of Done. The first Wave 1 starts are #32, #33, #35 architecture/
-state work, and #34 persistence/API groundwork.
+Definition of Done. Current implementation status is recorded in `STATUS.md`;
+#34 and #37 are not complete on `main`, and #39 remains blocked on #34.

@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-20):** Phase 1 implementation and real backend/browser E2E are complete. Govenor/Team Lead granted sign-off in PR #48. The exact DB-pool reference demo was not reproduced. Phase 2 planning and ownership are complete; implementation remains ticket-scoped and starts only through the dependency waves below.
+> **Current status (2026-09-23):** Phase 1 implementation and real backend/browser E2E are complete. Govenor/Team Lead granted sign-off in PR #48. The exact DB-pool reference demo was not reproduced. Phase 2 implementation is underway: #32, #35, and #38 are merged and verified; #34 and #37 remain open and unmerged; #39 is blocked on #34.
 
 ## Phase 0 — this commit
 
@@ -19,7 +19,7 @@ Definition of done for Phase 1: the [demo scenario](demo-scenario.md) runs for r
 
 ## Phase 2 — investigation loop robustness
 
-Phase 2 is authorized after the Phase 1 sign-off recorded in `STATUS.md`. All eight tickets remain individually `status:todo` until their owners actually begin work. No ticket is considered complete until its own Definition of Done is met and its PR is merged and verified.
+Phase 2 is authorized after the Phase 1 sign-off recorded in `STATUS.md`. Ticket status is tracked on GitHub and must match merged implementation evidence. No ticket is considered complete until its own Definition of Done is met and its PR is merged and verified.
 
 ### Phase 2 ticket register
 

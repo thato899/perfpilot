@@ -15,7 +15,7 @@ ownership, dependency waves, and cross-owner handoff contracts.
 | Exact DB-pool reference scenario | NOT REPRODUCED |
 | Phase 1 formal sign-off | GRANTED by Govenor/Team Lead in PR #48 |
 | Phase 2 planning | COMPLETE |
-| Phase 2 implementation | NOT STARTED |
+| Phase 2 implementation | IN PROGRESS |
 
 ## Phase 2 ownership
 
@@ -26,24 +26,28 @@ ownership, dependency waves, and cross-owner handoff contracts.
 | Govenor | `malumzz` | #32, #36 | deterministic metrics and safe k6 execution |
 | Thatayaone | `Thatayaone910` | #33 | bounded agent evaluation |
 
-All eight issues remain open with `phase-2` and `status:todo`. Assignment does not mean implementation has started.
+The issue board remains the execution source of truth. As last verified on
+2026-09-22, #32, #35, and #38 were merged and verified; #33's implementation
+was merged in PR #55 but its issue-board closure/label state still needs an
+online reconciliation; #34 and #37 remain open and are not complete; #39 is
+open and blocked on #34. Assignment does not mean implementation has started.
 
 ## Dependency waves
 
 ```text
 Wave 1
-  #32  deterministic comparison metrics
-  #33  agent evaluation suite
-  #35  architecture/state groundwork
-  #34  baseline persistence/API groundwork
+  #32  deterministic comparison metrics — COMPLETE
+  #33  agent evaluation suite — MERGED; issue-board state to reconcile
+  #35  architecture/state groundwork — COMPLETE
+  #34  baseline persistence/API groundwork — IN PROGRESS; not merged
 
 Wave 2
   #36  approved follow-up execution, after #32 and #35 contracts
-  #37  timeline UI, after #35 timeline/state API
-  #38  findings UI, after #35 and relevant #33 grounding semantics
+  #37  timeline UI, after #35 timeline/state API — OPEN; no merged implementation
+  #38  findings UI, after #35 and relevant #33 grounding semantics — COMPLETE
 
 Wave 3
-  #39  comparison UI, after #32 and #34, plus stable #35 run identity where needed
+  #39  comparison UI, after #32 and #34, plus stable #35 run identity where needed — BLOCKED on #34
 ```
 
 The graph is intentionally acyclic:
