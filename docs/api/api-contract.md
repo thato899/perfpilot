@@ -116,6 +116,77 @@ A single static bearer token (`API_AUTH_SECRET`, see `.env.example`), sent as `A
 
 ---
 
+## Baselines
+
+A baseline is a **deliberately chosen** prior run, persisted so a comparison
+names an intentional reference rather than whatever the system happened to
+pick. Selection is a human action through these endpoints; no agent chooses a
+baseline, and no endpoint substitutes one.
+
+Two runs are comparable when **all** of the following hold. Each failure
+returns `409` with the code in brackets:
+
+| Rule | Code |
+|---|---|
+| Both runs succeeded | `baseline_run_not_succeeded` / `current_run_not_succeeded` |
+| Same target — the target *is* the environment | `environment_mismatch` |
+| Same `test_type` | `test_type_mismatch` |
+| Same `target_concurrency` | `concurrency_mismatch` |
+| Both runs recorded metrics | `baseline_metrics_unavailable` / `current_metrics_unavailable` |
+| At least one endpoint scope measured in both | `no_shared_endpoint` |
+
+Compatibility is the *scenario shape*, not the plan row: re-planning the same
+scenario keeps existing baselines valid, while a different concurrency does
+not, because comparing 200 VUs against 1000 would read as a regression that is
+really a load change.
+
+### `POST /api/targets/{target_id}/baselines`
+
+- **Purpose:** promote a succeeded run to a named baseline for its target.
+- **Request:** `{ "test_run_id": "run_...", "label": "v1.2 release", "selected_by": "kamogelo", "idempotency_key": "optional" }`
+- **Response:** `201` → `BaselineRef`. Re-selecting the same run returns `200`
+  with the existing record — a safe repeat, not a duplicate and not an error.
+- **Errors:** `404` unknown target or run; `409` run belongs to another target
+  (`environment_mismatch`), run did not succeed, or the idempotency key was
+  already used for a different run (`idempotency_key_reused`); `422` missing
+  or empty `label`.
+
+The response records `test_type` and `target_concurrency` as they were at
+selection time. Compatibility is judged against those frozen values, so a
+later edit to the plan cannot silently change whether an old comparison was
+valid.
+
+### `GET /api/targets/{target_id}/baselines`
+
+- **Response:** `200` → `{ "baselines": [BaselineRef, ...] }`, newest first.
+  An empty list is a normal result, not a `404`.
+
+### `GET /api/baselines/{baseline_id}`
+
+- **Response:** `200` → `BaselineRef`.
+
+### `GET /api/test-runs/{run_id}/comparison?baseline_id={baseline_id}`
+
+- **Purpose:** compare a run against one named baseline.
+- **`baseline_id` is required.** Omitting it is a `422`, not a fallback to the
+  most recent run — a silently selected reference is the thing this endpoint
+  exists to prevent. Use the list endpoint to choose.
+- **Response:** `200` →
+  `{ "baseline": BaselineRef, "current_test_run_id": "run_...", "comparisons": [MetricComparison, ...], "baseline_only_endpoints": [...], "current_only_endpoints": [...] }`
+- **Errors:** `404` unknown run or baseline; `409` with one of the codes above.
+
+One `MetricComparison` is returned per endpoint scope measured in both runs,
+aggregate (`endpoint: null`) first. Endpoints measured in only one of the runs
+are named in `baseline_only_endpoints` / `current_only_endpoints` rather than
+dropped: a scope present in one run and absent from the other is a real
+difference, and omitting it would make the comparison look more complete than
+it is.
+
+Every number in `MetricComparison` is produced by `packages/metrics` and
+passed through unchanged — this layer performs no arithmetic. A `null` percent
+field means the baseline value was zero, so a percentage cannot be expressed;
+it does not mean zero change.
+
 ## Reports
 
 ### `GET /api/reports/{id}`

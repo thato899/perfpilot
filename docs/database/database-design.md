@@ -126,6 +126,31 @@ Decision for Phase 1: summary-at-completion is sufficient for the MVP. `Metric` 
 - `id`, `investigation_id` (FK, unique — one report per investigation in the MVP; re-generating supersedes rather than duplicating)
 - `executive_summary`, `capacity` (JSONB), `key_metrics` (JSONB), `bottleneck_analysis` (JSONB), `regression` (JSONB)
 
+### Baseline
+- `id`, `target_id` (FK), `test_run_id` (FK), `label`, `selected_by`
+- `test_type` (enum, denormalized), `target_concurrency` (int, denormalized)
+- `idempotency_key` (nullable)
+- A deliberately promoted historical run, used as the reference for a
+  comparison (issue #34). A baseline is a *selection*, not a kind of run: any
+  succeeded `TestRun` can become one.
+- **Why `test_type`/`target_concurrency` are denormalized:** compatibility is
+  judged against what the baseline run actually executed. Reading them back
+  through the live `TestPlan` would let a later edit to that plan silently
+  change whether an existing comparison was valid — a baseline has to mean the
+  same thing next month as it does today.
+- **The target is the environment.** Two runs against the same `target_id`
+  share a base URL and an authorization record, which is what makes them
+  comparable; different targets are different systems. If environments that
+  share a target ever need distinguishing, an explicit column can be added
+  additively without invalidating existing rows.
+- Unique `(target_id, test_run_id)` — re-selecting the same run is a safe
+  repeat that returns the existing record rather than creating a second.
+- Unique `(target_id, idempotency_key)` — a retry is safe; the same key for a
+  *different* run is a conflict, not a silent overwrite.
+- `test_run_id` uses `ON DELETE RESTRICT`, not `CASCADE`: deleting a run that
+  something was compared against would leave earlier comparisons
+  unexplainable, so it has to be a conscious act.
+
 ### AIExecution
 - `id`, `investigation_id` (FK, nullable — some calls, like ad hoc script generation, may not yet belong to an investigation)
 - `test_run_id` (FK, nullable), `agent` (enum: orchestrator/test_planner/load_engineer/performance_investigator/reporting), `timestamp`

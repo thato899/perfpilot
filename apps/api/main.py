@@ -15,7 +15,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from .errors import install_error_handlers
-from .routers import investigations, projects, tests_
+from .routers import baselines, investigations, projects, tests_
 
 app = FastAPI(
     title="PerfPilot API",
@@ -28,6 +28,7 @@ install_error_handlers(app)
 app.include_router(projects.router)
 app.include_router(tests_.router)
 app.include_router(investigations.router)
+app.include_router(baselines.router)
 
 
 @app.get("/health", tags=["operational"])

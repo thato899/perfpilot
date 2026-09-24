@@ -277,6 +277,64 @@ export interface Report {
 }
 
 // ---------------------------------------------------------------------------
+// Baselines and comparison — docs/api/api-contract.md#baselines, issue #34
+//
+// The comparison numbers are produced by packages/metrics and passed through
+// the API unchanged; nothing on the client recomputes them. Percent fields are
+// null when the baseline value was zero, which is a real "cannot be expressed
+// as a percentage" rather than a zero-percent change — rendering it as 0%
+// would assert something the data does not say.
+// ---------------------------------------------------------------------------
+
+export type ComparisonStatus = "available" | "incompatible" | "unavailable";
+
+export interface MetricComparison {
+  status: ComparisonStatus;
+  reason?: string | null;
+  baselineMetricId?: string | null;
+  currentMetricId?: string | null;
+  baselineTestRunId?: string | null;
+  currentTestRunId?: string | null;
+  baselineConcurrency?: number | null;
+  currentConcurrency?: number | null;
+  p50DeltaMs?: number | null;
+  p50DeltaPct?: number | null;
+  p90DeltaMs?: number | null;
+  p90DeltaPct?: number | null;
+  p95DeltaMs?: number | null;
+  p95DeltaPct?: number | null;
+  p99DeltaMs?: number | null;
+  p99DeltaPct?: number | null;
+  throughputDeltaRps?: number | null;
+  throughputDeltaPct?: number | null;
+  errorRateDelta?: number | null;
+  errorRateDeltaPct?: number | null;
+}
+
+/** A deliberately chosen historical run, with the compatibility identity
+ *  frozen at selection time. */
+export interface BaselineRef {
+  id: string;
+  targetId: string;
+  testRunId: string;
+  label: string;
+  selectedBy: string;
+  testType: TestType;
+  targetConcurrency: number;
+}
+
+export interface ComparisonResponse {
+  baseline: BaselineRef;
+  currentTestRunId: string;
+  comparisons: MetricComparison[];
+  /** Endpoints measured in the baseline run only — a real difference between
+   *  the two runs, not an absence of change. */
+  baselineOnlyEndpoints: (string | null)[];
+  /** Endpoints measured in the current run only. */
+  currentOnlyEndpoints: (string | null)[];
+}
+
+// ---------------------------------------------------------------------------
 // Common API error shape — docs/api/api-contract.md#common-error-shape
 // ---------------------------------------------------------------------------
 
