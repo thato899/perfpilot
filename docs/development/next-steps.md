@@ -2,8 +2,8 @@
 
 Phase 1 implementation and real E2E are complete, and Govenor/Team Lead
 granted sign-off in PR #48. The exact DB-pool reference demo remains **not
-reproduced**. Phase 2 planning is complete; implementation remains scoped to
-the eight existing issues.
+reproduced**. Phase 2 planning is complete and implementation is underway
+through the existing owner-specific issues.
 
 ## Ownership
 
@@ -14,27 +14,30 @@ the eight existing issues.
 | Govenor | `malumzz` | #32, #36 |
 | Thatayaone | `Thatayaone910` | #33 |
 
-All eight issues remain open with `phase-2` and `status:todo` until the owner
-actually starts work. Assignment alone does not mean implementation began.
+The last verified board state recorded #32, #35, and #38 as merged/completed;
+#33's implementation was merged in PR #55; #34 and #37 remained open and
+unmerged; and #39 remained blocked on #34. Reconcile live issue labels and
+closure state whenever GitHub connectivity is available. Assignment alone does
+not mean implementation began.
 
 ## Dependency waves
 
 ### Wave 1
 
-- Govenor: #32, deterministic comparison metrics.
-- Thatayaone: #33, bounded offline agent evaluation.
-- Thato: #35 architecture/state groundwork.
-- Kamogelo: #34 persistence/API groundwork.
+- Govenor: #32, deterministic comparison metrics — complete.
+- Thatayaone: #33, bounded offline agent evaluation — implementation merged; board state to reconcile.
+- Thato: #35 architecture/state groundwork — complete.
+- Kamogelo: #34 persistence/API groundwork — active and not complete.
 
 ### Wave 2
 
 - Govenor: #36 after #32 and #35 contracts stabilize.
-- Kamogelo: #37 after the #35 timeline/state API stabilizes.
-- Thato: #38 after the #35 contract and relevant #33 grounding semantics stabilize.
+- Kamogelo: #37 after the #35 timeline/state API stabilizes; implementation is not merged.
+- Thato: #38 after the #35 contract and relevant #33 grounding semantics stabilize — complete.
 
 ### Wave 3
 
-- Thato: #39 after #32/#34 comparison contracts stabilize, plus experiment/run identity if supplied by #35.
+- Thato: #39 after #32/#34 comparison contracts stabilize, plus experiment/run identity if supplied by #35; currently blocked on #34.
 
 Preparatory work may proceed in parallel, but each owner must keep the final
 integration boundary explicit and avoid cycles or mega-PRs.

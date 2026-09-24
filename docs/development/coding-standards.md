@@ -39,7 +39,7 @@ Additional rules for working with an AI assistant specifically:
 
 ## 3. Issue board — tasks and status
 
-Tracked as [GitHub Issues](https://github.com/thato899/perfpilot/issues) on the active phase milestone: Phase 1 tickets first, then the Phase 2 ticket register in [roadmap.md](../roadmap.md#phase-2-ticket-register). Phase 2 issues remain `status:todo` until Phase 1's end-to-end sign-off is recorded in `STATUS.md`.
+Tracked as [GitHub Issues](https://github.com/thato899/perfpilot/issues) on the active phase milestone: Phase 1 tickets first, then the Phase 2 ticket register in [roadmap.md](../roadmap.md#phase-2-ticket-register). After Phase 1 sign-off, each Phase 2 issue's label must reflect its actual state: `status:todo`, `status:in-progress`, `status:blocked`, or `status:done`.
 
 - **Status labels:** `status:todo` → `status:in-progress` → `status:done`, plus `status:blocked` for anything waiting on another owner (see §4). The `status:todo` ↔ `status:in-progress` move now happens automatically when you self-assign/unassign the issue ([.github/workflows/issue-automation.yml](../../.github/workflows/issue-automation.yml) — see [CONTRIBUTING.md#claim-a-task-before-you-start](../../CONTRIBUTING.md#claim-a-task-before-you-start)). `status:blocked` and `status:done` are still yours to set by hand — don't wait for someone else to notice.
 - **Owner labels:** `dev:thatayaone`, `dev:govenor`, `dev:kamogelo`, `dev:thato`.
