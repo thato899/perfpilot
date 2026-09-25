@@ -1,10 +1,10 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-24 by Govenor
+**Last updated:** 2026-09-24 by Kamogelo
 
 ## Current phase
 
-**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #32, #35, and #38 are merged; #36 is in progress.**
+**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #32, #35, #36, and #38 are merged; #34 and #37 remain open, and #39 is blocked on #34.**
 
 - Phase 1 implementation: complete.
 - Backend and browser E2E: verified.
@@ -17,6 +17,8 @@
 - #36: `status:in-progress` on `feature/p2-runner-1`; approved follow-up execution now persists one deterministic `ExperimentResult` per run.
 - #33: implementation complete on `feature/p2-eval-1-agent-evaluation`; PR pending. The deterministic suite passes without credentials, and the bounded live adapter is opt-in.
 - #39: `status:todo`; waiting on the #32 comparison contract and baseline/comparison API from #34.
+- #37: `status:in-progress` on `feature/p2-investigation-timeline`, rebuilt on current `main`. Renders #35's ordered `events`, `experiment_budget` and typed statuses; review feedback on the earlier attempt is incorporated (experiment wording no longer asserts an approval the server has not recorded, terminal snapshots are never marked stale, and the page renders the timeline's loading/reconnect states instead of returning early). See [docs/phase2/p2-ui-1-investigation-timeline.md](docs/phase2/p2-ui-1-investigation-timeline.md).
+- #34: unblocked now that #32 has merged; not yet started.
 
 P2-EVAL-1 review note: deterministic tests, Python lint/format, documentation,
 and `STATUS.md` are updated. Because the change touches `docs/` and root
@@ -52,3 +54,11 @@ returned 200, worker k6 reported `v0.57.0`, baseline run
 and persisted an `available` comparison plus `inconclusive` result. Raw script
 and summary files were written to the k6 results directory. Remaining before
 #36 is done: CI, review, merge to `main`, and post-merge verification.
+- #35: merged in PR #50 (architecture/state groundwork); issue closed with `status:done`.
+- #38: merged in PR #51 (findings UI); issue closed with `status:done`.
+- #32: merged in PR #54; deterministic comparison contract is the stable handoff for #34/#39.
+- #33: implementation merged in PR #55; the deterministic suite passes without credentials, and the bounded live adapter is opt-in.
+- #36: merged through PR #58; approved follow-up execution persists one deterministic `ExperimentResult` per run.
+- #34: Kamogelo's baseline persistence/comparison API; open and not complete on `main`.
+- #37: Kamogelo's investigation timeline; open and not complete on `main`. The prior PR #53 was closed without merge after review.
+- #39: `status:blocked`; #32 is merged, but the baseline/comparison API from #34 is still outstanding.

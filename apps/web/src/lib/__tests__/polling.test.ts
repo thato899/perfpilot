@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isStale,
   isTerminalInvestigationStatus,
   isTerminalTestRunStatus,
   MAX_CONSECUTIVE_POLL_ERRORS,
+  POLL_INTERVAL_MS,
+  STALE_AFTER_MS,
 } from "../polling";
 
 describe("safe polling boundaries", () => {
@@ -22,5 +25,26 @@ describe("safe polling boundaries", () => {
 
   it("bounds consecutive polling errors", () => {
     expect(MAX_CONSECUTIVE_POLL_ERRORS).toBe(3);
+  });
+});
+
+describe("staleness window", () => {
+  it("allows several poll intervals before calling the view stale", () => {
+    // One slow response should not flip the UI into a warning state.
+    expect(STALE_AFTER_MS).toBeGreaterThan(POLL_INTERVAL_MS);
+  });
+
+  it("is not stale before the window elapses", () => {
+    expect(isStale(1_000, 1_000 + STALE_AFTER_MS)).toBe(false);
+  });
+
+  it("is stale once the window elapses", () => {
+    expect(isStale(1_000, 1_000 + STALE_AFTER_MS + 1)).toBe(true);
+  });
+
+  it("is never stale before the first successful poll", () => {
+    // Nothing has been received yet, so there is no old state to warn about
+    // — that is the loading state, not the stale state.
+    expect(isStale(null, Date.now())).toBe(false);
   });
 });
