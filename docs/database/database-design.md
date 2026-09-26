@@ -129,15 +129,30 @@ Decision for Phase 1: summary-at-completion is sufficient for the MVP. `Metric` 
 ### Baseline
 - `id`, `target_id` (FK), `test_run_id` (FK), `label`, `selected_by`
 - `test_type` (enum, denormalized), `target_concurrency` (int, denormalized)
+- `scenario_fingerprint` (string, `v<n>:<sha256>`), `scenario` (JSONB)
 - `idempotency_key` (nullable)
 - A deliberately promoted historical run, used as the reference for a
   comparison (issue #34). A baseline is a *selection*, not a kind of run: any
   succeeded `TestRun` can become one.
-- **Why `test_type`/`target_concurrency` are denormalized:** compatibility is
-  judged against what the baseline run actually executed. Reading them back
-  through the live `TestPlan` would let a later edit to that plan silently
-  change whether an existing comparison was valid — a baseline has to mean the
-  same thing next month as it does today.
+- **Why the compatibility identity is denormalized:** it is judged against what
+  the baseline run actually executed. Reading it back through the live
+  `TestPlan` would let a later edit to that plan silently change whether an
+  existing comparison was valid — a baseline has to mean the same thing next
+  month as it does today.
+- **Why `scenario_fingerprint` as well:** target, type and concurrency can all
+  match while the two plans still describe substantially different tests — a
+  short soak of one journey against a long ramp through three — and comparing
+  those reports a change of experiment as a change in performance. The
+  fingerprint covers `ramp_strategy`, `stages`, `duration` and `user_journeys`
+  alongside type and concurrency; `apps/api/scenario_identity.py` defines the
+  field set and what is deliberately excluded. A plain column rather than
+  JSONB because it is compared for equality and carried in
+  `ix_baseline_target_compat`; `scenario` beside it is the canonical document
+  it was hashed from, never queried inside, kept so a refusal can name the
+  fields that differ.
+- A `CHECK` enforces the `v<n>:` prefix. A fingerprint whose rule nobody can
+  name is worse than no fingerprint, and these rows outlive the process that
+  wrote them, so the rule belongs in the database rather than only in Python.
 - **The target is the environment.** Two runs against the same `target_id`
   share a base URL and an authorization record, which is what makes them
   comparable; different targets are different systems. If environments that

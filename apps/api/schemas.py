@@ -203,6 +203,12 @@ class BaselineRef(BaseModel):
     selected_by: str
     test_type: str
     target_concurrency: int
+    #: `v<n>:<sha256>` over the scenario fields listed in
+    #: `apps/api/scenario_identity.py`. Opaque to the consumer: compare it for
+    #: equality to tell two baselines apart, never parse it. The version prefix
+    #: is what lets the rule change later without old values silently meaning
+    #: something new.
+    scenario_fingerprint: str
 
 
 class BaselinesResponse(BaseModel):

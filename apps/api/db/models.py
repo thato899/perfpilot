@@ -571,6 +571,19 @@ class Baseline(TimestampMixin, Base):
     test_type: Mapped[TestType] = mapped_column(pg_enum(TestType, "test_type"), nullable=False)
     target_concurrency: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # The rest of the scenario: ramp strategy, stages, duration, journeys,
+    # reduced to one versioned hash by `apps/api/scenario_identity.py`. Target,
+    # type and concurrency can all match while the two plans still describe
+    # substantially different tests, and comparing those reports a change of
+    # experiment as a change in performance.
+    #
+    # A plain column rather than JSONB because it is compared for equality and
+    # indexed; the document it was computed from sits beside it in JSONB, which
+    # is never queried inside — it exists so a refusal can name the fields that
+    # differ instead of printing two hashes at the caller.
+    scenario_fingerprint: Mapped[str] = mapped_column(String(80), nullable=False)
+    scenario: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
     idempotency_key: Mapped[str | None] = mapped_column(String(255))
 
     target: Mapped[Target] = relationship()
@@ -582,7 +595,18 @@ class Baseline(TimestampMixin, Base):
         UniqueConstraint("target_id", "test_run_id"),
         UniqueConstraint("target_id", "idempotency_key"),
         CheckConstraint("target_concurrency > 0", name="target_concurrency_positive"),
-        # The comparison endpoint's read path: candidates for a target, newest
-        # first, narrowed by the two compatibility columns.
-        Index("ix_baseline_target_compat", "target_id", "test_type", "target_concurrency"),
+        # A fingerprint has to carry its version prefix; an unprefixed value
+        # would be a hash whose rule nobody can name. Enforced by the database
+        # rather than only in Python because these rows outlive the process
+        # that wrote them.
+        CheckConstraint("scenario_fingerprint LIKE '%:%'", name="scenario_fingerprint_versioned"),
+        # The comparison endpoint's read path: candidates for a target,
+        # narrowed by the whole frozen compatibility identity.
+        Index(
+            "ix_baseline_target_compat",
+            "target_id",
+            "test_type",
+            "target_concurrency",
+            "scenario_fingerprint",
+        ),
     )

@@ -3,6 +3,12 @@
 Adds the `baseline` table only. Everything else this database needs already
 exists.
 
+If you applied an earlier revision of THIS migration (before review feedback
+added `scenario_fingerprint` and `scenario`), the revision id is unchanged, so
+`upgrade head` will do nothing. Run `downgrade -1` and then `upgrade head` to
+pick the new columns up. Nothing depends on `baseline` yet, so dropping it
+costs only the rows you selected while testing.
+
 NOTE for whoever next runs `--autogenerate`: it will also want to rename four
 `investigation_event` unique constraints. That is real, pre-existing drift
 between #35's migration and the naming convention in `db/base.py` — the
@@ -62,6 +68,16 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("target_concurrency", sa.Integer(), nullable=False),
+        # The rest of the frozen compatibility identity. `scenario_fingerprint`
+        # is a plain column because it is compared for equality and indexed;
+        # `scenario` is the canonical document it was hashed from, JSONB
+        # because it is stored and returned whole and never queried inside.
+        sa.Column("scenario_fingerprint", sa.String(length=80), nullable=False),
+        sa.Column(
+            "scenario",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+        ),
         sa.Column("idempotency_key", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
@@ -74,6 +90,10 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             server_default=sa.text("now()"),
             nullable=False,
+        ),
+        sa.CheckConstraint(
+            "scenario_fingerprint LIKE '%:%'",
+            name=op.f("ck_baseline_scenario_fingerprint_versioned"),
         ),
         sa.CheckConstraint(
             "target_concurrency > 0", name=op.f("ck_baseline_target_concurrency_positive")
@@ -101,7 +121,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_baseline_target_compat",
         "baseline",
-        ["target_id", "test_type", "target_concurrency"],
+        ["target_id", "test_type", "target_concurrency", "scenario_fingerprint"],
         unique=False,
     )
     op.create_index(op.f("ix_baseline_target_id"), "baseline", ["target_id"], unique=False)

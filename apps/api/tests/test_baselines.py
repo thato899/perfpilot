@@ -29,6 +29,7 @@ from apps.api.baselines import (
     check_eligibility,
     check_pair,
 )
+from apps.api.scenario_identity import fingerprint
 from packages.metrics.metrics import ComparisonStatus
 from packages.schemas.python.entities import TestRunStatus
 
@@ -38,7 +39,31 @@ TARGET_A = uuid.uuid4()
 TARGET_B = uuid.uuid4()
 
 
+def scenario(**overrides) -> dict:
+    """A plausible canonical scenario document, overridable one field at a time."""
+    base = {
+        "test_type": "load",
+        "target_concurrency": 100,
+        "ramp_strategy": {"kind": "linear", "ramp_up_s": 60},
+        "user_journeys": ["browse", "checkout"],
+        "duration": {"total_s": 300},
+        "stages": [
+            {"duration_s": 60, "target": 50},
+            {"duration_s": 240, "target": 100},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
 def facts(**overrides) -> RunFacts:
+    """RunFacts whose scenario agrees with its type and concurrency by default.
+
+    Keeping them consistent matters: a helper that left the scenario document
+    saying `load` while the fact said `stress` would make every ordering
+    assertion below pass for the wrong reason.
+    """
+    document = overrides.pop("scenario", None)
     base = {
         "test_run_id": uuid.uuid4(),
         "target_id": TARGET_A,
@@ -47,6 +72,13 @@ def facts(**overrides) -> RunFacts:
         "target_concurrency": 100,
     }
     base.update(overrides)
+    if document is None:
+        document = scenario(
+            test_type=base["test_type"],
+            target_concurrency=base["target_concurrency"],
+        )
+    base["scenario"] = document
+    base["scenario_fingerprint"] = overrides.get("scenario_fingerprint", fingerprint(document))
     return RunFacts(**base)
 
 
@@ -110,6 +142,76 @@ class TestPairCompatibility:
         # Re-planning the same scenario must not disqualify every historical
         # baseline — compatibility is the shape, not the plan row.
         assert check_pair(facts(), facts()) is None
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("user_journeys", ["browse"]),
+            ("user_journeys", ["checkout", "browse"]),
+            ("stages", [{"duration_s": 300, "target": 100}]),
+            ("duration", {"total_s": 2400}),
+            ("ramp_strategy", {"kind": "step", "step_s": 30}),
+        ],
+    )
+    def test_a_different_scenario_is_refused(self, field, value):
+        # The gap this closes: all three of target, test type and concurrency
+        # can agree while the two plans still describe substantially different
+        # tests. A five-minute soak of one journey against a forty-minute ramp
+        # through three produces a difference that is a change of experiment,
+        # not a change in performance.
+        failure = check_pair(facts(), facts(scenario=scenario(**{field: value})))
+        assert failure.reason is IncompatibleReason.SCENARIO_MISMATCH
+        assert failure.detail["differing_fields"] == [field]
+        assert failure.detail["baseline_scenario_fingerprint"].startswith("v1:")
+
+    def test_reordered_journeys_are_a_different_scenario(self):
+        # Order is treated as significant everywhere, including here where an
+        # argument could be made that it is incidental. A spurious refusal
+        # names the field and is fixed by re-selecting; a spurious match
+        # silently compares two different experiments. Only one self-corrects.
+        failure = check_pair(
+            facts(scenario=scenario(user_journeys=["browse", "checkout"])),
+            facts(scenario=scenario(user_journeys=["checkout", "browse"])),
+        )
+        assert failure.reason is IncompatibleReason.SCENARIO_MISMATCH
+
+    def test_every_differing_field_is_named(self):
+        failure = check_pair(
+            facts(),
+            facts(scenario=scenario(duration={"total_s": 60}, user_journeys=["browse"])),
+        )
+        assert failure.detail["differing_fields"] == ["duration", "user_journeys"]
+
+    def test_concurrency_is_reported_before_the_wider_scenario(self):
+        # Both differ. "You changed the load" is the more useful sentence than
+        # "something in the scenario changed", so the specific check runs first
+        # even though concurrency is inside the fingerprint too.
+        failure = check_pair(
+            facts(target_concurrency=200),
+            facts(target_concurrency=1000, scenario=scenario(user_journeys=["browse"])),
+        )
+        assert failure.reason is IncompatibleReason.CONCURRENCY_MISMATCH
+
+    def test_an_unrecognised_identity_version_is_not_read_as_a_change(self):
+        # A fingerprint computed under a rule this build does not know cannot
+        # honestly be reported as "the scenario changed" — we have no way to
+        # tell. Say what is actually true instead.
+        stale = facts()
+        stale = RunFacts(
+            test_run_id=stale.test_run_id,
+            target_id=stale.target_id,
+            status=stale.status,
+            test_type=stale.test_type,
+            target_concurrency=stale.target_concurrency,
+            scenario_fingerprint="v0:" + "0" * 64,
+            scenario=stale.scenario,
+        )
+        failure = check_pair(stale, facts())
+        assert failure.reason is IncompatibleReason.SCENARIO_IDENTITY_UNSUPPORTED
+        assert failure.detail == {
+            "baseline_scenario_identity_version": "v0",
+            "supported_scenario_identity_version": "v1",
+        }
 
     def test_status_is_checked_before_the_scenario(self):
         # A run that never finished is not comparable for a more basic reason
@@ -267,6 +369,8 @@ class TestPersistence:
                     selected_by="kamogelo",
                     test_type="load",
                     target_concurrency=1000,
+                    scenario_fingerprint=fingerprint(scenario()),
+                    scenario=scenario(),
                 )
             )
             if _ == 0:
@@ -287,6 +391,8 @@ class TestPersistence:
                 selected_by="kamogelo",
                 test_type="load",
                 target_concurrency=1000,
+                scenario_fingerprint=fingerprint(scenario()),
+                scenario=scenario(),
             )
         )
         db_session.commit()
@@ -352,6 +458,119 @@ class TestSelectionEndpoint:
         )
         assert res.status_code == 409
         assert res.json()["error"]["code"] == "idempotency_key_reused"
+
+    def test_a_reused_key_conflicts_even_when_its_run_is_already_a_baseline(
+        self, client, db_session, test_plan, target
+    ):
+        # The ordering bug this pins: the (target, run) lookup used to return
+        # 200 before the key was ever examined, so a caller retrying with a key
+        # that meant a different run got a success and walked away believing
+        # their key now referred to this one.
+        first_run = _succeeded_run(client, db_session, test_plan, target)
+        second_run = _succeeded_run(client, db_session, test_plan, target)
+        key = "retry-1"
+        for run_id, label, body_key in (
+            (first_run, "v1", key),
+            (second_run, "v2", None),
+        ):
+            payload = {"test_run_id": run_id, "label": label, "selected_by": "k"}
+            if body_key is not None:
+                payload["idempotency_key"] = body_key
+            assert (
+                client.post(
+                    f"/api/targets/{target['id']}/baselines", json=payload, headers=AUTH
+                ).status_code
+                == 201
+            )
+
+        res = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={
+                "test_run_id": second_run,
+                "label": "v2",
+                "selected_by": "k",
+                "idempotency_key": key,
+            },
+            headers=AUTH,
+        )
+        assert res.status_code == 409
+        assert res.json()["error"]["code"] == "idempotency_key_reused"
+        assert res.json()["error"]["detail"]["existing_test_run_id"] == first_run
+
+    def test_the_same_key_for_the_same_run_is_a_replay_not_a_conflict(
+        self, client, db_session, test_plan, target
+    ):
+        run_id = _succeeded_run(client, db_session, test_plan, target)
+        payload = {
+            "test_run_id": run_id,
+            "label": "v1",
+            "selected_by": "k",
+            "idempotency_key": "retry-1",
+        }
+        first = client.post(f"/api/targets/{target['id']}/baselines", json=payload, headers=AUTH)
+        second = client.post(f"/api/targets/{target['id']}/baselines", json=payload, headers=AUTH)
+        assert (first.status_code, second.status_code) == (201, 200)
+        assert first.json()["id"] == second.json()["id"]
+
+    def test_a_key_collision_that_loses_the_race_is_a_conflict_not_a_500(
+        self, client, db_session, test_plan, target
+    ):
+        # The sequential path cannot reach the IntegrityError branch, so the
+        # loser of the race is simulated by claiming the key underneath the
+        # request — after its pre-check has passed. Before this, that branch
+        # only looked for a (target, run) winner, found none, and re-raised
+        # into a 500: the one outcome an idempotency key exists to prevent.
+        first_run = _succeeded_run(client, db_session, test_plan, target)
+        second_run = _succeeded_run(client, db_session, test_plan, target)
+        key = "raced"
+
+        import apps.api.routers.baselines as router_module
+
+        real = router_module._by_key
+        calls: list[int] = []
+
+        def claim_the_key_after_the_precheck(db, target_id, idempotency_key):
+            calls.append(1)
+            if len(calls) == 1:
+                # Pre-check: the key is still free, as it was for the winner.
+                db_session.add(
+                    m.Baseline(
+                        target_id=uuid.UUID(target["id"]),
+                        test_run_id=uuid.UUID(first_run),
+                        label="winner",
+                        selected_by="k",
+                        test_type="load",
+                        target_concurrency=1000,
+                        scenario_fingerprint=fingerprint(scenario()),
+                        scenario=scenario(),
+                        idempotency_key=key,
+                    )
+                )
+                db_session.commit()
+                return None
+            return real(db, target_id, idempotency_key)
+
+        router_module._by_key = claim_the_key_after_the_precheck
+        try:
+            res = client.post(
+                f"/api/targets/{target['id']}/baselines",
+                json={
+                    "test_run_id": second_run,
+                    "label": "v2",
+                    "selected_by": "k",
+                    "idempotency_key": key,
+                },
+                headers=AUTH,
+            )
+        finally:
+            router_module._by_key = real
+
+        assert res.status_code == 409
+        assert res.json()["error"]["code"] == "idempotency_key_reused"
+        # Two calls means the pre-check passed and the IntegrityError branch
+        # resolved it — not that the pre-check caught it and the branch was
+        # never reached.
+        assert len(calls) == 2
 
     def test_an_unfinished_run_cannot_become_a_baseline(
         self, client, db_session, test_plan, target
@@ -453,6 +672,162 @@ class TestComparisonEndpoint:
             headers=AUTH,
         ).json()
         return baseline, current_run
+
+    def _replanned_run(self, db_session, test_plan: dict, target: dict, **changes) -> str:
+        """A run under a *different* plan with the same type and concurrency.
+
+        Cloned from the fixture's plan so only the fields under test differ —
+        a hand-built plan would differ in ways that make the assertion pass for
+        the wrong reason.
+        """
+        original = db_session.get(m.TestPlan, uuid.UUID(test_plan["id"]))
+        clone = m.TestPlan(
+            project_id=original.project_id,
+            target_id=original.target_id,
+            test_type=original.test_type,
+            rationale=original.rationale,
+            target_concurrency=original.target_concurrency,
+            ramp_strategy=changes.get("ramp_strategy", original.ramp_strategy),
+            user_journeys=changes.get("user_journeys", original.user_journeys),
+            thresholds=original.thresholds,
+            duration=changes.get("duration", original.duration),
+            stages=changes.get("stages", original.stages),
+            success_criteria=original.success_criteria,
+            status=original.status,
+        )
+        db_session.add(clone)
+        db_session.commit()
+        db_session.refresh(clone)
+        run = m.TestRun(
+            test_plan_id=clone.id,
+            target_id=uuid.UUID(target["id"]),
+            status=TestRunStatus.SUCCEEDED,
+        )
+        db_session.add(run)
+        db_session.commit()
+        db_session.refresh(run)
+        return str(run.id)
+
+    def test_a_different_scenario_sharing_an_endpoint_is_refused(
+        self, client, db_session, test_plan, target
+    ):
+        # Same target, same test type, same concurrency, one shared endpoint —
+        # everything the old rule checked. The plans still describe different
+        # tests, and before the scenario identity this returned a comparison
+        # whose deltas were a change of experiment dressed as a regression.
+        baseline_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, baseline_run, ("/checkout",), p95=100.0)
+        baseline = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": baseline_run, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        current_run = self._replanned_run(
+            db_session,
+            test_plan,
+            target,
+            user_journeys=["browse"],
+            duration={"total_s": 2400},
+        )
+        _add_metrics(db_session, current_run, ("/checkout",), p95=180.0)
+
+        res = client.get(
+            f"/api/test-runs/{current_run}/comparison",
+            params={"baseline_id": baseline["id"]},
+            headers=AUTH,
+        )
+        assert res.status_code == 409
+        error = res.json()["error"]
+        assert error["code"] == "scenario_mismatch"
+        assert error["detail"]["differing_fields"] == ["duration", "user_journeys"]
+
+    def test_the_same_scenario_under_a_different_plan_row_still_compares(
+        self, client, db_session, test_plan, target
+    ):
+        # The other half of the rule: re-planning the identical scenario must
+        # not disqualify a historical baseline, or every plan edit would strand
+        # every baseline taken before it.
+        baseline_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, baseline_run, (None,), p95=100.0)
+        baseline = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": baseline_run, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        current_run = self._replanned_run(db_session, test_plan, target)
+        _add_metrics(db_session, current_run, (None,), p95=120.0)
+
+        res = client.get(
+            f"/api/test-runs/{current_run}/comparison",
+            params={"baseline_id": baseline["id"]},
+            headers=AUTH,
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["baseline"]["scenario_fingerprint"].startswith("v1:")
+
+    def test_a_baseline_on_a_revoked_target_is_403_not_a_409(
+        self, client, db_session, project, test_plan, target
+    ):
+        # Authorizing only the current run's target meant a caller could name a
+        # baseline belonging to a target whose authorization had been revoked
+        # and receive a 409 whose detail carried that target's id. The record
+        # has to be authorized before it is read, not after.
+        other = client.post(
+            f"/api/projects/{project['id']}/targets",
+            json={
+                "base_url": "https://demo.perfpilot.local",
+                "name": "second environment",
+                "authorization_confirmed": True,
+                "authorization_confirmed_by": "kamogelo",
+            },
+            headers=AUTH,
+        ).json()
+        other_plan = m.TestPlan(
+            project_id=uuid.UUID(project["id"]),
+            target_id=uuid.UUID(other["id"]),
+            test_type="load",
+            rationale="second environment",
+            target_concurrency=1000,
+            ramp_strategy={"kind": "linear"},
+            user_journeys=["browse"],
+            thresholds={},
+            duration={"total_s": 300},
+            stages=[],
+            success_criteria=[],
+            status="approved",
+        )
+        db_session.add(other_plan)
+        db_session.commit()
+        db_session.refresh(other_plan)
+        other_run = m.TestRun(
+            test_plan_id=other_plan.id,
+            target_id=uuid.UUID(other["id"]),
+            status=TestRunStatus.SUCCEEDED,
+        )
+        db_session.add(other_run)
+        db_session.commit()
+        db_session.refresh(other_run)
+        foreign_baseline = client.post(
+            f"/api/targets/{other['id']}/baselines",
+            json={"test_run_id": str(other_run.id), "label": "elsewhere", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        revoked = db_session.get(m.Target, uuid.UUID(other["id"]))
+        revoked.authorization_confirmed = False
+        db_session.commit()
+
+        current_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, current_run, (None,))
+        res = client.get(
+            f"/api/test-runs/{current_run}/comparison",
+            params={"baseline_id": foreign_baseline["id"]},
+            headers=AUTH,
+        )
+        assert res.status_code == 403, res.text
+        assert other["id"] not in res.text
 
     def test_compares_against_the_named_baseline(self, client, db_session, test_plan, target):
         baseline, current_run = self._pair(client, db_session, test_plan, target)

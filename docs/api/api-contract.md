@@ -132,6 +132,8 @@ returns `409` with the code in brackets:
 | Same target — the target *is* the environment | `environment_mismatch` |
 | Same `test_type` | `test_type_mismatch` |
 | Same `target_concurrency` | `concurrency_mismatch` |
+| Same scenario — ramp strategy, stages, duration, journeys | `scenario_mismatch` |
+| The baseline's scenario identity is one this build understands | `scenario_identity_unsupported` |
 | Both runs recorded metrics | `baseline_metrics_unavailable` / `current_metrics_unavailable` |
 | At least one endpoint scope measured in both | `no_shared_endpoint` |
 
@@ -139,6 +141,50 @@ Compatibility is the *scenario shape*, not the plan row: re-planning the same
 scenario keeps existing baselines valid, while a different concurrency does
 not, because comparing 200 VUs against 1000 would read as a regression that is
 really a load change.
+
+### Scenario identity
+
+Target, type and concurrency are not enough on their own. Two plans can agree
+on all three and still describe substantially different tests — a five-minute
+soak of `["browse"]` against a forty-minute ramp through
+`["browse", "checkout", "search"]` — and comparing those reports a change of
+experiment as a change in performance.
+
+`BaselineRef.scenario_fingerprint` is the identity that closes that gap:
+`v<n>:<sha256>` over a canonical encoding of `test_type`,
+`target_concurrency`, `ramp_strategy`, `user_journeys`, `duration` and
+`stages`. **Treat it as opaque** — compare it for equality, never parse it.
+
+Deliberately excluded, because compatibility should not be stricter than the
+question being asked: `rationale` (prose), `thresholds` and `success_criteria`
+(the judgement applied *to* the measurements, not the measurements), and
+`controlled_variable` (the field recording what an experiment varies on
+purpose — including it would make every experiment incomparable with the
+baseline it was designed to be measured against).
+
+`test_type` and `target_concurrency` are inside the fingerprint so it is a
+complete plan identity, but they are also checked individually and **first**, so
+changing the test type returns `test_type_mismatch` rather than a generic
+`scenario_mismatch`.
+
+A `scenario_mismatch` carries `detail.differing_fields` — the top-level
+scenario fields that disagree — plus both fingerprints. Render the field names;
+they are what makes the refusal actionable.
+
+The version prefix exists so the rule can change later without old values
+silently meaning something new. A baseline whose fingerprint carries a version
+this build does not recognise returns `scenario_identity_unsupported` rather
+than being reported as a changed scenario, because "these differ" is not
+something that can honestly be concluded from a hash computed under an unknown
+rule. The remedy is to re-select the baseline.
+
+Known limitation: the *current* run's scenario is read from its plan live,
+while the baseline's is frozen. Editing a plan after runs have executed can
+therefore make two previously comparable runs incomparable. That is the
+conservative direction — a refusal that names the field, rather than a
+comparison that is quietly wrong — and the proper fix is to snapshot the
+scenario onto `test_run` at execution time, which is a change to the run
+lifecycle and is raised separately.
 
 ### `POST /api/targets/{target_id}/baselines`
 
@@ -151,10 +197,17 @@ really a load change.
   already used for a different run (`idempotency_key_reused`); `422` missing
   or empty `label`.
 
-The response records `test_type` and `target_concurrency` as they were at
-selection time. Compatibility is judged against those frozen values, so a
-later edit to the plan cannot silently change whether an old comparison was
-valid.
+A supplied `idempotency_key` is resolved **before** the "already a baseline"
+repeat, so a key bound to a different run is a `409` even when the run being
+posted is itself already a baseline. The same key with the same run is a
+replay and returns `200`. A key supplied for a run that is already a baseline
+under no key returns `200` and is not written onto that row — a repeat read
+does not mutate the record it reports.
+
+The response records `test_type`, `target_concurrency` and
+`scenario_fingerprint` as they were at selection time. Compatibility is judged
+against those frozen values, so a later edit to the plan cannot silently change
+whether an old comparison was valid.
 
 ### `GET /api/targets/{target_id}/baselines`
 
@@ -173,7 +226,13 @@ valid.
   exists to prevent. Use the list endpoint to choose.
 - **Response:** `200` →
   `{ "baseline": BaselineRef, "current_test_run_id": "run_...", "comparisons": [MetricComparison, ...], "baseline_only_endpoints": [...], "current_only_endpoints": [...] }`
-- **Errors:** `404` unknown run or baseline; `409` with one of the codes above.
+- **Errors:** `404` unknown run or baseline; `403` if either the run's target
+  **or the baseline's target** is no longer authorized; `409` with one of the
+  codes above.
+
+Both targets are authorized, and the baseline's before anything is read out of
+its row. Authorizing only the run's target meant naming a baseline on a revoked
+target returned a `409` whose detail carried that target's id.
 
 One `MetricComparison` is returned per endpoint scope measured in both runs,
 aggregate (`endpoint: null`) first. Endpoints measured in only one of the runs

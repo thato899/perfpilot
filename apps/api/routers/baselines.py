@@ -61,6 +61,7 @@ def _ref(row: m.Baseline) -> BaselineRef:
         selected_by=row.selected_by,
         test_type=row.test_type.value,
         target_concurrency=row.target_concurrency,
+        scenario_fingerprint=row.scenario_fingerprint,
     )
 
 
@@ -83,6 +84,33 @@ def _authorized_target(db: DbSession, settings: AppSettings, target_id: UUID) ->
 
 def _refuse(failure: Incompatible) -> None:
     raise conflict(failure.reason.value, failure.message, failure.detail)
+
+
+def _by_key(db: DbSession, target_id: UUID, idempotency_key: str) -> m.Baseline | None:
+    return db.scalar(
+        select(m.Baseline).where(
+            m.Baseline.target_id == target_id,
+            m.Baseline.idempotency_key == idempotency_key,
+        )
+    )
+
+
+def _key_reused(idempotency_key: str, existing: m.Baseline):
+    """The same key, a different run — a genuine conflict, not a retry.
+
+    Honouring it would silently change which run the caller believes is their
+    baseline, which is the one thing an idempotency key is supposed to make
+    impossible.
+    """
+    return conflict(
+        "idempotency_key_reused",
+        "That idempotency key was already used to select a different baseline.",
+        {
+            "idempotency_key": idempotency_key,
+            "existing_baseline_id": str(existing.id),
+            "existing_test_run_id": str(existing.test_run_id),
+        },
+    )
 
 
 @router.post(
@@ -126,6 +154,20 @@ def select_baseline(
     if failure is not None:
         _refuse(failure)
 
+    # The key is checked BEFORE the existing-run lookup, not after. A key
+    # already bound to a different run is a conflict whether or not this run
+    # also happens to be a baseline already — and checking in the other order
+    # let the (target, run) repeat return 200 first, so a caller retrying with
+    # a key that meant something else got a success and walked away believing
+    # their key now referred to this run.
+    if body.idempotency_key is not None:
+        replayed = _by_key(db, target.id, body.idempotency_key)
+        if replayed is not None:
+            if replayed.test_run_id != run.id:
+                raise _key_reused(body.idempotency_key, replayed)
+            response.status_code = status.HTTP_200_OK
+            return _ref(replayed)
+
     existing = db.scalar(
         select(m.Baseline).where(
             m.Baseline.target_id == target.id,
@@ -133,28 +175,12 @@ def select_baseline(
         )
     )
     if existing is not None:
+        # Already a baseline, and any supplied key is free. The key is
+        # deliberately not written onto the existing row: a repeat read should
+        # not quietly mutate the record it is reporting, and the answer stays
+        # the same however many times it is asked.
         response.status_code = status.HTTP_200_OK
         return _ref(existing)
-
-    if body.idempotency_key is not None:
-        replayed = db.scalar(
-            select(m.Baseline).where(
-                m.Baseline.target_id == target.id,
-                m.Baseline.idempotency_key == body.idempotency_key,
-            )
-        )
-        if replayed is not None:
-            # Same key, different run: the caller believes they are retrying,
-            # but the request is not the same one.
-            raise conflict(
-                "idempotency_key_reused",
-                "That idempotency key was already used to select a different baseline.",
-                {
-                    "idempotency_key": body.idempotency_key,
-                    "existing_baseline_id": str(replayed.id),
-                    "existing_test_run_id": str(replayed.test_run_id),
-                },
-            )
 
     row = m.Baseline(
         target_id=target.id,
@@ -163,26 +189,33 @@ def select_baseline(
         selected_by=body.selected_by,
         test_type=TestType(facts.test_type),
         target_concurrency=facts.target_concurrency,
+        scenario_fingerprint=facts.scenario_fingerprint,
+        scenario=dict(facts.scenario),
         idempotency_key=body.idempotency_key,
     )
     db.add(row)
     try:
         db.commit()
     except IntegrityError:
-        # Two concurrent selections of the same run. The uniqueness rule is
-        # the real guard; this turns the race into the same safe repeat the
-        # sequential path gives, rather than a 500.
         db.rollback()
+        # Two requests raced. Which uniqueness rule they collided on decides
+        # the answer, so both are re-read rather than assuming it was the run:
+        # assuming that turned a concurrent key collision into a 500, which is
+        # the one outcome an idempotency key exists to prevent.
         winner = db.scalar(
             select(m.Baseline).where(
                 m.Baseline.target_id == target.id,
                 m.Baseline.test_run_id == run.id,
             )
         )
-        if winner is None:  # pragma: no cover - only reachable if the row vanished
-            raise
-        response.status_code = status.HTTP_200_OK
-        return _ref(winner)
+        if winner is not None:
+            response.status_code = status.HTTP_200_OK
+            return _ref(winner)
+        if body.idempotency_key is not None:
+            claimed = _by_key(db, target.id, body.idempotency_key)
+            if claimed is not None:
+                raise _key_reused(body.idempotency_key, claimed) from None
+        raise  # pragma: no cover - neither rule matched; not ours to swallow
 
     db.refresh(row)
     return _ref(row)
@@ -230,12 +263,17 @@ def compare_against_baseline(
     run = db.get(m.TestRun, run_id)
     if run is None:
         raise not_found("TestRun", run_id)
+    _authorized_target(db, settings, run.target_id)
 
     baseline = db.get(m.Baseline, baseline_id)
     if baseline is None:
         raise not_found("Baseline", baseline_id)
-
-    _authorized_target(db, settings, run.target_id)
+    # The baseline's own target is authorized too, before anything is read out
+    # of the row. Checking only the current run's target was an information
+    # leak rather than a theoretical gap: naming a baseline on a target whose
+    # authorization had been revoked returned a 409 whose detail carried that
+    # target's id. A 403 is the right answer, and it has to come first.
+    _authorized_target(db, settings, baseline.target_id)
 
     failure = check_pair(baseline_facts(baseline), run_facts(db, run))
     if failure is not None:

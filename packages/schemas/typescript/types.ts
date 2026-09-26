@@ -311,6 +311,25 @@ export interface MetricComparison {
   errorRateDeltaPct?: number | null;
 }
 
+/** Why the API refused to compare a run with a named baseline. Returned as the
+ *  `error.code` of a 409, with the offending values under `error.detail`.
+ *
+ *  Branch on these rather than on `error.message`: the codes are the contract
+ *  and the sentences are not. `scenario_mismatch` carries a `differing_fields`
+ *  array naming the scenario fields that disagree, which is the one a UI can
+ *  turn into an explanation rather than an apology. */
+export type IncompatibleReason =
+  | "baseline_run_not_succeeded"
+  | "current_run_not_succeeded"
+  | "environment_mismatch"
+  | "test_type_mismatch"
+  | "concurrency_mismatch"
+  | "scenario_mismatch"
+  | "scenario_identity_unsupported"
+  | "baseline_metrics_unavailable"
+  | "current_metrics_unavailable"
+  | "no_shared_endpoint";
+
 /** A deliberately chosen historical run, with the compatibility identity
  *  frozen at selection time. */
 export interface BaselineRef {
@@ -321,6 +340,12 @@ export interface BaselineRef {
   selectedBy: string;
   testType: TestType;
   targetConcurrency: number;
+  /** `v<n>:<sha256>` over the scenario the baseline run executed — ramp
+   *  strategy, stages, duration, journeys, plus type and concurrency. Opaque:
+   *  compare it for equality, never parse it. Two baselines with the same
+   *  fingerprint are interchangeable as references; two with different ones
+   *  are not comparable with each other. */
+  scenarioFingerprint: string;
 }
 
 export interface ComparisonResponse {

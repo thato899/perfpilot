@@ -23,8 +23,10 @@ zero.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -35,6 +37,12 @@ from packages.schemas.python.entities import Metric as MetricSchema
 from packages.schemas.python.entities import TestRunStatus
 
 from .db import models as m
+from .scenario_identity import (
+    SCENARIO_FINGERPRINT_VERSION,
+    differing_fields,
+    fingerprint_version,
+    plan_fingerprint,
+)
 
 
 class IncompatibleReason(str, Enum):
@@ -50,6 +58,8 @@ class IncompatibleReason(str, Enum):
     ENVIRONMENT_MISMATCH = "environment_mismatch"
     TEST_TYPE_MISMATCH = "test_type_mismatch"
     CONCURRENCY_MISMATCH = "concurrency_mismatch"
+    SCENARIO_MISMATCH = "scenario_mismatch"
+    SCENARIO_IDENTITY_UNSUPPORTED = "scenario_identity_unsupported"
     BASELINE_METRICS_UNAVAILABLE = "baseline_metrics_unavailable"
     CURRENT_METRICS_UNAVAILABLE = "current_metrics_unavailable"
     NO_SHARED_ENDPOINT = "no_shared_endpoint"
@@ -70,6 +80,14 @@ REASON_MESSAGES: dict[IncompatibleReason, str] = {
     ),
     IncompatibleReason.CONCURRENCY_MISMATCH: (
         "The baseline and the current run were planned for different concurrency levels."
+    ),
+    IncompatibleReason.SCENARIO_MISMATCH: (
+        "The baseline and the current run describe different scenarios, "
+        "so a difference between them would not be a difference in performance."
+    ),
+    IncompatibleReason.SCENARIO_IDENTITY_UNSUPPORTED: (
+        "The baseline's scenario identity was recorded under a rule this version "
+        "no longer recognises, so it cannot be compared. Re-select the baseline."
     ),
     IncompatibleReason.BASELINE_METRICS_UNAVAILABLE: (
         "The baseline's test run has no recorded metrics."
@@ -100,8 +118,13 @@ class RunFacts:
     """The compatibility identity of one run.
 
     Deliberately a value object rather than an ORM row: eligibility is decided
-    from these five facts, and passing them explicitly keeps the rules
+    from these facts alone, and passing them explicitly keeps the rules
     readable and unit-testable without a database.
+
+    `scenario_fingerprint` is the stable identity defined in
+    `scenario_identity.py`; `scenario` is the canonical document it was
+    computed from, carried alongside so a refusal can name the fields that
+    differ rather than printing two hashes at the caller.
     """
 
     test_run_id: UUID
@@ -109,6 +132,8 @@ class RunFacts:
     status: TestRunStatus
     test_type: str
     target_concurrency: int
+    scenario_fingerprint: str
+    scenario: Mapping[str, Any]
 
 
 def run_facts(session: Session, run: m.TestRun) -> RunFacts:
@@ -122,12 +147,15 @@ def run_facts(session: Session, run: m.TestRun) -> RunFacts:
     plan = session.get(m.TestPlan, run.test_plan_id)
     if plan is None:  # pragma: no cover - FK makes this unreachable
         raise ValueError(f"test run {run.id} has no plan")
+    scenario_fingerprint, scenario = plan_fingerprint(plan)
     return RunFacts(
         test_run_id=run.id,
         target_id=run.target_id,
         status=run.status,
         test_type=plan.test_type.value,
         target_concurrency=plan.target_concurrency,
+        scenario_fingerprint=scenario_fingerprint,
+        scenario=scenario,
     )
 
 
@@ -140,6 +168,8 @@ def baseline_facts(baseline: m.Baseline) -> RunFacts:
         status=TestRunStatus.SUCCEEDED,
         test_type=baseline.test_type.value,
         target_concurrency=baseline.target_concurrency,
+        scenario_fingerprint=baseline.scenario_fingerprint,
+        scenario=baseline.scenario,
     )
 
 
@@ -206,6 +236,37 @@ def check_pair(baseline: RunFacts, current: RunFacts) -> Incompatible | None:
             detail={
                 "baseline_target_concurrency": baseline.target_concurrency,
                 "current_target_concurrency": current.target_concurrency,
+            },
+        )
+
+    # The rest of the scenario: ramp strategy, stages, duration, journeys.
+    # Target, type and concurrency can all agree while the two plans still
+    # describe substantially different tests — a short soak of one journey
+    # against a long ramp through three — and comparing those reports a change
+    # of experiment as a change in performance. scenario_identity.py defines
+    # what counts and why.
+    if baseline.scenario_fingerprint != current.scenario_fingerprint:
+        recorded_version = fingerprint_version(baseline.scenario_fingerprint)
+        if recorded_version != SCENARIO_FINGERPRINT_VERSION:
+            # The stored identity was computed under a rule this build no
+            # longer knows, so "they differ" is not something we can honestly
+            # conclude. Say that instead of reporting a scenario change that
+            # may not have happened.
+            return Incompatible(
+                reason=IncompatibleReason.SCENARIO_IDENTITY_UNSUPPORTED,
+                detail={
+                    "baseline_scenario_identity_version": recorded_version,
+                    "supported_scenario_identity_version": SCENARIO_FINGERPRINT_VERSION,
+                },
+            )
+        return Incompatible(
+            reason=IncompatibleReason.SCENARIO_MISMATCH,
+            detail={
+                "differing_fields": differing_fields(
+                    dict(baseline.scenario), dict(current.scenario)
+                ),
+                "baseline_scenario_fingerprint": baseline.scenario_fingerprint,
+                "current_scenario_fingerprint": current.scenario_fingerprint,
             },
         )
 
