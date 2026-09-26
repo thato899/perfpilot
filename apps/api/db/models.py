@@ -528,3 +528,85 @@ class AIExecution(TimestampMixin, Base):
     model: Mapped[str] = mapped_column(String(128), nullable=False)
 
     investigation: Mapped[Investigation | None] = relationship(back_populates="ai_executions")
+
+
+class Baseline(TimestampMixin, Base):
+    """A deliberately promoted historical run, for comparison (issue #34).
+
+    A baseline is a *selection*, not a kind of test run. Any succeeded run can
+    become one, and the point of persisting the selection is that a comparison
+    then names an intentional prior run rather than whatever the system
+    happened to pick — which is the whole complaint #34 exists to answer.
+
+    `test_type` and `target_concurrency` are denormalized from the plan at
+    selection time on purpose. Compatibility is judged against what the
+    baseline run actually executed; reading it back through the live TestPlan
+    would let a later edit to that plan silently change whether an old
+    comparison was valid. A baseline has to mean the same thing next month as
+    it did today.
+
+    The target is the environment. Two runs against the same `target_id` share
+    a base URL and an authorization record, so they are comparable; runs
+    against different targets are not, and are rejected rather than compared.
+    If the team later needs to distinguish environments that share a target,
+    an explicit column can be added additively without invalidating these rows.
+    """
+
+    __tablename__ = "baseline"
+
+    id: Mapped[uuid.UUID] = pk()
+    target_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("target.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # RESTRICT, not CASCADE: a baseline is a deliberate human selection, and
+    # silently deleting it because its run was tidied away would leave earlier
+    # comparisons unexplainable. Deleting the run has to be a conscious act.
+    test_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("test_run.id", ondelete="RESTRICT"), nullable=False
+    )
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    selected_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Compatibility identity, frozen at selection time — see the class docstring.
+    test_type: Mapped[TestType] = mapped_column(pg_enum(TestType, "test_type"), nullable=False)
+    target_concurrency: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # The rest of the scenario: ramp strategy, stages, duration, journeys,
+    # reduced to one versioned hash by `apps/api/scenario_identity.py`. Target,
+    # type and concurrency can all match while the two plans still describe
+    # substantially different tests, and comparing those reports a change of
+    # experiment as a change in performance.
+    #
+    # A plain column rather than JSONB because it is compared for equality and
+    # indexed; the document it was computed from sits beside it in JSONB, which
+    # is never queried inside — it exists so a refusal can name the fields that
+    # differ instead of printing two hashes at the caller.
+    scenario_fingerprint: Mapped[str] = mapped_column(String(80), nullable=False)
+    scenario: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
+
+    target: Mapped[Target] = relationship()
+    test_run: Mapped[TestRun] = relationship()
+
+    __table_args__ = (
+        # One baseline per run per target. Re-selecting the same run is a safe
+        # repeat that returns the existing row rather than creating a second.
+        UniqueConstraint("target_id", "test_run_id"),
+        UniqueConstraint("target_id", "idempotency_key"),
+        CheckConstraint("target_concurrency > 0", name="target_concurrency_positive"),
+        # A fingerprint has to carry its version prefix; an unprefixed value
+        # would be a hash whose rule nobody can name. Enforced by the database
+        # rather than only in Python because these rows outlive the process
+        # that wrote them.
+        CheckConstraint("scenario_fingerprint LIKE '%:%'", name="scenario_fingerprint_versioned"),
+        # The comparison endpoint's read path: candidates for a target,
+        # narrowed by the whole frozen compatibility identity.
+        Index(
+            "ix_baseline_target_compat",
+            "target_id",
+            "test_type",
+            "target_concurrency",
+            "scenario_fingerprint",
+        ),
+    )
