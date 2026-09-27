@@ -215,7 +215,35 @@ real Postgres with a real Celery worker, and `next dev` driving a real browser:
   notice, the error text, then the stale notice naming the last good poll —
   with the history retained throughout. No console errors.
 
-That browser pass predates review feedback and did not cover three cases it
-should have: the experimenting wording, terminal staleness, and the page's own
-first-load and reconnect states. Those are now covered by the page-level suite
-listed above. No fresh browser run is claimed for them.
+That first pass predates review feedback and did not cover the three cases the
+review produced. A second pass, run against the merged code on `main`, does.
+
+### Post-merge browser pass
+
+Run against a **production build** (`next build && next start`) of the exact
+files on `main` — each one checked byte-identical to `origin/main` first, so
+this is evidence about what shipped rather than about a local variant. The
+investigation payloads are the same real captures the contract tests use,
+served by a mock with controllable latency and failure so the page's own
+loading, reconnect and stale states can be driven rather than described.
+Fourteen assertions, all passing:
+
+| Case | What it pins | Observed |
+|---|---|---|
+| Experimenting wording | Read from `experiments[]`, not the status name | `Now: Experiment proposed, waiting for approval`, with no "Running an approved experiment" anywhere on the page |
+| Terminal staleness | A finished result is never marked out of date | No stale notice after 11s on a `complete` investigation — well past `STALE_AFTER_MS`; polling had stopped (request count unchanged), and the action line drops the `Now:` prefix |
+| Non-terminal staleness *(contrast)* | The stale clock does work; it is only suppressed at terminal | Killing the API under a live `investigating` page produced the error, then `Showing the last state the API returned at … It may be out of date.`, with all six events retained |
+| Page first load | The page renders the timeline's loading state | `Loading the investigation timeline…` inside the timeline card, during a delayed first response |
+| Page first-failure | A failed first request renders the card, not a bare paragraph | Card heading present, `role="alert"` error, and `Reconnecting to the investigation API…` while retries remained |
+| Recovery | The page comes back on its own | Once the mock stopped failing, the action line returned to `Now: Analysing results` |
+
+The contrast row is the one that gives the terminal-staleness result its
+meaning: without it, "no stale notice appeared" would be equally consistent
+with a stale notice that never works at all.
+
+Two honest limits on this pass. It uses a mock upstream rather than a live
+`apps/api` — deliberately, because the failure and latency cases cannot be
+produced reliably against a real backend, and the payloads are real captures
+either way. And the verification build stubs `next/font/google`, because this
+sandbox blocks `fonts.googleapis.com`; fonts cannot reach timeline logic, and
+that stub is not committed.
