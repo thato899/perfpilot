@@ -20,7 +20,7 @@ In scope:
 - Owns each phase's Definition of Done — decides when Phase 0/1/2 (per [roadmap.md](../roadmap.md)) is actually complete enough to move on, not just individually checked off by each owner.
 - For the Phase 2 gate, records in `STATUS.md` that the real Phase 1 demo completed end to end, then authorizes moving Phase 2 issues from `status:todo` to `status:in-progress`.
 - Repository governance: branch protection on `main`, who has merge rights, and when a `develop` → `main` promotion happens (demo-ready checkpoints, per [team-workflow.md's git workflow](team-workflow.md#git-workflow)).
-- Final call on pulling scope into Phase 1 vs. deferring it, per [roadmap.md's Phase 3+ deferred-by-design list](../roadmap.md#phase-3-deferred-by-design-not-oversights).
+- Final call on pulling scope into an active phase versus deferring it, per the [roadmap's deferred-by-design list](../roadmap.md#beyond-phase-3-deferred-by-design-not-oversights).
 - Owns that the daily sync ([team-workflow.md](team-workflow.md#communication)) happens — doesn't have to run it personally every day, but is accountable if it stops happening.
 
 Out of scope:

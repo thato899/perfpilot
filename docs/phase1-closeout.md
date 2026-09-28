@@ -56,15 +56,9 @@ merge, and its stale remote branch was deleted.
 
 ## Phase 2 gate
 
-The gate is open. As last verified on 2026-09-22, #32, #35, and #38 were
-merged and verified; #33's implementation was merged in PR #55; #34 and #37
-remained open and unmerged; and #39 remained blocked on #34. The dependency
-order and ticket definitions are maintained in [PLANNING.md](../PLANNING.md).
-The older sentence immediately below records the gate's original opening state
-and is historical, not the current issue-board state.
-
-Issues #32–#39 remain open with `phase-2` and `status:todo`. Their dependency
-order is documented in [PLANNING.md](../PLANNING.md) and each issue defines
-scope, contracts, impacts, security, failure behavior, tests, acceptance, and
-Definition of Done. Current implementation status is recorded in `STATUS.md`;
-#34 and #37 are not complete on `main`, and #39 remains blocked on #34.
+The Phase 2 gate opened after the Phase 1 sign-off described above. The
+point-in-time board snapshot from 2026-09-22 was superseded: all Phase 2 issues
+#32–#39 have since been merged and closed, with #39 completed by PR #66. The
+current phase, assignments, and verification notes are maintained in
+[STATUS.md](../STATUS.md), with sequencing and Phase 3 work in
+[PLANNING.md](../PLANNING.md).
