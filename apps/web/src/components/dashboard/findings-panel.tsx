@@ -15,7 +15,7 @@ function stateLabel(value: string): string {
 
 function ExperimentStatus({ experiment }: { experiment: ExperimentRecord }) {
   return (
-    <div className="rounded-md border bg-muted/30 p-3 text-sm">
+    <div id={`experiment-${experiment.id}`} className="rounded-md border bg-muted/30 p-3 text-sm">
       <p className="font-medium">Experiment {experiment.id}</p>
       <dl className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-2">
         <div>
@@ -161,7 +161,7 @@ export function FindingsPanel({ investigation }: { investigation: InvestigationS
     (a, b) => (a.sequenceIndex ?? 0) - (b.sequenceIndex ?? 0),
   );
   return (
-    <Card>
+    <Card id="findings">
       <CardHeader>
         <CardTitle>Findings and hypotheses</CardTitle>
         <CardDescription>

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createTarget, getInvestigation, getReport } from "../api";
+import { createTarget, getBaselines, getComparison, getInvestigation, getReport } from "../api";
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -128,6 +128,68 @@ describe("production API client", () => {
     expect(report.capacity.estimatedSustainableUsers).toBe(750);
     expect(report.keyMetrics.errorRate).toBe(0.02);
     expect(report.regression.regressionPct).toBe(60);
+  });
+
+  it("maps the selected baseline and canonical comparison response without changing deltas", async () => {
+    const baseline = {
+      id: "baseline-1",
+      target_id: "target-1",
+      test_run_id: "run-base",
+      label: "Release baseline",
+      selected_by: "Thato",
+      test_type: "load",
+      target_concurrency: 100,
+      scenario_fingerprint: "v1:abc",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response({ baselines: [baseline] }))
+        .mockResolvedValueOnce(
+          response({
+            baseline,
+            current_test_run_id: "run-exp",
+            comparisons: [
+              {
+                status: "available",
+                conclusion: "improvement",
+                baseline_metric_id: "metric-base",
+                current_metric_id: "metric-exp",
+                concurrency_delta: 50,
+                concurrency_delta_pct: 50,
+                baseline_thresholds: { p95_ms: 250, max_error_rate: 0.02 },
+                current_thresholds: { p95_ms: 200, max_error_rate: 0.01 },
+                baseline_threshold_passed: true,
+                current_threshold_passed: false,
+                p95_delta_ms: 12.5,
+                p95_delta_pct: 5,
+              },
+            ],
+            baseline_only_endpoints: [],
+            current_only_endpoints: [],
+          }),
+        ),
+    );
+
+    await expect(getBaselines("target-1")).resolves.toMatchObject([
+      { id: "baseline-1", testRunId: "run-base", scenarioFingerprint: "v1:abc" },
+    ]);
+    await expect(getComparison("run-exp", "baseline-1")).resolves.toMatchObject({
+      baseline: { id: "baseline-1", testRunId: "run-base" },
+      currentTestRunId: "run-exp",
+      comparisons: [
+        {
+          conclusion: "improvement",
+          p95DeltaMs: 12.5,
+          p95DeltaPct: 5,
+          currentMetricId: "metric-exp",
+          concurrencyDelta: 50,
+          baselineThresholds: { p95Ms: 250, maxErrorRate: 0.02 },
+          currentThresholdPassed: false,
+        },
+      ],
+    });
   });
 
   it("renders the persisted report shape when optional finding lists are omitted", async () => {

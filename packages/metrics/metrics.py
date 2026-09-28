@@ -30,6 +30,26 @@ class ComparisonStatus(str, Enum):
     UNAVAILABLE = "unavailable"
 
 
+class ComparisonConclusion(str, Enum):
+    """Canonical direction of a complete metric comparison."""
+
+    IMPROVEMENT = "improvement"
+    REGRESSION = "regression"
+    UNCHANGED = "unchanged"
+    INCONCLUSIVE = "inconclusive"
+    UNAVAILABLE = "unavailable"
+    INCOMPATIBLE = "incompatible"
+
+
+class PerformanceThresholds(BaseModel):
+    """The p95 latency and error-rate limits attached to one test plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    p95_ms: float = Field(ge=0)
+    max_error_rate: float = Field(ge=0, le=1)
+
+
 class MetricComparison(BaseModel):
     """Typed, serializable comparison contract for baseline and current metrics.
 
@@ -41,6 +61,7 @@ class MetricComparison(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: ComparisonStatus
+    conclusion: ComparisonConclusion
     reason: str | None = None
     baseline_metric_id: UUID | None = None
     current_metric_id: UUID | None = None
@@ -48,6 +69,12 @@ class MetricComparison(BaseModel):
     current_test_run_id: UUID | None = None
     baseline_concurrency: int | None = Field(default=None, ge=0)
     current_concurrency: int | None = Field(default=None, ge=0)
+    concurrency_delta: int | None = None
+    concurrency_delta_pct: float | None = None
+    baseline_thresholds: PerformanceThresholds | None = None
+    current_thresholds: PerformanceThresholds | None = None
+    baseline_threshold_passed: bool | None = None
+    current_threshold_passed: bool | None = None
     p50_delta_ms: float | None = None
     p50_delta_pct: float | None = None
     p90_delta_ms: float | None = None
@@ -166,7 +193,59 @@ def _delta(current: float, baseline: float) -> tuple[float, float | None]:
     return delta, round((delta / baseline) * 100, 6)
 
 
-def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
+def _conclusion(
+    status: ComparisonStatus,
+    *,
+    p50: float | None = None,
+    p90: float | None = None,
+    p95: float | None = None,
+    p99: float | None = None,
+    throughput: float | None = None,
+    error_rate: float | None = None,
+) -> ComparisonConclusion:
+    if status is ComparisonStatus.INCOMPATIBLE:
+        return ComparisonConclusion.INCOMPATIBLE
+    if status is ComparisonStatus.UNAVAILABLE:
+        return ComparisonConclusion.UNAVAILABLE
+
+    # Latency and errors should decrease; throughput should increase. A mixed
+    # signal is inconclusive. Concurrency is reported separately because it is
+    # an input to a run, not an outcome to optimize.
+    signals = [
+        -p50 if p50 is not None else None,
+        -p90 if p90 is not None else None,
+        -p95 if p95 is not None else None,
+        -p99 if p99 is not None else None,
+        throughput,
+        -error_rate if error_rate is not None else None,
+    ]
+    directions = {1 if value > 0 else -1 for value in signals if value is not None and value != 0}
+    if len(directions) > 1:
+        return ComparisonConclusion.INCONCLUSIVE
+    if directions == {1}:
+        return ComparisonConclusion.IMPROVEMENT
+    if directions == {-1}:
+        return ComparisonConclusion.REGRESSION
+    return ComparisonConclusion.UNCHANGED
+
+
+def _threshold_passed(metric: Metric, thresholds: PerformanceThresholds | None) -> bool | None:
+    if thresholds is None:
+        return None
+    return threshold_passed(
+        metric,
+        p95_ms=thresholds.p95_ms,
+        max_error_rate=thresholds.max_error_rate,
+    )
+
+
+def compare_metrics(
+    baseline: Metric,
+    current: Metric,
+    *,
+    baseline_thresholds: PerformanceThresholds | None = None,
+    current_thresholds: PerformanceThresholds | None = None,
+) -> MetricComparison:
     """Compare compatible baseline/current metrics deterministically.
 
     Metrics must describe the same endpoint scope. Concurrency is retained in
@@ -179,6 +258,7 @@ def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
     if baseline.endpoint != current.endpoint:
         return MetricComparison(
             status=ComparisonStatus.INCOMPATIBLE,
+            conclusion=ComparisonConclusion.INCOMPATIBLE,
             reason="metrics must have the same endpoint scope",
             baseline_metric_id=baseline.id,
             current_metric_id=current.id,
@@ -186,10 +266,15 @@ def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
             current_test_run_id=current.test_run_id,
             baseline_concurrency=baseline.concurrency,
             current_concurrency=current.concurrency,
+            baseline_thresholds=baseline_thresholds,
+            current_thresholds=current_thresholds,
+            baseline_threshold_passed=_threshold_passed(baseline, baseline_thresholds),
+            current_threshold_passed=_threshold_passed(current, current_thresholds),
         )
     if baseline.p95_ms <= 0:
         return MetricComparison(
             status=ComparisonStatus.UNAVAILABLE,
+            conclusion=ComparisonConclusion.UNAVAILABLE,
             reason="baseline p95_ms must be greater than zero",
             baseline_metric_id=baseline.id,
             current_metric_id=current.id,
@@ -197,6 +282,10 @@ def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
             current_test_run_id=current.test_run_id,
             baseline_concurrency=baseline.concurrency,
             current_concurrency=current.concurrency,
+            baseline_thresholds=baseline_thresholds,
+            current_thresholds=current_thresholds,
+            baseline_threshold_passed=_threshold_passed(baseline, baseline_thresholds),
+            current_threshold_passed=_threshold_passed(current, current_thresholds),
         )
 
     p50_delta_ms, p50_delta_pct = _delta(current.p50_ms, baseline.p50_ms)
@@ -207,14 +296,37 @@ def compare_metrics(baseline: Metric, current: Metric) -> MetricComparison:
         current.throughput_rps, baseline.throughput_rps
     )
     error_rate_delta, error_rate_delta_pct = _delta(current.error_rate, baseline.error_rate)
+    concurrency_delta, concurrency_delta_pct = _delta(current.concurrency, baseline.concurrency)
+    comparison_conclusion = _conclusion(
+        ComparisonStatus.AVAILABLE,
+        p50=p50_delta_ms,
+        p90=p90_delta_ms,
+        p95=p95_delta_ms,
+        p99=p99_delta_ms,
+        throughput=throughput_delta_rps,
+        error_rate=error_rate_delta,
+    )
+    conclusion_reason = (
+        "metric deltas contain both favorable and unfavorable performance signals"
+        if comparison_conclusion is ComparisonConclusion.INCONCLUSIVE
+        else None
+    )
     return MetricComparison(
         status=ComparisonStatus.AVAILABLE,
+        conclusion=comparison_conclusion,
+        reason=conclusion_reason,
         baseline_metric_id=baseline.id,
         current_metric_id=current.id,
         baseline_test_run_id=baseline.test_run_id,
         current_test_run_id=current.test_run_id,
         baseline_concurrency=baseline.concurrency,
         current_concurrency=current.concurrency,
+        concurrency_delta=int(concurrency_delta),
+        concurrency_delta_pct=concurrency_delta_pct,
+        baseline_thresholds=baseline_thresholds,
+        current_thresholds=current_thresholds,
+        baseline_threshold_passed=_threshold_passed(baseline, baseline_thresholds),
+        current_threshold_passed=_threshold_passed(current, current_thresholds),
         p50_delta_ms=p50_delta_ms,
         p50_delta_pct=p50_delta_pct,
         p90_delta_ms=p90_delta_ms,

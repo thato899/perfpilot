@@ -2,6 +2,10 @@ import type {
   ExpectedTraffic,
   InvestigationObjective,
   InvestigationState,
+  BaselineRef,
+  ComparisonResponse,
+  MetricComparison,
+  PerformanceThresholds,
   Metric,
   Project,
   Report,
@@ -175,6 +179,47 @@ interface WireMetric {
   recorded_at: string;
 }
 
+interface WireBaseline {
+  id: string;
+  target_id: string;
+  test_run_id: string;
+  label: string;
+  selected_by: string;
+  test_type: BaselineRef["testType"];
+  target_concurrency: number;
+  scenario_fingerprint: string;
+}
+
+interface WireMetricComparison {
+  status: MetricComparison["status"];
+  conclusion: MetricComparison["conclusion"];
+  reason?: string | null;
+  baseline_metric_id?: string | null;
+  current_metric_id?: string | null;
+  baseline_test_run_id?: string | null;
+  current_test_run_id?: string | null;
+  baseline_concurrency?: number | null;
+  current_concurrency?: number | null;
+  concurrency_delta?: number | null;
+  concurrency_delta_pct?: number | null;
+  baseline_thresholds?: { p95_ms: number; max_error_rate: number } | null;
+  current_thresholds?: { p95_ms: number; max_error_rate: number } | null;
+  baseline_threshold_passed?: boolean | null;
+  current_threshold_passed?: boolean | null;
+  p50_delta_ms?: number | null;
+  p50_delta_pct?: number | null;
+  p90_delta_ms?: number | null;
+  p90_delta_pct?: number | null;
+  p95_delta_ms?: number | null;
+  p95_delta_pct?: number | null;
+  p99_delta_ms?: number | null;
+  p99_delta_pct?: number | null;
+  throughput_delta_rps?: number | null;
+  throughput_delta_pct?: number | null;
+  error_rate_delta?: number | null;
+  error_rate_delta_pct?: number | null;
+}
+
 interface WireReport {
   id: string;
   investigation_id: string;
@@ -205,6 +250,58 @@ interface WireReport {
     priority: InvestigationState["findings"][number]["severity"];
   }>;
   regression: { previous_p95_ms: number; current_p95_ms: number; regression_pct: number };
+}
+
+function baselineFromWire(value: WireBaseline): BaselineRef {
+  return {
+    id: value.id,
+    targetId: value.target_id,
+    testRunId: value.test_run_id,
+    label: value.label,
+    selectedBy: value.selected_by,
+    testType: value.test_type,
+    targetConcurrency: value.target_concurrency,
+    scenarioFingerprint: value.scenario_fingerprint,
+  };
+}
+
+function metricComparisonFromWire(value: WireMetricComparison): MetricComparison {
+  const thresholdsFromWire = (
+    thresholds: WireMetricComparison["baseline_thresholds"],
+  ): PerformanceThresholds | null | undefined =>
+    thresholds == null
+      ? thresholds
+      : { p95Ms: thresholds.p95_ms, maxErrorRate: thresholds.max_error_rate };
+
+  return {
+    status: value.status,
+    conclusion: value.conclusion,
+    reason: value.reason,
+    baselineMetricId: value.baseline_metric_id,
+    currentMetricId: value.current_metric_id,
+    baselineTestRunId: value.baseline_test_run_id,
+    currentTestRunId: value.current_test_run_id,
+    baselineConcurrency: value.baseline_concurrency,
+    currentConcurrency: value.current_concurrency,
+    concurrencyDelta: value.concurrency_delta,
+    concurrencyDeltaPct: value.concurrency_delta_pct,
+    baselineThresholds: thresholdsFromWire(value.baseline_thresholds),
+    currentThresholds: thresholdsFromWire(value.current_thresholds),
+    baselineThresholdPassed: value.baseline_threshold_passed,
+    currentThresholdPassed: value.current_threshold_passed,
+    p50DeltaMs: value.p50_delta_ms,
+    p90DeltaMs: value.p90_delta_ms,
+    p95DeltaMs: value.p95_delta_ms,
+    p95DeltaPct: value.p95_delta_pct,
+    p99DeltaMs: value.p99_delta_ms,
+    p99DeltaPct: value.p99_delta_pct,
+    p50DeltaPct: value.p50_delta_pct,
+    p90DeltaPct: value.p90_delta_pct,
+    throughputDeltaRps: value.throughput_delta_rps,
+    throughputDeltaPct: value.throughput_delta_pct,
+    errorRateDelta: value.error_rate_delta,
+    errorRateDeltaPct: value.error_rate_delta_pct,
+  };
 }
 
 function projectFromWire(value: WireProject): Project {
@@ -542,6 +639,31 @@ export async function getTestRun(runId: string): Promise<TestRun> {
 export async function getMetrics(runId: string): Promise<Metric[]> {
   const body = await request<{ metrics: WireMetric[] }>(`/test-runs/${runId}/metrics`);
   return body.metrics.map(metricFromWire);
+}
+
+export async function getBaselines(targetId: string): Promise<BaselineRef[]> {
+  const body = await request<{ baselines: WireBaseline[] }>(`/targets/${targetId}/baselines`);
+  return body.baselines.map(baselineFromWire);
+}
+
+export async function getComparison(
+  runId: string,
+  baselineId: string,
+): Promise<ComparisonResponse> {
+  const body = await request<{
+    baseline: WireBaseline;
+    current_test_run_id: string;
+    comparisons: WireMetricComparison[];
+    baseline_only_endpoints: (string | null)[];
+    current_only_endpoints: (string | null)[];
+  }>(`/test-runs/${runId}/comparison?baseline_id=${encodeURIComponent(baselineId)}`);
+  return {
+    baseline: baselineFromWire(body.baseline),
+    currentTestRunId: body.current_test_run_id,
+    comparisons: body.comparisons.map(metricComparisonFromWire),
+    baselineOnlyEndpoints: body.baseline_only_endpoints,
+    currentOnlyEndpoints: body.current_only_endpoints,
+  };
 }
 
 export interface CreateTestPlanInput {

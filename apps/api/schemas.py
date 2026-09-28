@@ -220,9 +220,10 @@ class ComparisonResponse(BaseModel):
 
     `comparisons` holds one entry per endpoint measured in both runs, in the
     canonical shape `packages/metrics` produces — this layer adds no fields to
-    it and recomputes nothing. The `*_only_endpoints` lists name scopes
-    measured in just one of the runs, so a consumer can tell a missing
-    endpoint from an unchanged one.
+    it and recomputes nothing. It includes each run's plan thresholds and
+    threshold result. The `*_only_endpoints` lists name scopes measured in
+    just one run, so a consumer can tell a missing endpoint from an unchanged
+    one.
     """
 
     baseline: BaselineRef

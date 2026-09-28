@@ -1,10 +1,10 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-27 by Thato
+**Last updated:** 2026-09-28 by Thato
 
 ## Current phase
 
-**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #32–#38 are complete; #39 is unblocked now that #34 is merged.**
+**Phase 1 implementation and real E2E complete; Team Lead sign-off granted. Phase 2 #32-#38 are complete; #39 implementation and verification are complete and awaiting review/merge.**
 
 - Phase 1 implementation: complete.
 - Backend and browser E2E: verified.
@@ -20,7 +20,7 @@
 - Follow-up from #34 for the run-lifecycle owner: baseline scenario identity is frozen at selection, but the current run's identity is read from its plan live. Editing a plan after runs have executed can make previously comparable runs incomparable. Snapshot the scenario onto `test_run` at execution time; this was left out of #34 because it changes the run lifecycle.
 - #36: implementation merged through PR #58; issue closed. Approved follow-up execution persists one deterministic `ExperimentResult` per run. See the Govenor progress section below.
 - #37: **done** — merged in PR #60 and carried to `main` by PR #61. PR #64 records the post-merge browser evidence required by the DoD; issue closed with `status:done` on 2026-09-27. See [docs/phase2/p2-ui-1-investigation-timeline.md](docs/phase2/p2-ui-1-investigation-timeline.md).
-- #39: #32 and #34 are complete, so its dependency is satisfied. GitHub still labels the issue `status:blocked`; reconcile the board label when Thato resumes work.
+- #39: baseline/experiment comparison UI and additive canonical outcome/threshold response are implemented. Python/web checks and a browser pass passed; review and merge remain.
 
 ## Phase 2 ownership
 
@@ -42,4 +42,4 @@ Validation on `feature/p2-runner-1`: focused API/worker regression tests passed 
 - #36: implementation merged through PR #58; issue closed.
 - #34: baseline persistence/comparison API merged in PR #62 and carried to `main` in #63; issue closed.
 - #37: timeline merged in PR #60 and carried to `main` in #61; browser evidence recorded in PR #64; issue closed.
-- #39: the #32 and #34 dependencies are complete. Its `status:blocked` label is stale; Thato can resume this work.
+- #39: baseline/experiment comparison UI and additive canonical outcome/threshold response are implemented. Python/web checks and a browser pass passed; review and merge remain.

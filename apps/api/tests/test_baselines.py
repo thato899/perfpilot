@@ -843,6 +843,18 @@ class TestComparisonEndpoint:
         assert len(body["comparisons"]) == 1
         assert body["comparisons"][0]["p95_delta_ms"] == 50.0
         assert body["comparisons"][0]["status"] == "available"
+        assert body["comparisons"][0]["conclusion"] == "regression"
+        assert body["comparisons"][0]["baseline_thresholds"] == {
+            "p95_ms": 2000.0,
+            "max_error_rate": 0.01,
+        }
+        assert body["comparisons"][0]["current_thresholds"] == {
+            "p95_ms": 2000.0,
+            "max_error_rate": 0.01,
+        }
+        assert body["comparisons"][0]["baseline_threshold_passed"] is True
+        assert body["comparisons"][0]["current_threshold_passed"] is True
+        assert body["comparisons"][0]["concurrency_delta"] == 0
 
     def test_baseline_id_is_required(self, client, db_session, test_plan, target):
         # Omitting it must not fall back to "the most recent run" — that is the

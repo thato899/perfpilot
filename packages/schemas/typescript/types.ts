@@ -287,9 +287,17 @@ export interface Report {
 // ---------------------------------------------------------------------------
 
 export type ComparisonStatus = "available" | "incompatible" | "unavailable";
+export type ComparisonConclusion =
+  "improvement" | "regression" | "unchanged" | "inconclusive" | "unavailable" | "incompatible";
+
+export interface PerformanceThresholds {
+  p95Ms: number;
+  maxErrorRate: number;
+}
 
 export interface MetricComparison {
   status: ComparisonStatus;
+  conclusion: ComparisonConclusion;
   reason?: string | null;
   baselineMetricId?: string | null;
   currentMetricId?: string | null;
@@ -297,6 +305,12 @@ export interface MetricComparison {
   currentTestRunId?: string | null;
   baselineConcurrency?: number | null;
   currentConcurrency?: number | null;
+  concurrencyDelta?: number | null;
+  concurrencyDeltaPct?: number | null;
+  baselineThresholds?: PerformanceThresholds | null;
+  currentThresholds?: PerformanceThresholds | null;
+  baselineThresholdPassed?: boolean | null;
+  currentThresholdPassed?: boolean | null;
   p50DeltaMs?: number | null;
   p50DeltaPct?: number | null;
   p90DeltaMs?: number | null;

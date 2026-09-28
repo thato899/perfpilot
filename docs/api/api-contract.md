@@ -246,6 +246,19 @@ passed through unchanged — this layer performs no arithmetic. A `null` percent
 field means the baseline value was zero, so a percentage cannot be expressed;
 it does not mean zero change.
 
+Each comparison also returns a `conclusion` (`improvement`, `regression`,
+`unchanged`, `inconclusive`, `unavailable`, or `incompatible`), baseline and
+current p95/error-rate thresholds, whether each run met its own thresholds,
+and absolute/percentage concurrency deltas. Latency and error-rate decreases
+and throughput increases are favorable signals. If supported signals point in
+opposing directions the conclusion is `inconclusive`; concurrency is reported
+as a test input and does not affect the conclusion. Missing plan thresholds
+are `null`; the API does not infer them.
+
+These fields are additive: existing response fields and endpoint behavior are
+preserved, and no database migration is required. The web client consumes the
+typed canonical fields directly; API and UI layers do not recalculate them.
+
 ## Reports
 
 ### `GET /api/reports/{id}`
