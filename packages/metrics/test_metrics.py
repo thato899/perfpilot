@@ -5,8 +5,10 @@ from uuid import uuid4
 import pytest
 
 from packages.metrics.metrics import (
+    ComparisonConclusion,
     ComparisonStatus,
     MetricsError,
+    PerformanceThresholds,
     compare_metrics,
     estimate_capacity,
     parse_k6_summary,
@@ -90,6 +92,58 @@ def test_compare_metrics_calculates_regression(test_run_id):
     assert comparison["p99_delta_pct"] == 0
     assert comparison["baseline_concurrency"] == 500
     assert comparison["current_concurrency"] == 750
+    assert comparison.concurrency_delta == 250
+    assert comparison.concurrency_delta_pct == 50
+    assert comparison.conclusion is ComparisonConclusion.REGRESSION
+
+
+@pytest.mark.parametrize(
+    ("current_p95", "current_error", "expected"),
+    [
+        (300, 0.005, ComparisonConclusion.IMPROVEMENT),
+        (400, 0.01, ComparisonConclusion.UNCHANGED),
+        (300, 0.02, ComparisonConclusion.INCONCLUSIVE),
+    ],
+)
+def test_compare_metrics_returns_a_canonical_direction(
+    test_run_id, current_p95, current_error, expected
+):
+    baseline = parse_k6_summary(
+        summary(p95=400, error_rate=0.01), test_run_id=test_run_id, concurrency=500
+    )
+    current = parse_k6_summary(
+        summary(p95=current_p95, error_rate=current_error),
+        test_run_id=test_run_id,
+        concurrency=500,
+    )
+
+    comparison = compare_metrics(baseline, current)
+
+    assert comparison.conclusion is expected
+    if expected is ComparisonConclusion.INCONCLUSIVE:
+        assert (
+            comparison.reason
+            == "metric deltas contain both favorable and unfavorable performance signals"
+        )
+
+
+def test_compare_metrics_reports_each_run_thresholds_and_results(test_run_id):
+    baseline = parse_k6_summary(summary(p95=400), test_run_id=test_run_id, concurrency=500)
+    current = parse_k6_summary(summary(p95=600), test_run_id=test_run_id, concurrency=500)
+    baseline_thresholds = PerformanceThresholds(p95_ms=500, max_error_rate=0.02)
+    current_thresholds = PerformanceThresholds(p95_ms=550, max_error_rate=0.005)
+
+    comparison = compare_metrics(
+        baseline,
+        current,
+        baseline_thresholds=baseline_thresholds,
+        current_thresholds=current_thresholds,
+    )
+
+    assert comparison.baseline_thresholds == baseline_thresholds
+    assert comparison.current_thresholds == current_thresholds
+    assert comparison.baseline_threshold_passed is True
+    assert comparison.current_threshold_passed is False
 
 
 def test_compare_metrics_rejects_different_endpoint_scope(test_run_id):
@@ -103,6 +157,7 @@ def test_compare_metrics_rejects_different_endpoint_scope(test_run_id):
     comparison = compare_metrics(baseline, current)
 
     assert comparison.status == ComparisonStatus.INCOMPATIBLE
+    assert comparison.conclusion is ComparisonConclusion.INCOMPATIBLE
     assert comparison.reason == "metrics must have the same endpoint scope"
     assert comparison.p95_delta_pct is None
 
@@ -114,6 +169,7 @@ def test_compare_metrics_marks_zero_baseline_p95_unavailable(test_run_id):
     comparison = compare_metrics(baseline, current)
 
     assert comparison.status == ComparisonStatus.UNAVAILABLE
+    assert comparison.conclusion is ComparisonConclusion.UNAVAILABLE
     assert comparison.reason == "baseline p95_ms must be greater than zero"
 
 

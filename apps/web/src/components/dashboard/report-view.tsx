@@ -29,7 +29,7 @@ const KEY_METRIC_LABELS: Record<keyof Report["keyMetrics"], string> = {
  * Agent's input — this component only formats, it doesn't compute. */
 export function ReportView({ report }: { report: Report }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div id="report" className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <CardTitle>Executive summary</CardTitle>

@@ -8,9 +8,18 @@ import type { InvestigationState, Report, TestRun } from "@perfpilot/schemas/typ
 import { InvestigationProgress } from "@/components/dashboard/investigation-progress";
 import { InvestigationTimeline } from "@/components/dashboard/investigation-timeline";
 import { FindingsPanel } from "@/components/dashboard/findings-panel";
+import { ComparisonView, type ComparisonState } from "@/components/dashboard/comparison-view";
 import { ReportView } from "@/components/dashboard/report-view";
 import { buttonVariants } from "@/components/ui/button";
-import { ApiRequestError, getInvestigation, getReport, getTestRun } from "@/lib/api";
+import {
+  ApiRequestError,
+  getBaselines,
+  getComparison,
+  getInvestigation,
+  getMetrics,
+  getReport,
+  getTestRun,
+} from "@/lib/api";
 import {
   isStale,
   isTerminalInvestigationStatus,
@@ -25,6 +34,10 @@ export default function InvestigationPage() {
   const [investigation, setInvestigation] = useState<InvestigationState | null>(null);
   const [testRun, setTestRun] = useState<TestRun | null>(null);
   const [report, setReport] = useState<Report | null>(null);
+  const [comparisonResult, setComparisonResult] = useState<{
+    key: string;
+    state: ComparisonState;
+  }>({ key: "", state: { status: "loading" } });
   const [error, setError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   // Timestamp of the last poll that actually returned state, so the timeline
@@ -57,6 +70,82 @@ export default function InvestigationPage() {
     const tick = setInterval(() => setNow(Date.now()), POLL_INTERVAL_MS);
     return () => clearInterval(tick);
   }, [expectingUpdates]);
+
+  const baselineTestRunId = investigation?.baselineTestRunId;
+  const currentTestRunId = investigation?.currentTestRunId;
+  const targetId = investigation?.targetId;
+  const experimentId = investigation?.experiments.find(
+    (item) => item.testRunId === currentTestRunId,
+  )?.id;
+  const comparisonKey = `${targetId ?? ""}:${baselineTestRunId ?? ""}:${currentTestRunId ?? ""}`;
+
+  useEffect(() => {
+    if (
+      !targetId ||
+      !baselineTestRunId ||
+      !currentTestRunId ||
+      baselineTestRunId === currentTestRunId
+    )
+      return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const baselines = await getBaselines(targetId);
+        if (cancelled) return;
+        const baseline = baselines.find((item) => item.testRunId === baselineTestRunId);
+        if (!baseline) {
+          setComparisonResult({
+            key: comparisonKey,
+            state: {
+              status: "missing",
+              message:
+                "The explicitly selected baseline is not available for this target. No substitute was selected.",
+            },
+          });
+          return;
+        }
+
+        const [response, baselineMetrics, currentMetrics] = await Promise.all([
+          getComparison(currentTestRunId, baseline.id),
+          getMetrics(baseline.testRunId),
+          getMetrics(currentTestRunId),
+        ]);
+        if (!cancelled) {
+          setComparisonResult({
+            key: comparisonKey,
+            state: {
+              status: "available",
+              response,
+              baselineMetrics,
+              currentMetrics,
+              experimentId,
+            },
+          });
+        }
+      } catch (reason) {
+        if (!cancelled) {
+          setComparisonResult({
+            key: comparisonKey,
+            state:
+              reason instanceof ApiRequestError && reason.status === 409
+                ? { status: "incompatible", message: reason.message }
+                : {
+                    status: "unavailable",
+                    message:
+                      reason instanceof Error
+                        ? reason.message
+                        : "The comparison could not be loaded.",
+                  },
+          });
+        }
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [baselineTestRunId, comparisonKey, currentTestRunId, experimentId, targetId]);
 
   // Recomputes to false the moment a poll lands, because lastUpdatedAt moves.
   const stale = expectingUpdates && now !== null && isStale(lastUpdatedAt, now);
@@ -158,6 +247,21 @@ export default function InvestigationPage() {
   // they have no meaningful empty rendering — that is a different thing from
   // suppressing the timeline.
   const loading = investigation === null && error === null;
+  const comparisonViewState: ComparisonState =
+    investigation &&
+    isTerminalInvestigationStatus(investigation.status) &&
+    (!investigation.baselineTestRunId ||
+      !investigation.currentTestRunId ||
+      investigation.baselineTestRunId === investigation.currentTestRunId)
+      ? {
+          status: "missing",
+          message: investigation.baselineTestRunId
+            ? "This investigation has no separate completed experiment run to compare with its baseline."
+            : "No baseline was explicitly selected for this investigation. No baseline was inferred.",
+        }
+      : comparisonResult.key === comparisonKey
+        ? comparisonResult.state
+        : { status: "loading" };
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
@@ -184,6 +288,11 @@ export default function InvestigationPage() {
       />
 
       {investigation && <FindingsPanel investigation={investigation} />}
+      {investigation &&
+        (investigation.baselineTestRunId ||
+          isTerminalInvestigationStatus(investigation.status)) && (
+          <ComparisonView state={comparisonViewState} />
+        )}
       {reportError && <p className="text-sm text-destructive">{reportError}</p>}
       {report && <ReportView report={report} />}
     </main>

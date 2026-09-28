@@ -32,7 +32,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from packages.metrics.metrics import MetricComparison, compare_metrics
+from packages.metrics.metrics import MetricComparison, PerformanceThresholds, compare_metrics
 from packages.schemas.python.entities import Metric as MetricSchema
 from packages.schemas.python.entities import TestRunStatus
 
@@ -318,6 +318,8 @@ def build_comparison(
     current_run_id: UUID,
     baseline_metrics: list[m.Metric],
     current_metrics: list[m.Metric],
+    baseline_thresholds: PerformanceThresholds | None = None,
+    current_thresholds: PerformanceThresholds | None = None,
 ) -> ComparisonResult | Incompatible:
     """Pair metrics by endpoint and hand each pair to packages/metrics.
 
@@ -358,6 +360,8 @@ def build_comparison(
         compare_metrics(
             MetricSchema.model_validate(baseline_index[endpoint], from_attributes=True),
             MetricSchema.model_validate(current_index[endpoint], from_attributes=True),
+            baseline_thresholds=baseline_thresholds,
+            current_thresholds=current_thresholds,
         )
         for endpoint in ordered
     ]

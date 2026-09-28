@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from packages.metrics.metrics import PerformanceThresholds
 from packages.schemas.python.entities import TestType
 
 from ..baselines import (
@@ -62,6 +63,16 @@ def _ref(row: m.Baseline) -> BaselineRef:
         test_type=row.test_type.value,
         target_concurrency=row.target_concurrency,
         scenario_fingerprint=row.scenario_fingerprint,
+    )
+
+
+def _run_thresholds(db: DbSession, run: m.TestRun) -> PerformanceThresholds | None:
+    plan = db.get(m.TestPlan, run.test_plan_id)
+    if plan is None or "p95_ms" not in plan.thresholds or "max_error_rate" not in plan.thresholds:
+        return None
+    return PerformanceThresholds(
+        p95_ms=plan.thresholds["p95_ms"],
+        max_error_rate=plan.thresholds["max_error_rate"],
     )
 
 
@@ -279,11 +290,14 @@ def compare_against_baseline(
     if failure is not None:
         _refuse(failure)
 
+    baseline_run = db.get(m.TestRun, baseline.test_run_id)
     result = build_comparison(
         baseline_run_id=baseline.test_run_id,
         current_run_id=run.id,
         baseline_metrics=load_metrics(db, baseline.test_run_id),
         current_metrics=load_metrics(db, run.id),
+        baseline_thresholds=_run_thresholds(db, baseline_run) if baseline_run else None,
+        current_thresholds=_run_thresholds(db, run),
     )
     if isinstance(result, Incompatible):
         _refuse(result)
