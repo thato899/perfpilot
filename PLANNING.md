@@ -1,87 +1,73 @@
 # PerfPilot planning
 
-`STATUS.md` is the live state. This file records stable phase sequencing,
-ownership, dependency waves, and cross-owner handoff contracts.
+`STATUS.md` is the live state. This file records phase sequencing, ownership,
+dependency waves, and cross-owner handoff contracts.
 
 ## Completion state
 
 | Area | State |
 |---|---|
 | Phase 0 | COMPLETE |
-| Phase 1 foundations | COMPLETE |
-| Phase 1 backend integration | COMPLETE |
-| Phase 1 runtime E2E | COMPLETE |
-| Phase 1 browser E2E | COMPLETE |
+| Phase 1 foundations, integrations, runtime and browser E2E | COMPLETE |
 | Exact DB-pool reference scenario | NOT REPRODUCED |
 | Phase 1 formal sign-off | GRANTED by Govenor/Team Lead in PR #48 |
-| Phase 2 planning | COMPLETE |
-| Phase 2 implementation | IN PROGRESS |
+| Phase 2 planning and implementation | COMPLETE; #32–#39 merged and closed |
+| Phase 3 planning | COMPLETE |
+| Phase 3 implementation | CLAIMED; #67 then #68 |
 
-## Phase 2 ownership
+## Phase 2 ownership and completion
 
-| Owner | GitHub | Tickets | Primary area |
-|---|---|---|---|
-| Thato | `thato899` | #35, #38, #39 | investigation state and frontend integration |
-| Kamogelo | `Kamogelo-Skhosana` | #34, #37 | data/API and timeline integration |
-| Govenor | `malumzz` | #32, #36 | deterministic metrics and safe k6 execution |
-| Thatayaone | `Thatayaone910` | #33 | bounded agent evaluation |
+| Owner | GitHub | Tickets |
+|---|---|---|
+| Thato | `thato899` | #35, #38, #39 |
+| Kamogelo | `Kamogelo-Skhosana` | #34, #37 |
+| Govenor | `malumzz` | #32, #36 |
+| Thatayaone | `Thatayaone910` | #33 |
 
-The issue board remains the execution source of truth. As last verified on
-2026-09-22, #32, #35, and #38 were merged and verified; #33's implementation
-was merged in PR #55 but its issue-board closure/label state still needs an
-online reconciliation; #34 and #37 remain open and are not complete; #39 is
-open and blocked on #34. Assignment does not mean implementation has started.
+All Phase 2 issues #32–#39 are merged and closed. The implementation register
+and historical dependencies remain in [roadmap.md](docs/roadmap.md).
 
-## Dependency waves
+## Phase 3 ownership and order
 
-```text
-Wave 1
-  #32  deterministic comparison metrics — COMPLETE
-  #33  agent evaluation suite — MERGED; issue-board state to reconcile
-  #35  architecture/state groundwork — COMPLETE
-  #34  baseline persistence/API groundwork — IN PROGRESS; not merged
+| Priority | Issue | Owner | Deliverable | Dependency |
+|---|---|---|---|---|
+| 1 | [#67](https://github.com/thato899/perfpilot/issues/67) | Thato (`thato899`) | Export selected canonical baseline comparisons as CSV and JSON | #39 complete |
+| 2 | [#68](https://github.com/thato899/perfpilot/issues/68) | Kamogelo (`Kamogelo-Skhosana`) | Snapshot immutable scenario identity on TestRuns | #34 and #39 complete |
 
-Wave 2
-  #36  approved follow-up execution, after #32 and #35 contracts
-  #37  timeline UI, after #35 timeline/state API — OPEN; no merged implementation
-  #38  findings UI, after #35 and relevant #33 grounding semantics — COMPLETE
+Thato's UI work is first and can start independently of #68. Kamogelo's API
+and data work follows as the next priority and fixes the documented risk that
+editing a plan can change compatibility for an already executed run. Neither
+ticket blocks the other. Both owners are assigned and the issue automation
+marks claimed tickets `status:in-progress`; each issue contains its scope,
+security and failure behavior, tests, acceptance criteria, and Definition of
+Done.
 
-Wave 3
-  #39  comparison UI, after #32 and #34, plus stable #35 run identity where needed — BLOCKED on #34
-```
+### Phase 3 shared-contract handoff
 
-The graph is intentionally acyclic:
+- #68 must preserve the #34/#39 comparison response behavior and specify any
+  additive identity or availability field before implementation.
+- Thato reviews and signs off any API value consumed by the dashboard/export;
+  comparison arithmetic stays in the canonical metrics package.
+- Do not claim scenario identity for historical runs unless it can be proven
+  from immutable execution data.
 
-- #32 → #34, #36, #39.
-- #33 → validation/evaluation expectations for #35 and #38.
-- #35 → #36, #37, #38; it may optionally provide experiment identity to #39.
-- #34 → #39.
-
-#34 and #35 may do preparatory contract/state work in parallel with #32/#33,
-but their final consumers must wait for stable upstream contracts.
-
-## Handoff contracts
-
-- **#32 → #34/#39:** typed comparison schema, units, precision, sign semantics, metric coverage, and unavailable/incompatible behavior. No downstream arithmetic duplication.
-- **#35 → #36/#37/#38:** event/state schema, identity for hypotheses and experiments, approval state, budget state, ordering, idempotency, and terminal/error states.
-- **#34 → #39:** baseline identity, compatible-run selection, comparison response, and stable error envelopes.
-- **#33 → #35/#38:** grounded versus unsupported interpretation, evidence-reference expectations, confidence constraints, and hostile-target-data cases.
+## Shared contract changes
 
 Shared schemas, database models, and shared TypeScript contracts require an
 explicit contract-change note, consumer-impact statement, compatibility note,
-and review from at least one affected owner.
+and review from at least one affected owner. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for shared-path review expectations.
 
 ## Definition of Ready
 
-A Phase 2 ticket is ready only when its owner and assignee are correct,
-dependencies and blocks are explicit, upstream contracts are available or
-explicitly mocked, scope and exclusions are bounded, security/failure behavior
-is documented, acceptance criteria are testable, Definition of Done is present,
-and the expected PR boundary is clear.
+A ticket is ready when its owner and assignee are correct, dependencies and
+blocks are explicit, upstream contracts are available or explicitly mocked,
+scope and exclusions are bounded, security/failure behavior is documented,
+acceptance criteria are testable, a Definition of Done is present, and the
+expected PR boundary is clear.
 
 ## Definition of Done
 
-Close a Phase 2 issue only after applicable implementation, unit/integration
-tests, Postgres/API/worker/browser/E2E evidence, security checks, migration
-verification, documentation, CI, human review, merge to `main`, and post-merge
-verification are complete. An open PR or local branch is not done.
+Close an issue only after applicable implementation, tests, security checks,
+migration verification, documentation, CI, human review, merge to `main`, and
+post-merge verification are complete. An open PR or local branch is not done.

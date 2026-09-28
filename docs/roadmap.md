@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-23):** Phase 1 implementation and real backend/browser E2E are complete. Govenor/Team Lead granted sign-off in PR #48. The exact DB-pool reference demo was not reproduced. Phase 2 implementation is underway: #32, #35, and #38 are merged and verified; #34 and #37 remain open and unmerged; #39 is blocked on #34.
+> **Current status (2026-09-28):** Phase 1 and Phase 2 are complete. All Phase 2 tickets #32–#39 are closed and merged. Phase 3 starts with comparison export (#67, Thato), followed by immutable run-scenario identity (#68, Kamogelo). The exact DB-pool reference scenario remains unreproduced.
 
 ## Phase 0 — this commit
 
@@ -34,9 +34,26 @@ Phase 2 is authorized after the Phase 1 sign-off recorded in `STATUS.md`. Ticket
 | P2-UI-2 ([#38](https://github.com/thato899/perfpilot/issues/38)) | Thato | Live findings/hypotheses panel with evidence and confidence states | #35; relevant #33 semantics |
 | P2-UI-3 ([#39](https://github.com/thato899/perfpilot/issues/39)) | Thato | Side-by-side baseline/experiment comparison and report integration | Phase 1 sign-off; P2-API-1; P2-METRICS-1 |
 
-GitHub issues are the execution source of truth. The authoritative allocation is Thato: #35/#38/#39; Kamogelo: #34/#37; Govenor: #32/#36; Thatayaone: #33. See [PLANNING.md](../PLANNING.md) for the dependency waves and handoff contracts.
+GitHub issues are the execution source of truth. All Phase 2 tickets are complete. See [PLANNING.md](../PLANNING.md) for the dependency waves and handoff contracts.
 
-## Phase 3+ — deferred by design (not oversights)
+## Phase 3 — sharing and reproducibility
+
+Phase 3 turns the completed investigation/comparison loop into outputs people can share and results they can trust after plans change. Work is deliberately sequenced by priority: Thato owns the first, independently startable UI task; Kamogelo owns the next backend/data task. The second task does not block the first.
+
+| Priority | ID | Owner | Deliverable | Depends on |
+|---|---|---|---|---|
+| 1 | [#67](https://github.com/thato899/perfpilot/issues/67) | Thato | Export the selected canonical comparison as CSV and JSON | #39 complete |
+| 2 | [#68](https://github.com/thato899/perfpilot/issues/68) | Kamogelo | Snapshot immutable scenario identity on each TestRun | #34 and #39 complete |
+
+### Phase 3 principles
+
+- Exports preserve canonical server values and do not reproduce metric arithmetic.
+- TestRun identity records the scenario actually accepted for execution and cannot drift when a plan is edited later.
+- Existing run records without provable identity remain explicitly unknown; do not infer historical facts from mutable plans.
+- Shared schema/API changes require a consumer-impact and compatibility note and affected-owner review.
+- Each issue remains the detailed execution contract; merge, checks, documentation, and post-merge verification are required for completion.
+
+## Beyond Phase 3 — deferred by design (not oversights)
 
 Explicitly out of scope until there's a real need, per the project's "don't overengineer the first version" principle:
 
@@ -48,7 +65,7 @@ Explicitly out of scope until there's a real need, per the project's "don't over
 - A mobile application.
 - Splitting the modular monolith into separate deployed services — the module boundaries (`packages/schemas` contracts, folder ownership) are deliberately kept clean enough that this would be a mechanical extraction later, not a rewrite, if it's ever actually needed.
 
-## Open questions to revisit (not blocking Phase 1)
+## Open questions to revisit
 
-- Whether experiment approval (`POST /api/investigations/{id}/experiments`, see [api-contract.md](api/api-contract.md)) should ever auto-approve below a certain load ceiling, versus always requiring a human click — deferred to Phase 2, needs product input from a live demo, not a Phase 0 guess.
-- **Resolved:** summary-at-completion `Metric` rows are sufficient for the Phase 1 MVP; interval/time-bucketed rows are deferred to Phase 2 if the timeline or comparison UX demonstrates a need. See [database-design.md](database/database-design.md).
+- Whether experiment approval (`POST /api/investigations/{id}/experiments`, see [api-contract.md](api/api-contract.md)) should ever auto-approve below a certain load ceiling, versus always requiring a human click. Keep human approval as the default until product evidence and a safety review support a change.
+- **Resolved:** summary-at-completion `Metric` rows are sufficient for the current MVP; interval/time-bucketed rows remain deferred unless the timeline or comparison UX demonstrates a concrete need. See [database-design.md](database/database-design.md).
