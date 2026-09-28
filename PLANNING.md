@@ -13,7 +13,7 @@ dependency waves, and cross-owner handoff contracts.
 | Phase 1 formal sign-off | GRANTED by Govenor/Team Lead in PR #48 |
 | Phase 2 planning and implementation | COMPLETE; #32–#39 merged and closed |
 | Phase 3 planning | COMPLETE |
-| Phase 3 implementation | CLAIMED; #67 then #68 |
+| Phase 3 implementation | ASSIGNED; #67, #68, #70, and #71 |
 
 ## Phase 2 ownership and completion
 
@@ -33,14 +33,17 @@ and historical dependencies remain in [roadmap.md](docs/roadmap.md).
 |---|---|---|---|---|
 | 1 | [#67](https://github.com/thato899/perfpilot/issues/67) | Thato (`thato899`) | Export selected canonical baseline comparisons as CSV and JSON | #39 complete |
 | 2 | [#68](https://github.com/thato899/perfpilot/issues/68) | Kamogelo (`Kamogelo-Skhosana`) | Snapshot immutable scenario identity on TestRuns | #34 and #39 complete |
+| 3 | [#70](https://github.com/thato899/perfpilot/issues/70) | Thatayaone (`Thatayaone910`) | Wire production agent calls through AIService | #1 and #33 complete |
+| 4 | [#71](https://github.com/thato899/perfpilot/issues/71) | Govenor (`malumzz`) | Characterize repeat-run noise for k6 comparisons | #32, #34, and #36 complete |
 
 Thato's UI work is first and can start independently of #68. Kamogelo's API
 and data work follows as the next priority and fixes the documented risk that
-editing a plan can change compatibility for an already executed run. Neither
-ticket blocks the other. Both owners are assigned and the issue automation
-marks claimed tickets `status:in-progress`; each issue contains its scope,
-security and failure behavior, tests, acceptance criteria, and Definition of
-Done.
+editing a plan can change compatibility for an already executed run. Thatayaone
+then owns the missing production connection to the already-built AIService;
+Govenor measures load-test variability before anyone changes comparison
+semantics. All four issues contain their own scope, security/failure behavior,
+tests, acceptance criteria, and Definition of Done. Their assignees and
+`status:in-progress` labels follow the repository's claim automation.
 
 ### Phase 3 shared-contract handoff
 

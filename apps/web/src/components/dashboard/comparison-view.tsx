@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import type { ComparisonResponse, Metric, MetricComparison } from "@perfpilot/schemas/types";
 
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { downloadComparisonExport } from "./comparison-export";
 
 export type ComparisonState =
   | { status: "loading" }
@@ -28,7 +33,7 @@ export type ComparisonState =
 function number(value: number | null | undefined, digits = 2): string {
   return value == null || !Number.isFinite(value)
     ? "Unavailable"
-    : value.toLocaleString(undefined, { maximumFractionDigits: digits });
+    : value.toLocaleString("en-US", { maximumFractionDigits: digits });
 }
 
 function signed(value: number | null | undefined, suffix: string): string {
@@ -164,6 +169,18 @@ function ComparisonRows({
 }
 
 export function ComparisonView({ state }: { state: ComparisonState }) {
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  function exportComparison(format: "csv" | "json") {
+    if (state.status !== "available") return;
+    setExportError(null);
+    try {
+      downloadComparisonExport(state, format);
+    } catch {
+      setExportError("Could not download the comparison. Please try again.");
+    }
+  }
+
   return (
     <Card id="comparison">
       <CardHeader>
@@ -174,6 +191,39 @@ export function ComparisonView({ state }: { state: ComparisonState }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Comparison exports"
+        >
+          <span className="text-sm font-medium">Export selected comparison:</span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={state.status !== "available"}
+            onClick={() => exportComparison("csv")}
+          >
+            Download CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={state.status !== "available"}
+            onClick={() => exportComparison("json")}
+          >
+            Download JSON
+          </Button>
+        </div>
+        {state.status !== "available" && (
+          <p className="text-sm text-muted-foreground">
+            Exports are enabled when the selected comparison has loaded.
+          </p>
+        )}
+        {exportError && (
+          <p role="alert" className="text-sm text-destructive">
+            {exportError}
+          </p>
+        )}
         {state.status === "loading" && (
           <p role="status" className="text-sm text-muted-foreground">
             Loading comparison…
