@@ -4,13 +4,13 @@
 
 ## Current phase
 
-**Phase 1 and Phase 2 are complete. Phase 3 is planned and its first two tasks are assigned.**
+**Phase 1 and Phase 2 are complete. Phase 3 is planned, with all four initial tasks assigned.**
 
 - Phase 1 implementation, backend/browser E2E, and formal sign-off: complete.
 - Exact DB-pool reference scenario: **not reproduced**.
 - Phase 2 tickets #32–#39: merged to `main`, verified, and closed.
 - #39: comparison UI and canonical outcome/threshold response merged in PR #66; all CI checks passed and the issue is closed.
-- Phase 3 work is assigned in priority order: Thato #67, then Kamogelo #68. Both are `status:in-progress` under the repository's assignment/claim workflow.
+- Phase 3 work is assigned in priority order: Thato #67, Kamogelo #68, Thatayaone #70, then Govenor #71. Each is `status:in-progress` under the repository's assignment/claim workflow.
 
 ## Phase 3 assignments
 
@@ -18,11 +18,16 @@
 |---|---|---|---|
 | 1 | Thato (`thato899`) | [#67](https://github.com/thato899/perfpilot/issues/67) | Export the selected canonical comparison to CSV and JSON |
 | 2 | Kamogelo (`Kamogelo-Skhosana`) | [#68](https://github.com/thato899/perfpilot/issues/68) | Snapshot immutable scenario identity on each TestRun |
+| 3 | Thatayaone (`Thatayaone910`) | [#70](https://github.com/thato899/perfpilot/issues/70) | Route production agent execution through AIService |
+| 4 | Govenor (`malumzz`) | [#71](https://github.com/thato899/perfpilot/issues/71) | Measure run-to-run noise in controlled k6 comparisons |
 
 Thato's UI task is first and can proceed independently. Kamogelo's backend
-task follows it in priority and resolves a comparison reproducibility risk already identified
-during #34: a mutable TestPlan can otherwise change the apparent scenario of
-an existing TestRun. See [roadmap.md](docs/roadmap.md) and
+task follows it in priority and resolves a comparison reproducibility risk
+already identified during #34: a mutable TestPlan can otherwise change the
+apparent scenario of an existing TestRun. Thatayaone's next task fills a live
+runtime gap: API tasks still call deterministic agent methods while generated
+AIService seams exist. Govenor then characterizes repeat-run variability
+without changing canonical outcomes. See [roadmap.md](docs/roadmap.md) and
 [PLANNING.md](PLANNING.md) for rationale, boundaries, and handoff expectations.
 
 ## Phase 1/2 verification notes

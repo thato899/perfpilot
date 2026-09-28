@@ -31,9 +31,12 @@ change a ticket to `status:in-progress`.
 |---|---|---|---|
 | 1 | Thato (`thato899`) | [#67](https://github.com/thato899/perfpilot/issues/67) | Export the selected canonical comparison as CSV and JSON |
 | 2 | Kamogelo (`Kamogelo-Skhosana`) | [#68](https://github.com/thato899/perfpilot/issues/68) | Snapshot immutable scenario identity on TestRuns |
+| 3 | Thatayaone (`Thatayaone910`) | [#70](https://github.com/thato899/perfpilot/issues/70) | Wire production agent execution through AIService |
+| 4 | Govenor (`malumzz`) | [#71](https://github.com/thato899/perfpilot/issues/71) | Characterize repeated-run noise in k6 comparisons |
 
 Thato's task is independently startable and first in priority. Kamogelo's
-backend task follows; it does not block the export. See the [Phase 3
+backend task follows; it does not block the export. Thatayaone and Govenor own
+the next AI/runtime and measurement-quality work. See the [Phase 3
 roadmap](../roadmap.md#phase-3-sharing-and-reproducibility) and
 [planning handoff](../../PLANNING.md#phase-3-shared-contract-handoff).
 

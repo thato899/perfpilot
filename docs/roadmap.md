@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-> **Current status (2026-09-28):** Phase 1 and Phase 2 are complete. All Phase 2 tickets #32–#39 are closed and merged. Phase 3 starts with comparison export (#67, Thato), followed by immutable run-scenario identity (#68, Kamogelo). The exact DB-pool reference scenario remains unreproduced.
+> **Current status (2026-09-28):** Phase 1 and Phase 2 are complete. All Phase 2 tickets #32–#39 are closed and merged. Phase 3 is assigned in order: comparison export (#67, Thato), immutable run-scenario identity (#68, Kamogelo), production AI execution (#70, Thatayaone), then k6 run-noise characterization (#71, Govenor). The exact DB-pool reference scenario remains unreproduced.
 
 ## Phase 0 — this commit
 
@@ -38,18 +38,22 @@ GitHub issues are the execution source of truth. All Phase 2 tickets are complet
 
 ## Phase 3 — sharing and reproducibility
 
-Phase 3 turns the completed investigation/comparison loop into outputs people can share and results they can trust after plans change. Work is deliberately sequenced by priority: Thato owns the first, independently startable UI task; Kamogelo owns the next backend/data task. The second task does not block the first.
+Phase 3 turns the completed investigation/comparison loop into outputs people can share, results they can trust after plans change, and real agent behavior with measured performance signals. Work is sequenced so Thato's comparison export is first, followed by Kamogelo's data correctness task; Thatayaone's production AI path and Govenor's run-repeatability evidence follow next. The current first two tasks do not block each other.
 
 | Priority | ID | Owner | Deliverable | Depends on |
 |---|---|---|---|---|
 | 1 | [#67](https://github.com/thato899/perfpilot/issues/67) | Thato | Export the selected canonical comparison as CSV and JSON | #39 complete |
 | 2 | [#68](https://github.com/thato899/perfpilot/issues/68) | Kamogelo | Snapshot immutable scenario identity on each TestRun | #34 and #39 complete |
+| 3 | [#70](https://github.com/thato899/perfpilot/issues/70) | Thatayaone | Route production agent execution through the existing AIService validation seams | #1 and #33 complete |
+| 4 | [#71](https://github.com/thato899/perfpilot/issues/71) | Govenor | Measure run-to-run noise in controlled k6 comparisons without changing outcome semantics | #32, #34, and #36 complete |
 
 ### Phase 3 principles
 
 - Exports preserve canonical server values and do not reproduce metric arithmetic.
 - TestRun identity records the scenario actually accepted for execution and cannot drift when a plan is edited later.
 - Existing run records without provable identity remain explicitly unknown; do not infer historical facts from mutable plans.
+- Production LLM calls keep deterministic lifecycle, metric, authorization, and safety decisions in code; no implicit provider fallback.
+- Run-to-run variability is measured and documented before any statistical/materiality rule changes canonical conclusions.
 - Shared schema/API changes require a consumer-impact and compatibility note and affected-owner review.
 - Each issue remains the detailed execution contract; merge, checks, documentation, and post-merge verification are required for completion.
 

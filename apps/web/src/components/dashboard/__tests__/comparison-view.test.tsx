@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Metric } from "@perfpilot/schemas/types";
 
@@ -18,6 +19,34 @@ const metric = (id: string, values: Partial<Metric> = {}): Metric => ({
   httpStatusDistribution: {},
   recordedAt: "2026-09-27T00:00:00Z",
   ...values,
+});
+
+const availableState: ComparisonState = {
+  status: "available",
+  response: {
+    baseline: {
+      id: "baseline-1",
+      targetId: "target-1",
+      testRunId: "base-run",
+      label: "release",
+      selectedBy: "Thato",
+      testType: "load",
+      targetConcurrency: 100,
+      scenarioFingerprint: "v1:abc",
+    },
+    currentTestRunId: "experiment-run",
+    comparisons: [],
+    baselineOnlyEndpoints: [],
+    currentOnlyEndpoints: [],
+  },
+  baselineMetrics: [],
+  currentMetrics: [],
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(window.URL, "createObjectURL");
+  Reflect.deleteProperty(window.URL, "revokeObjectURL");
 });
 
 describe("ComparisonView", () => {
@@ -75,6 +104,8 @@ describe("ComparisonView", () => {
     render(<ComparisonView state={state} />);
 
     expect(screen.getByText("Baseline and experiment comparison")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download CSV" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Download JSON" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "base-run" })).toHaveAttribute(
       "href",
       "/api/perfpilot/test-runs/base-run",
@@ -142,5 +173,37 @@ describe("ComparisonView", () => {
   ] as const)("shows the %s state clearly", (state, expected) => {
     render(<ComparisonView state={state as ComparisonState} />);
     expect(screen.getByRole("status")).toHaveTextContent(expected);
+    expect(screen.getByRole("button", { name: "Download CSV" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Download JSON" })).toBeDisabled();
+  });
+
+  it("downloads the selected JSON export and reports a browser download failure", async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn().mockReturnValue("blob:export");
+    Object.defineProperty(window.URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(window.URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    const { rerender } = render(<ComparisonView state={availableState} />);
+    await user.click(screen.getByRole("button", { name: "Download JSON" }));
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(createObjectURL.mock.calls[0][0]).toBeInstanceOf(Blob);
+    expect(click).toHaveBeenCalledOnce();
+
+    createObjectURL.mockImplementationOnce(() => {
+      throw new Error("Download API unavailable");
+    });
+    await user.click(screen.getByRole("button", { name: "Download CSV" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not download the comparison");
+
+    rerender(<ComparisonView state={{ status: "loading" }} />);
+    expect(screen.getByRole("button", { name: "Download CSV" })).toBeDisabled();
   });
 });
