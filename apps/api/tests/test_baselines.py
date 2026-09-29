@@ -339,6 +339,23 @@ class TestMetricPairing:
 
 
 def _succeeded_run(client: TestClient, db_session, test_plan: dict, target: dict) -> str:
+    """A succeeded run carrying a frozen scenario identity, as #68 creates them.
+
+    Built through the real factory rather than by hand: a helper that set the
+    columns itself would keep passing if `new_test_run` stopped stamping them.
+    """
+    from apps.api.run_identity import new_test_run
+
+    plan = db_session.get(m.TestPlan, uuid.UUID(test_plan["id"]))
+    run = new_test_run(plan=plan, target_id=uuid.UUID(target["id"]), status=TestRunStatus.SUCCEEDED)
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+    return str(run.id)
+
+
+def _legacy_run(db_session, test_plan: dict, target: dict) -> str:
+    """A run from before #68: no identity, and none that can be recovered."""
     run = m.TestRun(
         test_plan_id=uuid.UUID(test_plan["id"]),
         target_id=uuid.UUID(target["id"]),
@@ -347,6 +364,7 @@ def _succeeded_run(client: TestClient, db_session, test_plan: dict, target: dict
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
+    assert run.scenario_fingerprint is None
     return str(run.id)
 
 
@@ -698,10 +716,10 @@ class TestComparisonEndpoint:
         db_session.add(clone)
         db_session.commit()
         db_session.refresh(clone)
-        run = m.TestRun(
-            test_plan_id=clone.id,
-            target_id=uuid.UUID(target["id"]),
-            status=TestRunStatus.SUCCEEDED,
+        from apps.api.run_identity import new_test_run
+
+        run = new_test_run(
+            plan=clone, target_id=uuid.UUID(target["id"]), status=TestRunStatus.SUCCEEDED
         )
         db_session.add(run)
         db_session.commit()
@@ -801,10 +819,10 @@ class TestComparisonEndpoint:
         db_session.add(other_plan)
         db_session.commit()
         db_session.refresh(other_plan)
-        other_run = m.TestRun(
-            test_plan_id=other_plan.id,
-            target_id=uuid.UUID(other["id"]),
-            status=TestRunStatus.SUCCEEDED,
+        from apps.api.run_identity import new_test_run
+
+        other_run = new_test_run(
+            plan=other_plan, target_id=uuid.UUID(other["id"]), status=TestRunStatus.SUCCEEDED
         )
         db_session.add(other_run)
         db_session.commit()
@@ -964,3 +982,167 @@ class TestListingEndpoints:
 
     def test_unknown_baseline_is_404(self, client):
         assert client.get(f"/api/baselines/{uuid.uuid4()}", headers=AUTH).status_code == 404
+
+
+# --- frozen run identity (issue #68) ---------------------------------------
+
+
+class TestFrozenRunIdentity:
+    """The asymmetry #34 documented as a known limitation, now closed.
+
+    A baseline's identity was frozen at selection; the current run's was read
+    live from its TestPlan. Editing that plan could therefore change whether a
+    months-old result appeared comparable. These pin the fix.
+    """
+
+    def test_editing_the_plan_cannot_change_an_existing_comparison(
+        self, client, db_session, test_plan, target
+    ):
+        baseline_run = _succeeded_run(client, db_session, test_plan, target)
+        current_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, baseline_run, (None,), p95=100.0)
+        _add_metrics(db_session, current_run, (None,), p95=120.0)
+        baseline = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": baseline_run, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        def compare():
+            return client.get(
+                f"/api/test-runs/{current_run}/comparison",
+                params={"baseline_id": baseline["id"]},
+                headers=AUTH,
+            )
+
+        assert compare().status_code == 200
+
+        # Rewrite the plan under both runs. Before #68 this flipped the
+        # current run's live fingerprint and the comparison started failing.
+        plan = db_session.get(m.TestPlan, uuid.UUID(test_plan["id"]))
+        plan.user_journeys = ["something", "entirely", "different"]
+        plan.duration = {"total_s": 99999}
+        db_session.commit()
+
+        again = compare()
+        assert again.status_code == 200, again.text
+        assert again.json()["baseline"]["id"] == baseline["id"]
+
+    def test_the_snapshot_is_not_rewritten_by_a_later_plan_edit(
+        self, client, db_session, test_plan, target
+    ):
+        run_id = _succeeded_run(client, db_session, test_plan, target)
+        before = db_session.get(m.TestRun, uuid.UUID(run_id)).scenario_fingerprint
+
+        plan = db_session.get(m.TestPlan, uuid.UUID(test_plan["id"]))
+        plan.user_journeys = ["changed"]
+        db_session.commit()
+        db_session.expire_all()
+
+        after = db_session.get(m.TestRun, uuid.UUID(run_id)).scenario_fingerprint
+        assert after == before
+
+    def test_each_created_run_gets_its_own_stable_snapshot(
+        self, client, db_session, test_plan, target
+    ):
+        # "Repeated run creation" from the ticket: two runs of the same
+        # unchanged plan agree, and neither drifts on re-read.
+        first = db_session.get(
+            m.TestRun, uuid.UUID(_succeeded_run(client, db_session, test_plan, target))
+        )
+        second = db_session.get(
+            m.TestRun, uuid.UUID(_succeeded_run(client, db_session, test_plan, target))
+        )
+        assert first.scenario_fingerprint == second.scenario_fingerprint
+        assert first.scenario == second.scenario
+        assert first.scenario_fingerprint.startswith("v1:")
+
+    def test_a_legacy_run_is_refused_explicitly_not_inferred(
+        self, client, db_session, test_plan, target
+    ):
+        baseline_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, baseline_run, (None,))
+        baseline = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": baseline_run, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        legacy = _legacy_run(db_session, test_plan, target)
+        _add_metrics(db_session, legacy, (None,))
+
+        res = client.get(
+            f"/api/test-runs/{legacy}/comparison",
+            params={"baseline_id": baseline["id"]},
+            headers=AUTH,
+        )
+        assert res.status_code == 409, res.text
+        error = res.json()["error"]
+        assert error["code"] == "current_run_identity_unknown"
+        assert error["detail"]["cause"] == "run_predates_scenario_identity"
+
+    def test_a_legacy_run_cannot_be_selected_as_a_baseline(
+        self, client, db_session, test_plan, target
+    ):
+        legacy = _legacy_run(db_session, test_plan, target)
+        res = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": legacy, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        )
+        assert res.status_code == 409, res.text
+        assert res.json()["error"]["code"] == "baseline_run_identity_unknown"
+
+    def test_a_clamped_run_is_refused_rather_than_compared(
+        self, client, db_session, test_plan, target
+    ):
+        # Accepted at one load level, executed at another. The snapshot still
+        # describes what was accepted, so comparing it would read a smaller
+        # test as an improvement.
+        baseline_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, baseline_run, (None,))
+        baseline = client.post(
+            f"/api/targets/{target['id']}/baselines",
+            json={"test_run_id": baseline_run, "label": "v1", "selected_by": "k"},
+            headers=AUTH,
+        ).json()
+
+        current_run = _succeeded_run(client, db_session, test_plan, target)
+        _add_metrics(db_session, current_run, (None,))
+        row = db_session.get(m.TestRun, uuid.UUID(current_run))
+        row.clamped = {"requested_vus": 1000, "executed_vus": 500, "reason": "safety ceiling"}
+        db_session.commit()
+
+        res = client.get(
+            f"/api/test-runs/{current_run}/comparison",
+            params={"baseline_id": baseline["id"]},
+            headers=AUTH,
+        )
+        assert res.status_code == 409, res.text
+        assert res.json()["error"]["code"] == "current_run_clamped"
+        assert res.json()["error"]["detail"]["clamped"]["executed_vus"] == 500
+
+    def test_identity_is_reported_before_clamping(self):
+        # Both wrong. "We cannot establish what this ran" is the more
+        # fundamental answer than "it ran less than planned".
+        unknown_and_clamped = RunFacts(
+            test_run_id=uuid.uuid4(),
+            target_id=TARGET_A,
+            status=TestRunStatus.SUCCEEDED,
+            test_type=None,
+            target_concurrency=None,
+            scenario_fingerprint=None,
+            scenario=None,
+            clamped={"requested_vus": 1000, "executed_vus": 500},
+        )
+        failure = check_eligibility(unknown_and_clamped, as_baseline=False)
+        assert failure.reason is IncompatibleReason.CURRENT_RUN_IDENTITY_UNKNOWN
+
+    def test_run_facts_never_touches_the_plan(self, client, db_session, test_plan, target):
+        # The structural guarantee: run_facts takes no session, so there is no
+        # path from it to a mutable TestPlan.
+        import inspect
+
+        from apps.api.baselines import run_facts
+
+        assert list(inspect.signature(run_facts).parameters) == ["run"]

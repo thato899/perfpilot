@@ -29,6 +29,7 @@ from ..db import models as m
 from ..deps import AppSettings, DbSession, OrchestratorDep, require_auth
 from ..errors import conflict, forbidden_target, not_found
 from ..investigation_state import append_event, budget_contract, event_contract
+from ..run_identity import new_test_run
 from ..schemas import (
     ApproveExperimentRequest,
     ContinueInvestigationRequest,
@@ -216,11 +217,7 @@ def create_investigation(
         from .tests_ import _dispatch, validate_run_limits
 
         validate_run_limits(plan_row, settings)
-        run = m.TestRun(
-            test_plan_id=plan_row.id,
-            target_id=target.id,
-            status=TestRunStatus.QUEUED,
-        )
+        run = new_test_run(plan=plan_row, target_id=target.id, status=TestRunStatus.QUEUED)
         db.add(run)
         db.flush()
         investigation.baseline_test_run_id = run.id
@@ -385,9 +382,7 @@ def approve_experiment(
             {"target_id": str(investigation.target_id)},
         )
 
-    run = m.TestRun(
-        test_plan_id=plan.id, target_id=investigation.target_id, status=TestRunStatus.QUEUED
-    )
+    run = new_test_run(plan=plan, target_id=investigation.target_id, status=TestRunStatus.QUEUED)
     db.add(run)
     db.flush()
     experiment = existing or m.Experiment(

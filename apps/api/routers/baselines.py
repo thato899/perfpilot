@@ -160,7 +160,7 @@ def select_baseline(
             {"test_run_id": str(run.id), "run_target_id": str(run.target_id)},
         )
 
-    facts = run_facts(db, run)
+    facts = run_facts(run)
     failure = check_eligibility(facts, as_baseline=True)
     if failure is not None:
         _refuse(failure)
@@ -286,7 +286,7 @@ def compare_against_baseline(
     # target's id. A 403 is the right answer, and it has to come first.
     _authorized_target(db, settings, baseline.target_id)
 
-    failure = check_pair(baseline_facts(baseline), run_facts(db, run))
+    failure = check_pair(baseline_facts(baseline), run_facts(run))
     if failure is not None:
         _refuse(failure)
 

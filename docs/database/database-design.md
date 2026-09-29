@@ -75,7 +75,28 @@ All entities use a `UUID` primary key (`id`) unless noted, plus `created_at`/`up
 - `status`: `queued | running | succeeded | failed | aborted_over_limit`
 - `k6_script_ref` (pointer to stored script — see `infrastructure/docker`), `raw_output_ref` (pointer to stored raw k6 summary)
 - `clamped` (JSONB, nullable) — set if executed VUs/duration were reduced from the plan's request
+- `scenario_fingerprint` (string, `v<n>:<sha256>`, nullable), `scenario` (JSONB, nullable)
 - `started_at`, `completed_at`
+- **Why the run carries its own scenario identity (issue #68):** compatibility
+  used to read the *current* run's identity live from its `TestPlan`, so
+  editing that plan could retroactively change whether a months-old result
+  appeared comparable. The snapshot is written once at run creation, by
+  `apps/api/run_identity.new_test_run`, and never updated — not on start, not
+  on completion, not on retry. A run has to keep describing what it was
+  accepted to run.
+- **Why nullable:** rows created before that migration have no snapshot, and
+  none is ever reconstructed for them. NULL is the explicit "cannot be proven"
+  state; deriving a value from a plan that may have been edited since would
+  manufacture false confidence, which is the failure the issue exists to
+  remove. Comparisons involving such a run are refused with a typed reason.
+- Two CHECK constraints: the fingerprint and document are both present or both
+  absent, and a present fingerprint carries its `v<n>:` version prefix. Both
+  are enforced by the database because these rows outlive the process that
+  wrote them.
+- **Clamping is not folded into the identity.** A run accepted at 1000 VUs and
+  executed at 500 keeps a snapshot saying 1000 — the column means "what was
+  accepted", consistently — and `clamped` being set makes the run incomparable
+  rather than quietly comparable at the lower level.
 
 ### TestStage
 - `id`, `test_run_id` (FK), `target_vus`, `duration_s`, `sequence_index`

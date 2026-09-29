@@ -41,7 +41,6 @@ from .scenario_identity import (
     SCENARIO_FINGERPRINT_VERSION,
     differing_fields,
     fingerprint_version,
-    plan_fingerprint,
 )
 
 
@@ -55,6 +54,10 @@ class IncompatibleReason(str, Enum):
 
     BASELINE_RUN_NOT_SUCCEEDED = "baseline_run_not_succeeded"
     CURRENT_RUN_NOT_SUCCEEDED = "current_run_not_succeeded"
+    BASELINE_RUN_IDENTITY_UNKNOWN = "baseline_run_identity_unknown"
+    CURRENT_RUN_IDENTITY_UNKNOWN = "current_run_identity_unknown"
+    BASELINE_RUN_CLAMPED = "baseline_run_clamped"
+    CURRENT_RUN_CLAMPED = "current_run_clamped"
     ENVIRONMENT_MISMATCH = "environment_mismatch"
     TEST_TYPE_MISMATCH = "test_type_mismatch"
     CONCURRENCY_MISMATCH = "concurrency_mismatch"
@@ -71,6 +74,22 @@ REASON_MESSAGES: dict[IncompatibleReason, str] = {
     ),
     IncompatibleReason.CURRENT_RUN_NOT_SUCCEEDED: (
         "The current test run has not succeeded, so there is nothing final to compare."
+    ),
+    IncompatibleReason.BASELINE_RUN_IDENTITY_UNKNOWN: (
+        "The baseline's test run predates recorded scenario identity, so what it actually "
+        "executed cannot be proven and it cannot be compared."
+    ),
+    IncompatibleReason.CURRENT_RUN_IDENTITY_UNKNOWN: (
+        "This test run predates recorded scenario identity, so what it actually executed "
+        "cannot be proven and it cannot be compared."
+    ),
+    IncompatibleReason.BASELINE_RUN_CLAMPED: (
+        "The baseline's test run was clamped by a safety limit, so it generated less load "
+        "than its scenario describes."
+    ),
+    IncompatibleReason.CURRENT_RUN_CLAMPED: (
+        "This test run was clamped by a safety limit, so it generated less load than its "
+        "scenario describes."
     ),
     IncompatibleReason.ENVIRONMENT_MISMATCH: (
         "The baseline and the current run were executed against different targets."
@@ -125,37 +144,50 @@ class RunFacts:
     `scenario_identity.py`; `scenario` is the canonical document it was
     computed from, carried alongside so a refusal can name the fields that
     differ rather than printing two hashes at the caller.
+
+    Both are `None` for a run created before #68 added the snapshot. Nothing
+    downstream reads them in that state — `check_eligibility` refuses first —
+    but they are typed optional so the possibility is visible rather than
+    waiting to surface as an AttributeError.
+
+    `test_type` and `target_concurrency` are read *out of the snapshot*, not
+    off the plan, so they are optional for the same reason. Reading them from
+    the live plan for a legacy run would be the mutable-data inference #68
+    exists to stop.
     """
 
     test_run_id: UUID
     target_id: UUID
     status: TestRunStatus
-    test_type: str
-    target_concurrency: int
-    scenario_fingerprint: str
-    scenario: Mapping[str, Any]
+    test_type: str | None
+    target_concurrency: int | None
+    scenario_fingerprint: str | None
+    scenario: Mapping[str, Any] | None
+    #: `TestRun.clamped` — the safety ceiling reduced the load actually
+    #: generated below what the snapshot describes. A baseline row never
+    #: carries one, because a clamped run cannot be selected as a baseline.
+    clamped: Mapping[str, Any] | None = None
 
 
-def run_facts(session: Session, run: m.TestRun) -> RunFacts:
-    """Read a run's compatibility identity from its plan.
+def run_facts(run: m.TestRun) -> RunFacts:
+    """Read a run's compatibility identity from the run itself.
 
-    The *current* run's type and concurrency are read live from its plan,
-    while a baseline's are frozen on the baseline row at selection time. That
-    asymmetry is intentional: the current run is being judged now, whereas a
-    baseline has to keep meaning what it meant when someone chose it.
+    Takes no session, and that is the point of issue #68 rather than an
+    incidental tidy-up. This function used to load the run's `TestPlan` and
+    fingerprint it live, which meant editing a plan could retroactively change
+    whether a months-old result appeared comparable. It now cannot reach the
+    plan at all, so it cannot be tempted to.
     """
-    plan = session.get(m.TestPlan, run.test_plan_id)
-    if plan is None:  # pragma: no cover - FK makes this unreachable
-        raise ValueError(f"test run {run.id} has no plan")
-    scenario_fingerprint, scenario = plan_fingerprint(plan)
+    snapshot = run.scenario if isinstance(run.scenario, dict) else None
     return RunFacts(
         test_run_id=run.id,
         target_id=run.target_id,
         status=run.status,
-        test_type=plan.test_type.value,
-        target_concurrency=plan.target_concurrency,
-        scenario_fingerprint=scenario_fingerprint,
-        scenario=scenario,
+        test_type=snapshot.get("test_type") if snapshot else None,
+        target_concurrency=snapshot.get("target_concurrency") if snapshot else None,
+        scenario_fingerprint=run.scenario_fingerprint,
+        scenario=snapshot,
+        clamped=run.clamped,
     )
 
 
@@ -188,6 +220,39 @@ def check_eligibility(run: RunFacts, *, as_baseline: bool) -> Incompatible | Non
                 else IncompatibleReason.CURRENT_RUN_NOT_SUCCEEDED
             ),
             detail={"test_run_id": str(run.test_run_id), "status": run.status.value},
+        )
+
+    # Checked before clamping, because it is the more fundamental failure: a
+    # run whose scenario we cannot establish at all is unusable for a reason
+    # that makes every later question moot.
+    if run.scenario_fingerprint is None:
+        return Incompatible(
+            reason=(
+                IncompatibleReason.BASELINE_RUN_IDENTITY_UNKNOWN
+                if as_baseline
+                else IncompatibleReason.CURRENT_RUN_IDENTITY_UNKNOWN
+            ),
+            detail={
+                "test_run_id": str(run.test_run_id),
+                # Named so a consumer can say *why* it is unknown rather than
+                # implying the run is broken. It is not: it simply predates the
+                # snapshot, and its plan may have been edited since.
+                "cause": "run_predates_scenario_identity",
+            },
+        )
+
+    # Accepted at one load level, executed at another. The snapshot keeps
+    # saying what was accepted — it has to mean one thing consistently — so the
+    # discrepancy is refused here rather than smuggled into a comparison that
+    # would read a smaller test as an improvement.
+    if run.clamped:
+        return Incompatible(
+            reason=(
+                IncompatibleReason.BASELINE_RUN_CLAMPED
+                if as_baseline
+                else IncompatibleReason.CURRENT_RUN_CLAMPED
+            ),
+            detail={"test_run_id": str(run.test_run_id), "clamped": dict(run.clamped)},
         )
     return None
 

@@ -178,6 +178,20 @@ class TestRun(TimestampMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(SADateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(SADateTime(timezone=True))
 
+    # The scenario this run was accepted to execute, frozen at creation —
+    # issue #68. Written once, by `run_identity.new_test_run`, and never
+    # updated afterwards: a run has to keep describing what it was accepted to
+    # run even after its TestPlan is edited. Comparison compatibility reads
+    # these columns and never the live plan.
+    #
+    # Nullable only because rows created before this migration have no
+    # snapshot. That NULL is the explicit "we cannot prove what this run
+    # executed" state the ticket asks for, not a gap waiting to be backfilled:
+    # reconstructing it from a plan that may have been edited since would
+    # manufacture exactly the false confidence this issue exists to remove.
+    scenario_fingerprint: Mapped[str | None] = mapped_column(String(80))
+    scenario: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
     test_plan: Mapped[TestPlan] = relationship(back_populates="test_runs")
     stages_actual: Mapped[list[TestStage]] = relationship(
         back_populates="test_run", cascade="all, delete-orphan"
@@ -194,6 +208,20 @@ class TestRun(TimestampMixin, Base):
             "ix_test_run_status_active",
             "status",
             postgresql_where="status IN ('queued', 'running')",
+        ),
+        # Both halves of the identity or neither. A fingerprint with no
+        # document could not explain a refusal, and a document with no
+        # fingerprint could not be compared — either alone is a row that
+        # claims more than it can support.
+        CheckConstraint(
+            "(scenario_fingerprint IS NULL) = (scenario IS NULL)",
+            name="scenario_identity_complete",
+        ),
+        # Same rule the baseline table enforces: a fingerprint whose
+        # computation rule nobody can name is worse than no fingerprint.
+        CheckConstraint(
+            "scenario_fingerprint IS NULL OR scenario_fingerprint LIKE '%:%'",
+            name="scenario_fingerprint_versioned",
         ),
     )
 

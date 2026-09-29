@@ -14,10 +14,38 @@
 
 ## Phase 3 assignments
 
+### #68 — frozen run identity
+
+Implementation complete on `feature/p3-api-1-run-identity`. Every new `TestRun`
+records the scenario it was accepted to execute, at creation, and that record is
+never written again; comparison compatibility reads it and can no longer reach a
+mutable `TestPlan`. This closes the limitation #34 shipped knowingly: a plan
+edit can no longer change whether an existing result appears comparable.
+
+Two decisions worth a reviewer's attention, both documented in
+[docs/phase3/p3-api-1-run-identity.md](docs/phase3/p3-api-1-run-identity.md):
+
+- **Legacy runs are refused, never reconstructed.** Runs predating the
+  migration have no snapshot, and deriving one from a possibly-edited plan
+  would manufacture false confidence. They return
+  `{baseline,current}_run_identity_unknown`.
+- **Clamped runs are refused rather than compared.** A run accepted at 1000 VUs
+  and executed at 500 keeps a snapshot saying 1000, so comparing it would read a
+  smaller test as an improvement.
+
+The identity stays `v1` — #68 changes where it is read from, not what it
+contains — so every baseline selected under #34 remains comparable.
+
+Shared contract: `packages/schemas/typescript/types.ts` gains four additive
+`IncompatibleReason` members. Sign-off requested from Thato as the comparison
+consumer; #39 and #67 are the affected consumers and should render both new
+families as explanations rather than errors.
+
+
 | Priority | Owner | Issue | Work |
 |---|---|---|---|
 | 1 | Thato (`thato899`) | [#67](https://github.com/thato899/perfpilot/issues/67) | Export the selected canonical comparison to CSV and JSON |
-| 2 | Kamogelo (`Kamogelo-Skhosana`) | [#68](https://github.com/thato899/perfpilot/issues/68) | Snapshot immutable scenario identity on each TestRun |
+| 2 | Kamogelo (`Kamogelo-Skhosana`) | [#68](https://github.com/thato899/perfpilot/issues/68) | Snapshot immutable scenario identity on each TestRun — **implementation complete**, PR open |
 | 3 | Thatayaone (`Thatayaone910`) | [#70](https://github.com/thato899/perfpilot/issues/70) | Route production agent execution through AIService |
 | 4 | Govenor (`malumzz`) | [#71](https://github.com/thato899/perfpilot/issues/71) | Measure run-to-run noise in controlled k6 comparisons |
 

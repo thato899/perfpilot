@@ -24,6 +24,7 @@ from packages.schemas.python.entities import TestPlanStatus, TestRunStatus
 from ..db import models as m
 from ..deps import AppSettings, DbSession, OrchestratorDep, require_auth
 from ..errors import conflict, forbidden_target, not_found, safety_limit
+from ..run_identity import new_test_run
 from ..schemas import (
     CreateTestPlanRequest,
     ErrorResponse,
@@ -230,11 +231,7 @@ def run_test_plan(
             },
         )
 
-    run = m.TestRun(
-        test_plan_id=plan.id,
-        target_id=target.id,
-        status=TestRunStatus.QUEUED,
-    )
+    run = new_test_run(plan=plan, target_id=target.id, status=TestRunStatus.QUEUED)
     plan.status = TestPlanStatus.APPROVED
     db.add(run)
     db.commit()
