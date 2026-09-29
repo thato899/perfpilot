@@ -335,6 +335,17 @@ export interface MetricComparison {
 export type IncompatibleReason =
   | "baseline_run_not_succeeded"
   | "current_run_not_succeeded"
+  // Issue #68. The run predates recorded scenario identity, so what it
+  // executed cannot be proven. Not an error the caller made and not a retry:
+  // there is no answer to be had for that run. Render it as "this run is too
+  // old to compare", not as a failure.
+  | "baseline_run_identity_unknown"
+  | "current_run_identity_unknown"
+  // Issue #68. A safety ceiling reduced the load actually generated below what
+  // the run's scenario describes, so comparing it would read a smaller test as
+  // an improvement. `detail.clamped` carries requested_vus / executed_vus.
+  | "baseline_run_clamped"
+  | "current_run_clamped"
   | "environment_mismatch"
   | "test_type_mismatch"
   | "concurrency_mismatch"

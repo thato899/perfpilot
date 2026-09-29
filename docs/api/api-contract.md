@@ -132,6 +132,8 @@ returns `409` with the code in brackets:
 | Same target — the target *is* the environment | `environment_mismatch` |
 | Same `test_type` | `test_type_mismatch` |
 | Same `target_concurrency` | `concurrency_mismatch` |
+| Both runs have a recorded scenario identity | `baseline_run_identity_unknown` / `current_run_identity_unknown` |
+| Neither run was clamped by a safety limit | `baseline_run_clamped` / `current_run_clamped` |
 | Same scenario — ramp strategy, stages, duration, journeys | `scenario_mismatch` |
 | The baseline's scenario identity is one this build understands | `scenario_identity_unsupported` |
 | Both runs recorded metrics | `baseline_metrics_unavailable` / `current_metrics_unavailable` |
@@ -178,13 +180,38 @@ than being reported as a changed scenario, because "these differ" is not
 something that can honestly be concluded from a hash computed under an unknown
 rule. The remedy is to re-select the baseline.
 
-Known limitation: the *current* run's scenario is read from its plan live,
-while the baseline's is frozen. Editing a plan after runs have executed can
-therefore make two previously comparable runs incomparable. That is the
-conservative direction — a refusal that names the field, rather than a
-comparison that is quietly wrong — and the proper fix is to snapshot the
-scenario onto `test_run` at execution time, which is a change to the run
-lifecycle and is raised separately.
+### Where a run's identity comes from (issue #68)
+
+Both sides of a comparison now read a **frozen** identity. A `TestRun` records
+`scenario_fingerprint` and `scenario` at creation, computed from the plan as it
+stood when the run was accepted, and those columns are never written again —
+not when the run starts, completes, or is retried. Compatibility reads them and
+never the live `TestPlan`.
+
+This closes the asymmetry the previous revision of this section documented as a
+known limitation: editing a plan after a run has executed can no longer change
+whether that run's historical result appears comparable.
+
+**Legacy runs.** Runs created before #68 have no snapshot, and one is never
+reconstructed for them. A plan edited since would make any reconstruction look
+authoritative while being unprovable, so a comparison involving such a run is
+refused with `baseline_run_identity_unknown` / `current_run_identity_unknown`
+and `detail.cause = "run_predates_scenario_identity"`. The same rule blocks
+selecting a legacy run as a baseline. For a consumer this is not an error the
+user made and not something a retry fixes — render it as "this run is too old
+to compare".
+
+**Clamped runs.** A run can be accepted at 1000 VUs and executed at 500 when
+the safety ceiling bites; `TestRun.clamped` records that. The snapshot keeps
+describing what was *accepted*, because the column has to mean one thing
+consistently, so the discrepancy is refused instead:
+`baseline_run_clamped` / `current_run_clamped`, with `detail.clamped` carrying
+`requested_vus` and `executed_vus`. Comparing such a run would read a smaller
+test as an improvement.
+
+**Malformed identity.** A plan whose scenario cannot be normalized is rejected
+at run creation with `422 scenario_identity_invalid`. A run is never created
+with an identity that was falsely inferred.
 
 ### `POST /api/targets/{target_id}/baselines`
 
