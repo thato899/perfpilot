@@ -177,6 +177,15 @@ You want `perfpilot.execute_test_run` in that list, not just `perfpilot.ping`. A
 
 The reference [demo scenario](../demo-scenario.md) expects a small, team-owned application (e.g. a simple e-commerce or quiz app) running locally or in a container, added to `ALLOWED_TARGET_HOSTS`, and registered as a `Target` with `authorization_confirmed: true` before any plan can be run against it (see [security model](../security/security-model.md)).
 
+## Repeatability harness
+
+Issue [#71](https://github.com/thato899/perfpilot/issues/71) measures run-to-run
+noise with a finite local k6 batch. It is not an investigation. Confirm the
+target, stay inside the existing VU and duration ceilings, and leave the raw
+results in the gitignored k6 results directory. The command, cleanup, and
+report shape are in
+[docs/phase3/p3-metrics-1-run-noise.md](../phase3/p3-metrics-1-run-noise.md).
+
 ## Running tests
 
 See [docs/testing/testing-strategy.md](../testing/testing-strategy.md) for the full strategy. Once implementation starts:
