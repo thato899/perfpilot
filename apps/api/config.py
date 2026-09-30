@@ -24,6 +24,13 @@ def _int_env(name: str, default: int) -> int:
         raise ValueError(f"{name} must be an integer, got {raw!r}") from exc
 
 
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _host_list(raw: str) -> frozenset[str]:
     return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
 
@@ -36,6 +43,9 @@ class Settings:
     max_test_duration_seconds: int = 1800
     max_experiments_per_investigation: int = 3
     load_engineer_mode: str = "real"
+    ai_provider_enabled: bool = False
+    ai_provider: str = "gemini"
+    ai_provider_model: str = ""
     k6_binary_path: str = "k6"
     k6_results_dir: str = "./infrastructure/docker/k6/results"
 
@@ -68,6 +78,9 @@ def get_settings() -> Settings:
         # added to .env.example, which is a shared root file.
         max_experiments_per_investigation=_int_env("MAX_EXPERIMENTS_PER_INVESTIGATION", 3),
         load_engineer_mode=os.environ.get("LOAD_ENGINEER_MODE", "real"),
+        ai_provider_enabled=_bool_env("AI_PROVIDER_ENABLED", False),
+        ai_provider=(os.environ.get("AI_PROVIDER") or "gemini").strip() or "gemini",
+        ai_provider_model=(os.environ.get("AI_PROVIDER_MODEL") or "").strip(),
         k6_binary_path=os.environ.get("K6_BINARY_PATH", "k6"),
         k6_results_dir=os.environ.get("K6_RESULTS_DIR", "./infrastructure/docker/k6/results"),
     )
