@@ -45,8 +45,11 @@ Two networks, not one. `perfpilot` carries application traffic (`db`, `redis`, `
 ## Environment setup
 
 1. `cp .env.example .env`
-2. Fill in `GEMINI_API_KEY` and/or `DEEPSEEK_API_KEY` depending on `AI_PROVIDER` (see [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md)).
-3. Set `ALLOWED_TARGET_HOSTS` to include whatever demo target you're running locally (see [security model](../security/security-model.md#target-authorization)) — PerfPilot will refuse to test anything not listed here, including your own local demo app if you forget to add it.
+2. Leave `AI_PROVIDER_ENABLED=false` for the default offline-safe path. Set it to `true` only when you intentionally want the production worker to route planner/investigator/reporting calls through the structured-generation seams.
+3. Fill in `GEMINI_API_KEY` and/or `DEEPSEEK_API_KEY` depending on `AI_PROVIDER` (see [ADR-004](../decisions/ADR-004-ai-provider-abstraction.md)).
+4. Set `ALLOWED_TARGET_HOSTS` to include whatever demo target you're running locally (see [security model](../security/security-model.md#target-authorization)) — PerfPilot will refuse to test anything not listed here, including your own local demo app if you forget to add it.
+
+When `AI_PROVIDER_ENABLED` is off, the live worker stays in deterministic mode and fails closed on provider/configuration issues instead of silently inventing a fallback response. The generator/retry boundary is still enforced, but no provider call is attempted unless the explicit flag is enabled.
 
 ## Running the pieces
 

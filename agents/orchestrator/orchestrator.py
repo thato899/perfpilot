@@ -13,6 +13,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from apps.api.config import get_settings
 from packages.schemas.python.agent_io import (
     DecisionLogEntry,
     InvestigationState,
@@ -39,12 +40,21 @@ class Orchestrator:
         self.max_experiments = max_experiments
 
     def plan_test(self, request: Any) -> TestPlanOutput:
+        get_settings.cache_clear()
         path = Path(__file__).parents[1] / "test-planner" / "test_planner.py"
         spec = importlib.util.spec_from_file_location("perfpilot_test_planner", path)
         if spec is None or spec.loader is None:
             raise OrchestratorError("test planner is unavailable")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+
+        if get_settings().ai_provider_enabled:
+            return self.invoke_specialist(
+                OrchestratorAction.INVOKE_TEST_PLANNER,
+                lambda prompt: module.TestPlanner().create_plan(request).model_dump(),
+                request,
+                prompt="Create a structured test plan for the supplied target and traffic profile.",
+            )
         return module.TestPlanner().create_plan(request)
 
     def step(self, step: OrchestratorStep) -> OrchestratorDecision:

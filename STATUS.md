@@ -22,6 +22,13 @@ never written again; comparison compatibility reads it and can no longer reach a
 mutable `TestPlan`. This closes the limitation #34 shipped knowingly: a plan
 edit can no longer change whether an existing result appears comparable.
 
+### #70 — production AI dispatch
+
+The live production path now routes the Test Planner, Performance Investigator,
+and Reporting Agent through the existing structured-generation validation seams
+when `AI_PROVIDER_ENABLED=true`; default runtime remains offline-safe and
+non-provider-backed, so local tests and demos continue without credentials.
+
 Two decisions worth a reviewer's attention, both documented in
 [docs/phase3/p3-api-1-run-identity.md](docs/phase3/p3-api-1-run-identity.md):
 
