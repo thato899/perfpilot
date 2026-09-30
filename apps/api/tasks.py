@@ -456,7 +456,10 @@ def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
             OrchestratorAction.INVOKE_INVESTIGATOR,
             lambda prompt: module.PerformanceInvestigator().analyze(request).model_dump(),
             request,
-            prompt="Analyze the supplied performance evidence and ground every finding in the provided metrics.",
+            prompt=(
+                "Analyze the supplied performance evidence and ground every finding "
+                "in the provided metrics."
+            ),
         )
     return module.PerformanceInvestigator().analyze(request)
 
@@ -610,7 +613,10 @@ def _persist_report(session, investigation, current, baseline, plan) -> None:  #
             OrchestratorAction.INVOKE_REPORTING_AGENT,
             lambda prompt: build_report(request).model_dump(),
             request,
-            prompt="Write a grounded executive summary and recommendations using only the supplied metrics and investigation state.",
+            prompt=(
+                "Write a grounded executive summary and recommendations using only "
+                "the supplied metrics and investigation state."
+            ),
         )
     else:
         report = build_report(request)

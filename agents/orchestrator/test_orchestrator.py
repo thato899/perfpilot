@@ -42,7 +42,10 @@ def test_plan_test_uses_ai_generation_seam_when_enabled(monkeypatch):
 
     def fake_invoke_specialist(action, generate, request_obj, *, prompt):
         calls.append((action, prompt, request_obj))
-        return orchestrator._load_module("test-planner", "test_planner.py", "perfpilot_test_planner").TestPlanner().create_plan(request_obj)
+        planner_module = orchestrator._load_module(
+            "test-planner", "test_planner.py", "perfpilot_test_planner"
+        )
+        return planner_module.TestPlanner().create_plan(request_obj)
 
     monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
     monkeypatch.setattr(orchestrator, "invoke_specialist", fake_invoke_specialist)
