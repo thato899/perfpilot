@@ -194,7 +194,9 @@ export default function Home() {
                           aria-pressed={selected}
                           onClick={() => setSelectedTargetId(target.id)}
                           className={`group rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                            selected ? "border-primary/60 bg-accent/70" : "bg-card hover:bg-muted/70"
+                            selected
+                              ? "border-primary/60 bg-accent/70"
+                              : "bg-card hover:bg-muted/70"
                           }`}
                         >
                           <span className="flex items-start justify-between gap-3">

@@ -69,7 +69,10 @@ export function ReportView({
           role="note"
           className="flex flex-col gap-1 rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-start sm:gap-3"
         >
-          <Badge variant="outline" className="w-fit border-amber-400 text-amber-800 dark:text-amber-200">
+          <Badge
+            variant="outline"
+            className="w-fit border-amber-400 text-amber-800 dark:text-amber-200"
+          >
             Limited load coverage
           </Badge>
           <p className="leading-relaxed">
@@ -80,12 +83,17 @@ export function ReportView({
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Key performance metrics">
+      <div
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        aria-label="Key performance metrics"
+      >
         {KEY_METRIC_ORDER.map((key) => (
           <Card key={key} className="gap-2 py-4">
             <CardContent className="px-4">
               <dl>
-                <dt className="text-sm font-medium text-muted-foreground">{KEY_METRIC_LABELS[key]}</dt>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  {KEY_METRIC_LABELS[key]}
+                </dt>
                 <dd className="mt-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
                   {formatMetric(key, report.keyMetrics[key])}
                 </dd>
@@ -99,7 +107,9 @@ export function ReportView({
         <Card>
           <CardHeader>
             <CardTitle>Capacity estimate</CardTitle>
-            <CardDescription>Interpret this estimate alongside the tested concurrency.</CardDescription>
+            <CardDescription>
+              Interpret this estimate alongside the tested concurrency.
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 pb-4 text-sm">
             {capacityEstablished ? (
@@ -121,8 +131,8 @@ export function ReportView({
               <>
                 <p className="text-lg font-semibold">Not established</p>
                 <p className="leading-relaxed text-muted-foreground">
-                  The run reached {formatMetric("peakConcurrencyTested", peakConcurrency)}. A
-                  higher load test is needed to estimate capacity.
+                  The run reached {formatMetric("peakConcurrencyTested", peakConcurrency)}. A higher
+                  load test is needed to estimate capacity.
                 </p>
               </>
             )}
@@ -138,11 +148,15 @@ export function ReportView({
             <CardContent className="flex flex-col gap-3 pb-4 text-sm">
               <div className="flex items-baseline justify-between gap-4">
                 <span className="text-muted-foreground">Previous p95</span>
-                <span className="font-semibold tabular-nums">{formatMetric("p95Ms", report.regression.previousP95Ms)}</span>
+                <span className="font-semibold tabular-nums">
+                  {formatMetric("p95Ms", report.regression.previousP95Ms)}
+                </span>
               </div>
               <div className="flex items-baseline justify-between gap-4">
                 <span className="text-muted-foreground">Current p95</span>
-                <span className="font-semibold tabular-nums">{formatMetric("p95Ms", report.regression.currentP95Ms)}</span>
+                <span className="font-semibold tabular-nums">
+                  {formatMetric("p95Ms", report.regression.currentP95Ms)}
+                </span>
               </div>
               <div className="flex items-center justify-between gap-4 border-t pt-3">
                 <span className="text-muted-foreground">Change</span>
@@ -188,14 +202,17 @@ export function ReportView({
         <Card>
           <CardHeader>
             <CardTitle>Bottleneck analysis</CardTitle>
-            <CardDescription>Likely causes are interpretations of the measurements.</CardDescription>
+            <CardDescription>
+              Likely causes are interpretations of the measurements.
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {report.bottleneckAnalysis.map((entry, i) => (
               <div key={i} className="flex flex-col gap-2 text-sm">
                 <p className="font-medium">{entry.observation}</p>
                 <p className="text-muted-foreground">
-                  Likely cause: {entry.likelyCause} ({Math.round(entry.confidence * 100)}% confidence)
+                  Likely cause: {entry.likelyCause} ({Math.round(entry.confidence * 100)}%
+                  confidence)
                 </p>
                 <ul className="list-inside list-disc space-y-1 text-muted-foreground">
                   {entry.evidence.map((e, j) => (
