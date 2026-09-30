@@ -264,37 +264,75 @@ export default function InvestigationPage() {
         : { status: "loading" };
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Investigation</h1>
-        <Link href="/" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-          ← Back home
-        </Link>
-      </div>
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              Investigation results
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Performance report
+            </h1>
+          </div>
+          <Link href="/" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+            ← Back home
+          </Link>
+        </div>
 
-      {investigation && <InvestigationProgress investigation={investigation} testRun={testRun} />}
+        {investigation && <InvestigationProgress investigation={investigation} testRun={testRun} />}
 
-      {/* The polling/run error is presented once, by the timeline card, which
+        {investigation && (
+          <nav className="flex flex-wrap gap-2" aria-label="Investigation sections">
+            {[
+              ["report", "Summary"],
+              ["findings", "Findings"],
+              ["comparison", "Comparison"],
+              ["timeline", "Timeline"],
+            ].map(([id, label]) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className="rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        )}
+
+        {report && (
+          <ReportView
+            report={report}
+            hasPreviousRun={Boolean(
+              investigation?.baselineTestRunId &&
+              investigation.currentTestRunId &&
+              investigation.baselineTestRunId !== investigation.currentTestRunId,
+            )}
+          />
+        )}
+
+        {/* The polling/run error is presented once, by the timeline card, which
           gives it role="alert" next to the history it applies to. Rendering it
           on the page as well produced two identical alerts, which a screen
           reader announces twice. */}
-      <InvestigationTimeline
-        investigation={investigation}
-        loading={loading}
-        error={error}
-        stale={stale}
-        lastUpdatedAt={lastUpdatedAt}
-        reconnecting={reconnecting}
-      />
+        <InvestigationTimeline
+          investigation={investigation}
+          loading={loading}
+          error={error}
+          stale={stale}
+          lastUpdatedAt={lastUpdatedAt}
+          reconnecting={reconnecting}
+        />
 
-      {investigation && <FindingsPanel investigation={investigation} />}
-      {investigation &&
-        (investigation.baselineTestRunId ||
-          isTerminalInvestigationStatus(investigation.status)) && (
-          <ComparisonView state={comparisonViewState} />
-        )}
-      {reportError && <p className="text-sm text-destructive">{reportError}</p>}
-      {report && <ReportView report={report} />}
+        {investigation && <FindingsPanel investigation={investigation} />}
+        {investigation &&
+          (investigation.baselineTestRunId ||
+            isTerminalInvestigationStatus(investigation.status)) && (
+            <ComparisonView state={comparisonViewState} />
+          )}
+        {reportError && <p className="text-sm text-destructive">{reportError}</p>}
+      </div>
     </main>
   );
 }

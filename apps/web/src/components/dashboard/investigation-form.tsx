@@ -33,10 +33,10 @@ export function InvestigationForm({
   target: Target;
   onCreated: (investigation: InvestigationState) => void;
 }) {
-  const [objective, setObjective] = useState<InvestigationObjective>("determine_capacity");
-  const [normalUsers, setNormalUsers] = useState("100");
-  const [peakUsers, setPeakUsers] = useState("1000");
-  const [peakDescription, setPeakDescription] = useState("Flash sale");
+  const [objective, setObjective] = useState<InvestigationObjective>("baseline");
+  const [normalUsers, setNormalUsers] = useState("1");
+  const [peakUsers, setPeakUsers] = useState("1");
+  const [peakDescription, setPeakDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,13 +114,17 @@ export function InvestigationForm({
               />
             </div>
           </div>
+          <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">
+            These describe expected traffic. The server may apply a lower safety cap; the results
+            show the concurrency actually tested.
+          </p>
           <div className="flex flex-col gap-2">
             <Label htmlFor="peak-description">Peak description (optional)</Label>
             <Input
               id="peak-description"
               value={peakDescription}
               onChange={(e) => setPeakDescription(e.target.value)}
-              placeholder="Flash sale, product launch, ..."
+              placeholder="Product launch, registration window..."
             />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}

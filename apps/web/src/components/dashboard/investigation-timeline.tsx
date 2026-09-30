@@ -83,14 +83,19 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
       {entry.detail && <p className="mt-1 text-sm text-muted-foreground">{entry.detail}</p>}
 
       {entry.relatedIds.length > 0 && (
-        <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {entry.relatedIds.map((related) => (
-            <div key={`${entry.id}-${related.label}`}>
-              <dt className="inline font-medium">{related.label}: </dt>
-              <dd className="inline font-mono">{related.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="w-fit cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            Technical references ({entry.relatedIds.length})
+          </summary>
+          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            {entry.relatedIds.map((related) => (
+              <div key={`${entry.id}-${related.label}`}>
+                <dt className="inline font-medium">{related.label}: </dt>
+                <dd className="inline break-all font-mono">{related.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
       )}
     </li>
   );
@@ -183,7 +188,7 @@ export function InvestigationTimeline({
   const failed = investigation.status === "failed";
 
   return (
-    <Card>
+    <Card id="timeline" className="scroll-mt-6">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle id="investigation-timeline-heading">Investigation timeline</CardTitle>

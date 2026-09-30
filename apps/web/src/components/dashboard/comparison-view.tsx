@@ -214,11 +214,6 @@ export function ComparisonView({ state }: { state: ComparisonState }) {
             Download JSON
           </Button>
         </div>
-        {state.status !== "available" && (
-          <p className="text-sm text-muted-foreground">
-            Exports are enabled when the selected comparison has loaded.
-          </p>
-        )}
         {exportError && (
           <p role="alert" className="text-sm text-destructive">
             {exportError}

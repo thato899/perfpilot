@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-09-30 by Govenor
 
+## UI/UX follow-up
+
+The workspace and investigation report polish pass is available on
+`feature/ui-ux-report-polish`. It improves the dashboard hierarchy, explains
+single-user test limits, and distinguishes unverified findings from measured
+evidence. The next step is review and integration with `main`.
+
 ## Current phase
 
 **Phase 1 and Phase 2 are complete. Phase 3 is planned, with all four initial tasks assigned.**
