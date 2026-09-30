@@ -40,3 +40,11 @@ Implemented in `metrics.py`. Consumers: `agents/load-engineer` (raw parsing),
 the API runtime adapter (persisted Metric records), and
 `agents/performance-investigator`/`agents/reporting` (already-computed values,
 never recomputed by an agent).
+
+## Repeatability report
+
+`repeatability.py` summarizes repeated same-plan trials for issue
+[#71](https://github.com/thato899/perfpilot/issues/71). It calls
+`compare_metrics` and does not change that function. The procedure, safety
+rules, and local evidence path are in
+[docs/phase3/p3-metrics-1-run-noise.md](../../docs/phase3/p3-metrics-1-run-noise.md).

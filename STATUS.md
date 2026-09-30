@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**Last updated:** 2026-09-28
+**Last updated:** 2026-09-30 by Govenor
 
 ## Current phase
 
@@ -54,7 +54,7 @@ families as explanations rather than errors.
 | 1 | Thato (`thato899`) | [#67](https://github.com/thato899/perfpilot/issues/67) | Export the selected canonical comparison to CSV and JSON |
 | 2 | Kamogelo (`Kamogelo-Skhosana`) | [#68](https://github.com/thato899/perfpilot/issues/68) | Snapshot immutable scenario identity on each TestRun — **implementation complete**, PR open |
 | 3 | Thatayaone (`Thatayaone910`) | [#70](https://github.com/thato899/perfpilot/issues/70) | Route production agent execution through AIService |
-| 4 | Govenor (`malumzz`) | [#71](https://github.com/thato899/perfpilot/issues/71) | Measure run-to-run noise in controlled k6 comparisons |
+| 4 | Govenor (`malumzz`) | [#71](https://github.com/thato899/perfpilot/issues/71) | Measure run-to-run noise in controlled k6 comparisons — harness and fixture evidence on `feature/p3-metrics-1-run-noise`; comparison semantics unchanged |
 
 Thato's UI task is first and can proceed independently. Kamogelo's backend
 task follows it in priority and resolves a comparison reproducibility risk
@@ -64,6 +64,22 @@ runtime gap: API tasks still call deterministic agent methods while generated
 AIService seams exist. Govenor then characterizes repeat-run variability
 without changing canonical outcomes. See [roadmap.md](docs/roadmap.md) and
 [PLANNING.md](PLANNING.md) for rationale, boundaries, and handoff expectations.
+
+### #71 — run-to-run noise
+
+Implementation is on `feature/p3-metrics-1-run-noise`. The harness repeats one
+allow-listed local plan outside the investigation loop, keeps invalid trials
+with reasons, and reports p50/p95/p99, throughput, and error-rate spans.
+`compare_metrics` is not modified. A within-span p95 illustration and a larger
+p95 illustration both come back `regression`, so the current contract does not
+separate noise from a material change. Procedure and safety rules:
+[docs/phase3/p3-metrics-1-run-noise.md](docs/phase3/p3-metrics-1-run-noise.md).
+
+The new phase-3 doc and the local-development pointer are shared-doc edits and
+need a second opinion before merge. A 2026-09-30 local batch of 5 valid trials
+on `localhost` with k6 v0.57.0 saw the same plan reported as improvement,
+inconclusive, and regression. Raw k6 evidence stays gitignored. Remaining
+before #71 is done: CI, review, merge to `main`, and post-merge verification.
 
 ## Phase 1/2 verification notes
 
