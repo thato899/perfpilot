@@ -23,17 +23,25 @@ const KEY_METRIC_ORDER: (keyof Report["keyMetrics"])[] = [
   "peakConcurrencyTested",
 ];
 
-function formatMetric(key: keyof Report["keyMetrics"], value: number): string {
-  const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
-  if (key === "throughputRps") return `${number} req/s`;
-  if (key === "p50Ms" || key === "p95Ms" || key === "p99Ms") return `${number} ms`;
+function formatMetricValue(key: keyof Report["keyMetrics"], value: number): string {
   if (key === "errorRate") {
     return new Intl.NumberFormat(undefined, {
       style: "percent",
       maximumFractionDigits: 2,
     }).format(value);
   }
-  return `${new Intl.NumberFormat().format(value)} ${value === 1 ? "user" : "users"}`;
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 }).format(value);
+}
+
+function metricUnit(key: keyof Report["keyMetrics"], value: number): string {
+  if (key === "throughputRps") return "req/s";
+  if (key === "p50Ms" || key === "p95Ms" || key === "p99Ms") return "ms";
+  if (key === "peakConcurrencyTested") return value === 1 ? "user" : "users";
+  return "";
+}
+
+function formatMetric(key: keyof Report["keyMetrics"], value: number): string {
+  return [formatMetricValue(key, value), metricUnit(key, value)].filter(Boolean).join(" ");
 }
 
 export function ReportView({
@@ -95,7 +103,12 @@ export function ReportView({
                   {KEY_METRIC_LABELS[key]}
                 </dt>
                 <dd className="mt-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
-                  {formatMetric(key, report.keyMetrics[key])}
+                  <span>{formatMetricValue(key, report.keyMetrics[key])}</span>
+                  {metricUnit(key, report.keyMetrics[key]) && (
+                    <span className="ml-1 text-sm font-medium text-muted-foreground">
+                      {metricUnit(key, report.keyMetrics[key])}
+                    </span>
+                  )}
                 </dd>
               </dl>
             </CardContent>
