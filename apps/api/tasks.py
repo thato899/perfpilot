@@ -27,6 +27,7 @@ from packages.schemas.python.agent_io import (
     InvestigationAnalysisRequest,
     LoadExecutionRequest,
     LoadExecutionStatus,
+    OrchestratorAction,
     OrchestratorEvent,
     OrchestratorEventType,
     OrchestratorStep,
@@ -47,6 +48,7 @@ from packages.schemas.python.entities import (
 )
 
 from .celery_app import celery_app
+from .config import get_settings
 from .db import models as m
 from .db.base import SessionLocal
 from .deps import get_load_engineer, get_orchestrator
@@ -435,6 +437,7 @@ def _persist_experiment_result(
 
 
 def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
+    get_settings.cache_clear()
     module = _load_investigator_module()
     current_metrics = [_metric_schema(metric) for metric in current.metrics]
     baseline_metrics = [_metric_schema(metric) for metric in baseline.metrics]
@@ -447,6 +450,14 @@ def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
         prior_hypotheses=state.hypotheses or None,
         infrastructure_metrics=None,
     )
+    if get_settings().ai_provider_enabled:
+        orchestrator = get_orchestrator()
+        return orchestrator.invoke_specialist(
+            OrchestratorAction.INVOKE_INVESTIGATOR,
+            lambda prompt: module.PerformanceInvestigator().analyze(request).model_dump(),
+            request,
+            prompt="Analyze the supplied performance evidence and ground every finding in the provided metrics.",
+        )
     return module.PerformanceInvestigator().analyze(request)
 
 
@@ -557,6 +568,7 @@ def _persist_investigator_output(session, investigation, output) -> None:  # noq
 
 
 def _persist_report(session, investigation, current, baseline, plan) -> None:  # noqa: ANN001
+    get_settings.cache_clear()
     from agents.reporting.report_builder import build_report
     from packages.schemas.python.agent_io import (
         CapacityEstimate,
@@ -574,26 +586,34 @@ def _persist_report(session, investigation, current, baseline, plan) -> None:  #
         p95_ms=thresholds["p95_ms"],
         max_error_rate=thresholds["max_error_rate"],
     )
-    report = build_report(
-        ReportRequest(
-            investigation_id=investigation.id,
-            investigation_state=_load_state(session, investigation),
-            capacity_estimate=CapacityEstimate(**capacity),
-            regression_comparison=RegressionComparison(
-                previous_p95_ms=baseline_metric.p95_ms,
-                current_p95_ms=current_metric.p95_ms,
-                regression_pct=compare_metrics(baseline_metric, current_metric).p95_delta_pct,
-            ),
-            key_metrics={
-                "throughput_rps": current_metric.throughput_rps,
-                "p50_ms": current_metric.p50_ms,
-                "p95_ms": current_metric.p95_ms,
-                "p99_ms": current_metric.p99_ms,
-                "error_rate": current_metric.error_rate,
-                "peak_concurrency_tested": current_metric.concurrency,
-            },
-        )
+    request = ReportRequest(
+        investigation_id=investigation.id,
+        investigation_state=_load_state(session, investigation),
+        capacity_estimate=CapacityEstimate(**capacity),
+        regression_comparison=RegressionComparison(
+            previous_p95_ms=baseline_metric.p95_ms,
+            current_p95_ms=current_metric.p95_ms,
+            regression_pct=compare_metrics(baseline_metric, current_metric).p95_delta_pct,
+        ),
+        key_metrics={
+            "throughput_rps": current_metric.throughput_rps,
+            "p50_ms": current_metric.p50_ms,
+            "p95_ms": current_metric.p95_ms,
+            "p99_ms": current_metric.p99_ms,
+            "error_rate": current_metric.error_rate,
+            "peak_concurrency_tested": current_metric.concurrency,
+        },
     )
+    if get_settings().ai_provider_enabled:
+        orchestrator = get_orchestrator()
+        report = orchestrator.invoke_specialist(
+            OrchestratorAction.INVOKE_REPORTING_AGENT,
+            lambda prompt: build_report(request).model_dump(),
+            request,
+            prompt="Write a grounded executive summary and recommendations using only the supplied metrics and investigation state.",
+        )
+    else:
+        report = build_report(request)
     existing = session.scalar(
         select(m.Report).where(m.Report.investigation_id == investigation.id).limit(1)
     )

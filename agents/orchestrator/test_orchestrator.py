@@ -25,6 +25,35 @@ def test_initial_state_invokes_planner():
     assert decision.next_action is OrchestratorAction.INVOKE_TEST_PLANNER
 
 
+def test_plan_test_uses_ai_generation_seam_when_enabled(monkeypatch):
+    from packages.schemas.python.agent_io import TestPlanRequest
+
+    orchestrator = Orchestrator()
+    request = TestPlanRequest(
+        target_description={
+            "application_name": "demo",
+            "user_journeys": ["/health"],
+            "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+            "performance_requirements": {"p95_ms": 500, "max_error_rate": 0.01},
+        },
+        objective="determine_capacity",
+    )
+    calls = []
+
+    def fake_invoke_specialist(action, generate, request_obj, *, prompt):
+        calls.append((action, prompt, request_obj))
+        return orchestrator._load_module("test-planner", "test_planner.py", "perfpilot_test_planner").TestPlanner().create_plan(request_obj)
+
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
+    monkeypatch.setattr(orchestrator, "invoke_specialist", fake_invoke_specialist)
+
+    result = orchestrator.plan_test(request)
+
+    assert result.target_concurrency == 2
+    assert calls
+    assert calls[0][0] is OrchestratorAction.INVOKE_TEST_PLANNER
+
+
 def test_healthy_result_reports_without_experiment():
     decision = Orchestrator().continue_investigation(
         state(InvestigationStatus.INVESTIGATING.value), uuid.uuid4()
