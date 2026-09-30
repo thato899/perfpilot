@@ -1,112 +1,170 @@
 import type { Report } from "@perfpilot/schemas/types";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 
 const KEY_METRIC_LABELS: Record<keyof Report["keyMetrics"], string> = {
-  throughputRps: "Throughput (req/s)",
-  p50Ms: "p50 latency (ms)",
-  p95Ms: "p95 latency (ms)",
-  p99Ms: "p99 latency (ms)",
+  throughputRps: "Throughput",
+  p50Ms: "Median latency",
+  p95Ms: "p95 latency",
+  p99Ms: "p99 latency",
   errorRate: "Error rate",
-  peakConcurrencyTested: "Peak concurrency tested",
+  peakConcurrencyTested: "Peak concurrency",
 };
 
-/** "View the resulting report" — GET /api/reports/{id}
- * (docs/api/api-contract.md), rendering exactly the `Report` shape
- * docs/agents/reporting-agent.md's output schema defines. Every number
- * here came from the agent unaltered from packages/metrics/the Reporting
- * Agent's input — this component only formats, it doesn't compute. */
-export function ReportView({ report }: { report: Report }) {
+const KEY_METRIC_ORDER: (keyof Report["keyMetrics"])[] = [
+  "throughputRps",
+  "p95Ms",
+  "p99Ms",
+  "errorRate",
+  "p50Ms",
+  "peakConcurrencyTested",
+];
+
+function formatMetric(key: keyof Report["keyMetrics"], value: number): string {
+  const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
+  if (key === "throughputRps") return `${number} req/s`;
+  if (key === "p50Ms" || key === "p95Ms" || key === "p99Ms") return `${number} ms`;
+  if (key === "errorRate") {
+    return new Intl.NumberFormat(undefined, {
+      style: "percent",
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+  return `${new Intl.NumberFormat().format(value)} ${value === 1 ? "user" : "users"}`;
+}
+
+export function ReportView({
+  report,
+  hasPreviousRun = true,
+}: {
+  report: Report;
+  hasPreviousRun?: boolean;
+}) {
+  const peakConcurrency = report.keyMetrics.peakConcurrencyTested;
+  const capacityEstablished = peakConcurrency > 1;
+
   return (
-    <div id="report" className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Executive summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-relaxed">{report.executiveSummary}</p>
-        </CardContent>
-      </Card>
+    <div id="report" className="scroll-mt-6 flex flex-col gap-6">
+      <section aria-labelledby="report-summary-title">
+        <Card className="overflow-hidden border-primary/20 shadow-sm">
+          <CardHeader className="border-b bg-gradient-to-r from-primary/[0.08] to-transparent px-5 py-5 sm:px-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Run summary
+            </p>
+            <CardTitle id="report-summary-title" className="text-xl sm:text-2xl">
+              Executive summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 py-5 sm:px-6">
+            <p className="max-w-4xl text-sm leading-7 sm:text-base">{report.executiveSummary}</p>
+          </CardContent>
+        </Card>
+      </section>
+
+      {peakConcurrency <= 1 && (
+        <div
+          role="note"
+          className="flex flex-col gap-1 rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-start sm:gap-3"
+        >
+          <Badge variant="outline" className="w-fit border-amber-400 text-amber-800 dark:text-amber-200">
+            Limited load coverage
+          </Badge>
+          <p className="leading-relaxed">
+            Only {peakConcurrency} concurrent user{peakConcurrency === 1 ? "" : "s"} tested. This
+            confirms behavior at the tested load; it does not establish the application&apos;s
+            capacity.
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Key performance metrics">
+        {KEY_METRIC_ORDER.map((key) => (
+          <Card key={key} className="gap-2 py-4">
+            <CardContent className="px-4">
+              <dl>
+                <dt className="text-sm font-medium text-muted-foreground">{KEY_METRIC_LABELS[key]}</dt>
+                <dd className="mt-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
+                  {formatMetric(key, report.keyMetrics[key])}
+                </dd>
+              </dl>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Capacity</CardTitle>
+            <CardTitle>Capacity estimate</CardTitle>
+            <CardDescription>Interpret this estimate alongside the tested concurrency.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Estimated sustainable</span>
-              <span className="font-medium">
-                ~{report.capacity.estimatedSustainableUsers} concurrent users
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recommended operating</span>
-              <span className="font-medium">
-                {report.capacity.recommendedOperatingUsers} concurrent users
-              </span>
-            </div>
+          <CardContent className="flex flex-col gap-3 pb-4 text-sm">
+            {capacityEstablished ? (
+              <>
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-muted-foreground">Estimated sustainable</span>
+                  <span className="text-right font-semibold tabular-nums">
+                    ~{report.capacity.estimatedSustainableUsers} users
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="text-muted-foreground">Recommended operating</span>
+                  <span className="text-right font-semibold tabular-nums">
+                    {report.capacity.recommendedOperatingUsers} users
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-semibold">Not established</p>
+                <p className="leading-relaxed text-muted-foreground">
+                  The run reached {formatMetric("peakConcurrencyTested", peakConcurrency)}. A
+                  higher load test is needed to estimate capacity.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Regression vs. previous run</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Previous p95</span>
-              <span className="font-medium">{report.regression.previousP95Ms} ms</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Current p95</span>
-              <span className="font-medium">{report.regression.currentP95Ms} ms</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Change</span>
-              <Badge variant={report.regression.regressionPct > 0 ? "destructive" : "secondary"}>
-                {report.regression.regressionPct > 0 ? "+" : ""}
-                {report.regression.regressionPct}%
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+        {hasPreviousRun ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Change from previous run</CardTitle>
+              <CardDescription>Compared using the p95 response time.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 pb-4 text-sm">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-muted-foreground">Previous p95</span>
+                <span className="font-semibold tabular-nums">{formatMetric("p95Ms", report.regression.previousP95Ms)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-muted-foreground">Current p95</span>
+                <span className="font-semibold tabular-nums">{formatMetric("p95Ms", report.regression.currentP95Ms)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-t pt-3">
+                <span className="text-muted-foreground">Change</span>
+                <Badge variant={report.regression.regressionPct > 0 ? "destructive" : "secondary"}>
+                  {report.regression.regressionPct > 0 ? "+" : ""}
+                  {report.regression.regressionPct}%
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Run comparison</CardTitle>
+              <CardDescription>No separate previous run is linked to this result.</CardDescription>
+            </CardHeader>
+            <CardContent className="pb-4 text-sm leading-relaxed text-muted-foreground">
+              Create a later run to see whether a change improved or regressed performance.
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Key metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Metric</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(Object.keys(KEY_METRIC_LABELS) as (keyof Report["keyMetrics"])[]).map((key) => (
-                <TableRow key={key}>
-                  <TableCell>{KEY_METRIC_LABELS[key]}</TableCell>
-                  <TableCell className="text-right">{report.keyMetrics[key]}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {report.findings.length > 0 && (
         <Card>
@@ -115,11 +173,11 @@ export function ReportView({ report }: { report: Report }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {report.findings.map((finding) => (
-              <div key={finding.id} className="rounded-md border p-3 text-sm">
-                <div className="mb-1 flex items-center gap-2">
+              <div key={finding.id} className="rounded-lg border bg-card p-4 text-sm">
+                <div className="mb-2 flex items-center gap-2">
                   <SeverityBadge severity={finding.severity} />
                 </div>
-                <p>{finding.summary}</p>
+                <p className="leading-relaxed">{finding.summary}</p>
               </div>
             ))}
           </CardContent>
@@ -130,21 +188,21 @@ export function ReportView({ report }: { report: Report }) {
         <Card>
           <CardHeader>
             <CardTitle>Bottleneck analysis</CardTitle>
+            <CardDescription>Likely causes are interpretations of the measurements.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {report.bottleneckAnalysis.map((entry, i) => (
-              <div key={i} className="flex flex-col gap-1 text-sm">
+              <div key={i} className="flex flex-col gap-2 text-sm">
                 <p className="font-medium">{entry.observation}</p>
-                <p>
-                  Likely cause: {entry.likelyCause} ({Math.round(entry.confidence * 100)}%
-                  confidence)
+                <p className="text-muted-foreground">
+                  Likely cause: {entry.likelyCause} ({Math.round(entry.confidence * 100)}% confidence)
                 </p>
-                <ul className="list-inside list-disc text-muted-foreground">
+                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
                   {entry.evidence.map((e, j) => (
                     <li key={j}>{e}</li>
                   ))}
                 </ul>
-                {i < report.bottleneckAnalysis.length - 1 && <Separator className="mt-3" />}
+                {i < report.bottleneckAnalysis.length - 1 && <Separator className="mt-2" />}
               </div>
             ))}
           </CardContent>
@@ -155,13 +213,14 @@ export function ReportView({ report }: { report: Report }) {
         <Card>
           <CardHeader>
             <CardTitle>Recommendations</CardTitle>
+            <CardDescription>Suggested next steps based on this run.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ol className="flex flex-col gap-2 text-sm">
+            <ol className="flex flex-col gap-3">
               {report.recommendations.map((rec, i) => (
-                <li key={i} className="flex items-start gap-2">
+                <li key={i} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
                   <SeverityBadge severity={rec.priority} />
-                  <span>{rec.statement}</span>
+                  <span className="leading-relaxed">{rec.statement}</span>
                 </li>
               ))}
             </ol>

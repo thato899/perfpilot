@@ -111,7 +111,12 @@ function FindingCard({
           {finding.summary}
         </h3>
         <SeverityBadge severity={finding.severity} />
-        <span className="text-xs text-muted-foreground">ID: {finding.id}</span>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            Technical details
+          </summary>
+          <code className="mt-1 block break-all font-mono">{finding.id}</code>
+        </details>
       </div>
       <section
         className="mt-4 rounded-md bg-muted/30 p-3"
@@ -129,9 +134,16 @@ function FindingCard({
             ))}
           </ul>
         ) : (
-          <p className="mt-1 text-sm text-muted-foreground">
-            No metric evidence supplied by the API.
-          </p>
+          <div
+            role="note"
+            className="mt-2 rounded-lg border border-amber-300/70 bg-amber-50/80 p-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
+          >
+            <p className="font-medium">This finding is not verified by linked measurements.</p>
+            <p className="mt-1 leading-relaxed">
+              The API supplied no metric evidence for this finding. Treat its summary as an
+              unverified status, not proof that performance thresholds passed.
+            </p>
+          </div>
         )}
       </section>
       <section className="mt-4" aria-labelledby={`interpretation-${finding.id}`}>
@@ -148,7 +160,9 @@ function FindingCard({
               />
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">No hypotheses are currently recorded.</p>
+            <p className="text-sm text-muted-foreground">
+              No AI hypothesis was generated for this finding.
+            </p>
           )}
         </div>
       </section>

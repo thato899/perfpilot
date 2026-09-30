@@ -9,17 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createTarget } from "@/lib/api";
 
-/** "Create a target" — registers an application and records the
- * authorization confirmation required before any load can be sent to it.
- * Mirrors POST /api/projects/{id}/targets (docs/api/api-contract.md) and
- * its security-model.md#target-authorization rule: there is no
- * "confirm later" state, so the checkbox below is required, not optional. */
 export function TargetForm({
   projectId,
   onCreated,
+  onCancel,
 }: {
   projectId: string;
   onCreated: (target: Target) => void;
+  onCancel?: () => void;
 }) {
   const [name, setName] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -33,10 +30,7 @@ export function TargetForm({
     setError(null);
 
     if (!authorizationConfirmed) {
-      setError(
-        "You must confirm you own/are authorized to test this target — PerfPilot refuses to " +
-          "create a target it can't run load against.",
-      );
+      setError("Confirm that you own this application or have permission to test it.");
       return;
     }
 
@@ -50,7 +44,7 @@ export function TargetForm({
       });
       onCreated(target);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create target.");
+      setError(err instanceof Error ? err.message : "The application could not be added.");
     } finally {
       setSubmitting(false);
     }
@@ -59,22 +53,22 @@ export function TargetForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Register a target</CardTitle>
+        <CardTitle>Add an application</CardTitle>
         <CardDescription>
-          The application PerfPilot will investigate. See{" "}
-          <code>docs/security/security-model.md</code> for why authorization confirmation is
-          required up front.
+          Register an application you own or have permission to test. Authorization is recorded
+          before a test can run.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="target-name">Name</Label>
+            <Label htmlFor="target-name">Application name</Label>
             <Input
               id="target-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Demo e-commerce app"
+              placeholder="Demo storefront"
+              autoComplete="organization"
               required
             />
           </div>
@@ -85,33 +79,52 @@ export function TargetForm({
               type="url"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://demo.perfpilot.local"
+              placeholder="https://demo.example.com"
+              autoComplete="url"
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Enter the origin you are authorized to test. You can configure journeys separately.
+            </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirmed-by">Authorization confirmed by</Label>
+            <Label htmlFor="confirmed-by">Your name</Label>
             <Input
               id="confirmed-by"
               value={confirmedBy}
               onChange={(e) => setConfirmedBy(e.target.value)}
-              placeholder="Your name"
+              placeholder="Name of the person authorizing this test"
+              autoComplete="name"
               required
             />
           </div>
-          <label className="flex items-start gap-2 text-sm">
+          <label className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3 text-sm leading-relaxed">
             <input
               type="checkbox"
-              className="mt-1"
+              className="mt-1 size-4 accent-primary"
               checked={authorizationConfirmed}
               onChange={(e) => setAuthorizationConfirmed(e.target.checked)}
             />
-            <span>I confirm this target is owned by the team and authorized for load testing.</span>
+            <span>
+              I confirm I own this application or have explicit permission to run performance tests
+              against it.
+            </span>
           </label>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Creating…" : "Create target"}
-          </Button>
+          {error && (
+            <p role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {onCancel && (
+              <Button type="button" variant="ghost" onClick={onCancel} disabled={submitting}>
+                Cancel
+              </Button>
+            )}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Adding application..." : "Add application"}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
