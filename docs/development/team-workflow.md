@@ -128,18 +128,13 @@ Not everything has exactly one owner. These require lightweight coordination (se
 
 ```text
 main
-  │
-  └── develop
-        │
-        ├── feature/orchestrator
-        ├── feature/k6-engine
-        ├── feature/backend
-        └── feature/dashboard
+ ├── feature/<short-description>
+ ├── fix/<short-description>
+ └── docs/<short-description>
 ```
 
-- `main` — always demo-ready. Only receives merges from `develop`.
-- `develop` — integration branch. All feature work merges here first.
-- `feature/*`, `fix/*`, `docs/*` — branch per unit of work, never work directly on `main` or `develop`.
+- `main` — current integration and release branch; there is no separate `develop` branch in the repository.
+- `feature/*`, `fix/*`, `docs/*` — short-lived branch per unit of work. Open a pull request back into `main`; do not commit directly to protected `main`.
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for commit message conventions, PR review expectations, and the process for changing a shared contract.
 

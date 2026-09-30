@@ -33,14 +33,14 @@ When you open a PR with `Closes #<n>` in the body, [.github/workflows/claim-chec
 
 ```text
 main
- └── develop
-       ├── feature/<short-description>
-       ├── fix/<short-description>
-       └── docs/<short-description>
+ ├── feature/<short-description>
+ ├── fix/<short-description>
+ └── docs/<short-description>
 ```
 
-- Never commit directly to `main`. `main` only receives merges from `develop` at demo-ready checkpoints.
-- Branch from `develop`, open a PR back into `develop`.
+- `main` is the current integration and release branch; there is no separate `develop` branch in the repository.
+- Keep work on a short-lived branch and do not commit directly to protected `main`.
+- Branch from `main` and open a PR back into `main`.
 - Branch names are kebab-case and describe the change, not the person: `feature/k6-script-generation`, not `feature/dev2-stuff`.
 
 ## Commits
@@ -59,7 +59,7 @@ Don't bundle unrelated changes into one commit — a reviewer should be able to 
 
 ## Pull requests
 
-- Open a PR into `develop` as soon as the branch is in reviewable shape — don't sit on a huge branch.
+- Open a PR into `main` as soon as the branch is in reviewable shape — don't sit on a huge branch.
 - Update [STATUS.md](STATUS.md) before you open the PR — what you did, what's next. It's the first thing an AI assistant (yours or a teammate's) reads in a fresh session; if it's stale, that session starts blind. The PR template checklist reminds you.
 - Describe *what* changed and *why*, and link the doc section the change implements if applicable.
 - At least one other developer approves before merge. For changes touching a **shared** path (see below), get a review from an owner of the other side of that contract, not just anyone.
