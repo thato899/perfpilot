@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from packages.ai.runtime import AIConfigurationError, AIProviderError
 from packages.schemas.python.agent_io import (
     InvestigationState,
     PerformanceRequirements,
@@ -24,10 +25,11 @@ from packages.schemas.python.entities import (
 from packages.schemas.python.entities import Finding as FindingSchema
 from packages.schemas.python.entities import Investigation as InvestigationSchema
 from packages.schemas.python.entities import Report as ReportSchema
+from packages.validation import StructuredOutputError
 
 from ..db import models as m
 from ..deps import AppSettings, DbSession, OrchestratorDep, require_auth
-from ..errors import conflict, forbidden_target, not_found
+from ..errors import APIError, conflict, forbidden_target, not_found
 from ..investigation_state import append_event, budget_contract, event_contract
 from ..run_identity import new_test_run
 from ..schemas import (
@@ -48,6 +50,7 @@ ERRORS: dict[int | str, dict] = {
     404: {"model": ErrorResponse},
     409: {"model": ErrorResponse},
     422: {"model": ErrorResponse},
+    503: {"model": ErrorResponse},
 }
 
 
@@ -195,6 +198,17 @@ def create_investigation(
                 objective=body.objective,
             )
         )
+        if settings.ai_provider_enabled:
+            from packages.schemas.python.entities import AgentName
+
+            from ..ai_audit import record_ai_execution
+
+            record_ai_execution(
+                db,
+                getattr(orchestrator, "last_ai_service", None),
+                AgentName.TEST_PLANNER,
+                investigation_id=investigation.id,
+            )
         plan_row = m.TestPlan(
             project_id=target.project_id,
             target_id=target.id,
@@ -233,7 +247,7 @@ def create_investigation(
         db.commit()
         db.refresh(investigation)
         _dispatch(run.id)
-    except Exception:
+    except Exception as exc:
         db.rollback()
         failed = db.get(m.Investigation, investigation.id)
         if failed is not None and failed.status not in {
@@ -241,7 +255,27 @@ def create_investigation(
             InvestigationStatus.FAILED,
         }:
             failed.status = InvestigationStatus.FAILED
-            db.commit()
+        if settings.ai_provider_enabled:
+            from packages.schemas.python.entities import AgentName
+
+            from ..ai_audit import record_ai_execution
+
+            record_ai_execution(
+                db,
+                getattr(orchestrator, "last_ai_service", None),
+                AgentName.TEST_PLANNER,
+                investigation_id=investigation.id,
+                outcome=f"failed:{type(exc).__name__}",
+                settings=settings,
+            )
+        db.commit()
+        if isinstance(exc, (AIConfigurationError, AIProviderError, StructuredOutputError)):
+            raise APIError(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "ai_generation_failed",
+                f"AI generation failed: {type(exc).__name__}.",
+                {"investigation_id": str(investigation.id)},
+            ) from exc
         raise
 
     return from_orm(InvestigationSchema, investigation)

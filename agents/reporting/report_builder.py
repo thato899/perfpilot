@@ -197,6 +197,9 @@ def validate_report(report: ReportOutput, request: ReportRequest) -> list[str]:
                 "hypothesis in investigation_state.hypotheses"
             )
 
+    if {finding.id for finding in report.findings} != finding_ids:
+        violations.append("report findings must match investigation_state.findings")
+
     if len(report.bottleneck_analysis) == len(request.investigation_state.hypotheses):
         for bottleneck, hypothesis in zip(
             report.bottleneck_analysis, request.investigation_state.hypotheses, strict=True
@@ -206,6 +209,10 @@ def validate_report(report: ReportOutput, request: ReportRequest) -> list[str]:
                     f"bottleneck_analysis confidence ({bottleneck.confidence}) does not match "
                     f"source hypothesis {hypothesis.id}'s confidence ({hypothesis.confidence})"
                 )
+            cited = " ".join(bottleneck.evidence)
+            for evidence in hypothesis.evidence:
+                if f"source: {evidence.source_ref}" not in cited:
+                    violations.append(f"bottleneck_analysis omits source_ref {evidence.source_ref}")
     else:
         violations.append(
             "bottleneck_analysis length does not match investigation_state.hypotheses length"

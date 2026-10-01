@@ -38,6 +38,7 @@ from packages.schemas.python.agent_io import (
     TestStagePlan,
 )
 from packages.schemas.python.entities import (
+    AgentName,
     ExperimentConclusion,
     ExperimentStatus,
     HypothesisStatus,
@@ -47,6 +48,7 @@ from packages.schemas.python.entities import (
     TestType,
 )
 
+from .ai_audit import record_ai_execution
 from .celery_app import celery_app
 from .config import get_settings
 from .db import models as m
@@ -300,6 +302,8 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
     if investigation is None:
         return
 
+    ai_agent = AgentName.PERFORMANCE_INVESTIGATOR
+    ai_services = []
     try:
         from .routers.investigations import _load_state
 
@@ -329,6 +333,9 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
             baseline_run,
             plan,
             _load_state(session, investigation),
+            session=session,
+            investigation_id=investigation.id,
+            service_out=ai_services,
         )
         _persist_investigator_output(session, investigation, analysis)
         _persist_experiment_result(session, investigation, baseline_run, current_run)
@@ -367,7 +374,16 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
             )
         investigation.status = InvestigationStatus(decision.updated_state.status)
         if decision.next_action.value == "invoke_reporting_agent":
-            _persist_report(session, investigation, current_run, baseline_run, plan)
+            ai_agent = AgentName.REPORTING
+            ai_services.clear()
+            _persist_report(
+                session,
+                investigation,
+                current_run,
+                baseline_run,
+                plan,
+                service_out=ai_services,
+            )
             append_event(
                 session,
                 investigation.id,
@@ -377,7 +393,7 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
             )
             investigation.status = InvestigationStatus.COMPLETE
         session.commit()
-    except Exception:
+    except Exception as exc:
         log.exception("execute_test_run: could not advance investigation %s", investigation.id)
         session.rollback()
         failed = session.get(m.Investigation, investigation.id)
@@ -386,7 +402,17 @@ def _advance_investigation(session, test_run_id: uuid.UUID) -> None:  # noqa: AN
             InvestigationStatus.FAILED,
         }:
             failed.status = InvestigationStatus.FAILED
-            session.commit()
+        if get_settings().ai_provider_enabled:
+            record_ai_execution(
+                session,
+                ai_services[-1] if ai_services else None,
+                ai_agent,
+                investigation_id=investigation.id,
+                test_run_id=test_run_id,
+                outcome=f"failed:{type(exc).__name__}",
+                settings=get_settings(),
+            )
+        session.commit()
 
 
 def _load_investigator_module():
@@ -436,7 +462,9 @@ def _persist_experiment_result(
     )
 
 
-def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
+def _run_investigator(
+    current, baseline, plan, state, *, session=None, investigation_id=None, service_out=None
+):  # noqa: ANN001
     get_settings.cache_clear()
     module = _load_investigator_module()
     current_metrics = [_metric_schema(metric) for metric in current.metrics]
@@ -452,15 +480,32 @@ def _run_investigator(current, baseline, plan, state):  # noqa: ANN001
     )
     if get_settings().ai_provider_enabled:
         orchestrator = get_orchestrator()
-        return orchestrator.invoke_specialist(
+
+        def generate(prompt):
+            try:
+                return orchestrator.generate_specialist("performance_investigator", request, prompt)
+            finally:
+                if service_out is not None and orchestrator.last_ai_service is not None:
+                    service_out.append(orchestrator.last_ai_service)
+
+        output = orchestrator.invoke_specialist(
             OrchestratorAction.INVOKE_INVESTIGATOR,
-            lambda prompt: module.PerformanceInvestigator().analyze(request).model_dump(),
+            generate,
             request,
             prompt=(
                 "Analyze the supplied performance evidence and ground every finding "
                 "in the provided metrics."
             ),
         )
+        if session is not None:
+            record_ai_execution(
+                session,
+                orchestrator.last_ai_service,
+                AgentName.PERFORMANCE_INVESTIGATOR,
+                investigation_id=investigation_id,
+                test_run_id=current.id,
+            )
+        return output
     return module.PerformanceInvestigator().analyze(request)
 
 
@@ -570,7 +615,9 @@ def _persist_investigator_output(session, investigation, output) -> None:  # noq
         )
 
 
-def _persist_report(session, investigation, current, baseline, plan) -> None:  # noqa: ANN001
+def _persist_report(
+    session, investigation, current, baseline, plan, *, service_out=None
+) -> None:  # noqa: ANN001
     get_settings.cache_clear()
     from agents.reporting.report_builder import build_report
     from packages.schemas.python.agent_io import (
@@ -609,14 +656,29 @@ def _persist_report(session, investigation, current, baseline, plan) -> None:  #
     )
     if get_settings().ai_provider_enabled:
         orchestrator = get_orchestrator()
+
+        def generate(prompt):
+            try:
+                return orchestrator.generate_specialist("reporting", request, prompt)
+            finally:
+                if service_out is not None and orchestrator.last_ai_service is not None:
+                    service_out.append(orchestrator.last_ai_service)
+
         report = orchestrator.invoke_specialist(
             OrchestratorAction.INVOKE_REPORTING_AGENT,
-            lambda prompt: build_report(request).model_dump(),
+            generate,
             request,
             prompt=(
                 "Write a grounded executive summary and recommendations using only "
                 "the supplied metrics and investigation state."
             ),
+        )
+        record_ai_execution(
+            session,
+            orchestrator.last_ai_service,
+            AgentName.REPORTING,
+            investigation_id=investigation.id,
+            test_run_id=current.id,
         )
     else:
         report = build_report(request)

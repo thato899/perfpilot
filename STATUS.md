@@ -1,5 +1,13 @@
 # PerfPilot status
 
+**2026-10-01 AI runtime update:** On `feature/ai-production-providers`, issues
+#70, #78, #79, and #80 have a Python provider bridge for Ollama, DeepSeek,
+and Gemini, with real planner/investigator/report dispatch, bounded calls,
+typed validation, sanitized audit records, and an opt-in fixture smoke runner.
+Offline tests and the Postgres-backed API suite passed locally. Live provider
+smoke, affected-owner review, CI, merge, and post-merge verification remain.
+See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).
+
 **Last updated:** 2026-09-30 by Govenor
 
 ## Current phase
