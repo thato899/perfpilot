@@ -84,9 +84,14 @@ Set provider and credentials for DeepSeek or Gemini. The command prints only
 the validated result status and provider/model. It performs no load test.
 For a Docker Desktop connectivity check, execute the same command in the
 worker container with `docker compose exec worker python -m packages.ai.smoke`.
-Live calls are excluded from normal CI. The local environment used for the
-offline test suite has no Ollama model or cloud credentials, so a live smoke
-result requires an operator to run the opt-in command.
+Live calls are excluded from normal CI. On 2026-10-01, the local
+`qwen3:8b` service returned valid JSON through `AIService` for a small
+adapter request, and the Docker worker reached the host service at
+`host.docker.internal:11434`. The full planner fixture timed out on this
+CPU-only host with both 60 and 180 second request bounds; no complete
+three-specialist local evaluation is claimed. Cloud smoke was unavailable
+because Gemini and DeepSeek credentials were absent. Run the command above
+on suitable hardware before promoting this draft PR.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),
