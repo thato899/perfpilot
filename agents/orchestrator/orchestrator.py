@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from apps.api.config import get_settings
+from packages.ai.runtime import AIConfig, AIService
 from packages.schemas.python.agent_io import (
     DecisionLogEntry,
     InvestigationState,
@@ -38,6 +39,12 @@ class Orchestrator:
             raise ValueError("max_experiments must not be negative")
         self.confidence_threshold = confidence_threshold
         self.max_experiments = max_experiments
+        self.last_ai_service: AIService | None = None
+
+    def generate_specialist(self, agent: str, request: Any, prompt: str):
+        """Create the selected provider lazily and send a typed specialist request."""
+        self.last_ai_service = AIService(AIConfig.from_settings(get_settings(), agent))
+        return self.last_ai_service.generate(agent, request, prompt)
 
     def plan_test(self, request: Any) -> TestPlanOutput:
         get_settings.cache_clear()
@@ -51,7 +58,7 @@ class Orchestrator:
         if get_settings().ai_provider_enabled:
             return self.invoke_specialist(
                 OrchestratorAction.INVOKE_TEST_PLANNER,
-                lambda prompt: module.TestPlanner().create_plan(request).model_dump(),
+                lambda prompt: self.generate_specialist("test_planner", request, prompt),
                 request,
                 prompt="Create a structured test plan for the supplied target and traffic profile.",
             )

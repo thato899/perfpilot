@@ -365,6 +365,36 @@ def test_create_investigation(client: TestClient, db_session, target: dict) -> N
     assert plan.status is TestPlanStatus.APPROVED
 
 
+def test_live_planner_missing_key_fails_clearly_and_audits(
+    client: TestClient, db_session, target: dict, monkeypatch
+) -> None:
+    from apps.api.config import get_settings
+
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "gemini")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    get_settings.cache_clear()
+    try:
+        res = client.post(
+            "/api/investigations",
+            json={
+                "target_id": target["id"],
+                "objective": "determine_capacity",
+                "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+            },
+            headers=AUTH,
+        )
+        assert res.status_code == 503
+        assert res.json()["error"]["code"] == "ai_generation_failed"
+        db_session.expire_all()
+        execution = db_session.query(m.AIExecution).one()
+        assert execution.provider == "gemini"
+        assert execution.decision == "failed:AIConfigurationError"
+        assert execution.investigation.status is InvestigationStatus.FAILED
+    finally:
+        get_settings.cache_clear()
+
+
 def test_investigation_for_unauthorized_target_is_403(
     client: TestClient, db_session, target: dict
 ) -> None:

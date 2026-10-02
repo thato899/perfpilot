@@ -135,6 +135,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       PYTHONPATH: /app
+      OLLAMA_BASE_URL: ${OLLAMA_WORKER_BASE_URL:-http://host.docker.internal:11434}
     ports:
       - "8000:8000"
     depends_on:
@@ -194,6 +195,9 @@ services:
       PYTHONPATH: /app
       # Where the worker writes k6 output through the shared bind mount below.
       K6_RESULTS_DIR: /app/infrastructure/docker/k6/results
+      # Host Ollama runs outside the compose network. Override the host-run
+      # .env.example default only for this container.
+      OLLAMA_BASE_URL: ${OLLAMA_WORKER_BASE_URL:-http://host.docker.internal:11434}
     depends_on:
       db:
         condition: service_healthy

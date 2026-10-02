@@ -381,6 +381,55 @@ def test_completion_advances_a_linked_investigation(
     assert db_session.query(m.Report).filter_by(investigation_id=inv["id"]).count() == 1
 
 
+def test_live_mode_dispatches_all_three_specialists_and_audits(
+    client: TestClient, db_session, target: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from agents.reporting.report_builder import build_report
+    from evaluations.fixtures import valid_investigation, valid_plan
+    from packages.ai.runtime import AIService
+
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "ollama")
+    get_settings.cache_clear()
+    calls = []
+
+    def fake_generate(self, agent, request, instruction):
+        calls.append((agent, self.config.provider))
+        if agent == "test_planner":
+            return valid_plan(request).model_dump(mode="json")
+        if agent == "performance_investigator":
+            return valid_investigation(request).model_dump(mode="json")
+        return build_report(request).model_dump(mode="json")
+
+    monkeypatch.setattr(AIService, "generate", fake_generate)
+    try:
+        response = client.post(
+            "/api/investigations",
+            json={
+                "target_id": target["id"],
+                "objective": "determine_capacity",
+                "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+            },
+            headers=AUTH,
+        )
+        assert response.status_code == 201, response.text
+        inv = response.json()
+        tasks.execute_test_run(inv["current_test_run_id"])
+        db_session.expire_all()
+        assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.COMPLETE
+        assert calls == [
+            ("test_planner", "ollama"),
+            ("performance_investigator", "ollama"),
+            ("reporting", "ollama"),
+        ]
+        audits = db_session.query(m.AIExecution).filter_by(investigation_id=inv["id"]).all()
+        assert len(audits) == 3
+        assert all(row.provider == "ollama" and row.model == "qwen3:8b" for row in audits)
+        assert all("secret" not in row.input_reference for row in audits)
+    finally:
+        get_settings.cache_clear()
+
+
 def test_real_adapter_metrics_reach_persisted_investigator_output(
     client: TestClient,
     db_session,

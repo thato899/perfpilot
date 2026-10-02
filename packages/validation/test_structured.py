@@ -26,7 +26,8 @@ def test_invalid_output_is_retried_with_feedback():
 
     assert invoke_with_validation(generate, parse, "request") == "good"
     assert len(prompts) == 2
-    assert "expected good" in prompts[1]
+    assert "ValueError" in prompts[1]
+    assert "expected good" not in prompts[1]
 
 
 def test_two_invalid_outputs_fail_explicitly():
