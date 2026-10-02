@@ -47,6 +47,7 @@ class Settings:
     ai_provider: str = "gemini"
     ai_provider_model: str = ""
     ai_timeout_seconds: int = 60
+    ollama_timeout_seconds: int = 600
     ai_max_output_tokens: int = 2048
     k6_binary_path: str = "k6"
     k6_results_dir: str = "./infrastructure/docker/k6/results"
@@ -84,6 +85,7 @@ def get_settings() -> Settings:
         ai_provider=(os.environ.get("AI_PROVIDER") or "gemini").strip() or "gemini",
         ai_provider_model=(os.environ.get("AI_PROVIDER_MODEL") or "").strip(),
         ai_timeout_seconds=_int_env("AI_TIMEOUT_SECONDS", 60),
+        ollama_timeout_seconds=_int_env("OLLAMA_TIMEOUT_SECONDS", 600),
         ai_max_output_tokens=_int_env("AI_MAX_OUTPUT_TOKENS", 2048),
         k6_binary_path=os.environ.get("K6_BINARY_PATH", "k6"),
         k6_results_dir=os.environ.get("K6_RESULTS_DIR", "./infrastructure/docker/k6/results"),

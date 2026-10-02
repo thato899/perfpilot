@@ -17,7 +17,9 @@ The defaults are `gemini-2.5-pro`, `deepseek-chat`, and `qwen3:8b` respectively.
 `AI_MODEL_REPORTING` override the model per specialist. Gemini requires
 `GEMINI_API_KEY`; DeepSeek requires `DEEPSEEK_API_KEY`; Ollama requires no cloud
 key. Secrets are read from the process environment, never from the database.
-`AI_TIMEOUT_SECONDS` defaults to 60 and is limited to 1–180. Each response is
+`AI_TIMEOUT_SECONDS` defaults to 60 and is limited to 1–180 for Gemini and
+DeepSeek. Ollama uses `OLLAMA_TIMEOUT_SECONDS`, which defaults to 600 seconds
+and is limited to 1–900 for slower local inference. Each response is
 limited to `AI_MAX_OUTPUT_TOKENS` (default 2048, range 128–8192), a 128 KB
 request, and a 256 KB response. Validation retries at most once; provider
 transport failures are not retried. At most two model requests are made per
@@ -34,7 +36,7 @@ worker address. No model download occurs in CI.
 
 ## Data and validation
 
-Prompts carry `2026-10-01.v1`, one typed request, the output JSON schema, and
+Prompts carry `2026-10-02.v2`, one typed request, the output JSON schema, and
 the specialist instruction. Typed requests contain target descriptions and
 journeys for planning; metric IDs, measured values, comparisons, thresholds,
 and prior hypotheses for investigation; and persisted state plus canonical
@@ -43,7 +45,10 @@ and URL query strings are removed before transmission. This means a journey
 requiring a secret query parameter cannot be generated as an identical plan;
 validation fails instead of disclosing the parameter. Target auth headers,
 raw credentials, load-engineer execution data, and unrelated investigations
-are never part of the request.
+are never part of the request. The investigator prompt names the exact metric
+and infrastructure IDs allowed in evidence references. The report prompt
+spells out the exact canonical fields, finding IDs, and evidence citation
+format required by the existing validators.
 
 The existing specialist boundaries parse the response and retry once on schema
 or semantic failure. Planner journeys and thresholds must match input.
@@ -76,13 +81,16 @@ Opt-in live smoke (three known fixtures, at most two requests per case):
 
 ```sh
 AI_LIVE_SMOKE=1 AI_PROVIDER_ENABLED=true AI_PROVIDER=ollama \
-  AI_TIMEOUT_SECONDS=60 AI_MAX_OUTPUT_TOKENS=2048 \
+  OLLAMA_TIMEOUT_SECONDS=600 AI_MAX_OUTPUT_TOKENS=2048 \
   python -m packages.ai.smoke
 ```
 
 Use `--agent test_planner`, `--agent performance_investigator`, or
 `--agent reporting` to run one fixture independently. The runner reports
-elapsed time and a sanitized failure reason for each selected case.
+elapsed time and a sanitized failure reason for each selected case. The
+investigator fixture additionally requires a high-severity threshold-breach
+finding, an observation, database-pool evidence, and an experiment whose
+expected signal names p95.
 
 Set provider and credentials for DeepSeek or Gemini. The command prints only
 the validated result status and provider/model. It performs no load test.
@@ -97,10 +105,18 @@ three-specialist local evaluation is claimed. On 2026-10-02, a repeat on the
 same CPU host with a 180-second per-request bound and 2048 output-token limit
 validated the planner fixture. The investigator then timed out, and an
 independent reporting fixture timed out after 182.1 seconds of wall time.
-These results verify one specialist's live structured output, while the full
-Ollama evaluation remains incomplete. Cloud smoke was unavailable because
-Gemini and DeepSeek credentials were absent. Run the remaining fixtures on
-suitable hardware before closing the provider issues.
+With the Ollama-specific 600-second bound on 2026-10-02, the investigator
+finished in 339.0 seconds and reporting finished in 525.3 seconds. Both
+responses failed semantic validation on their two allowed attempts, so neither
+was accepted. Prompt version `2026-10-02.v2` then added explicit evidence and
+pass-through instructions. With the same `qwen3:8b` model, 600-second bound,
+and 2048 output-token limit, independently selected planner, investigator,
+and reporting fixtures all validated in 185.3, 147.9, and 261.0 seconds,
+respectively. A stricter investigator fixture check also passed in 159.1
+seconds, confirming threshold interpretation and a grounded, falsifiable
+experiment. The cases used known fixtures and made no load-test calls.
+Cloud smoke was unavailable because Gemini and DeepSeek credentials were
+absent; their provider-specific issues still require live evaluation.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),

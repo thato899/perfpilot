@@ -5,11 +5,14 @@ for issues #70, #78, #79, and #80, with real planner/investigator/report
 dispatch, bounded calls, typed validation, sanitized audit records, and an
 opt-in fixture smoke runner. Main-branch CI and affected-owner review passed;
 #70 is closed. A short live Ollama adapter call and Docker worker connectivity
-passed. A subsequent
-`qwen3:8b` run validated the planner fixture on this CPU host; the
-investigator and report fixtures timed out at the 180-second request bound.
-Full Ollama evaluation and Gemini/DeepSeek live smoke remain, so #78, #79,
-and #80 are still open. Post-merge offline verification passed (72 tests);
+passed. A subsequent `qwen3:8b` run validated the planner fixture on this
+CPU host; the investigator and report fixtures timed out at 180 seconds.
+Allowing 600 seconds let both return, but their outputs failed semantic
+validation twice. With prompt version `2026-10-02.v2`, all three local Ollama
+fixtures validated within the 600-second bound; the investigator also passed
+the fixture's breach/evidence/experiment checks. #78 awaits review, merge,
+and post-merge verification; #79 and #80 still need live cloud smoke.
+Post-merge offline verification passed (75 tests);
 the database-backed API suite could not run locally because Docker Desktop's
 Linux engine was unavailable.
 See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).

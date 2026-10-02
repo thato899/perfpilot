@@ -16,7 +16,33 @@ from evaluations.fixtures import (
     planner_request,
 )
 from packages.ai.runtime import AIConfig, AIConfigurationError, AIProviderError, AIService
+from packages.schemas.python.agent_io import InvestigatorOutput
 from packages.validation import StructuredOutputError
+
+
+class SmokeEvaluationError(ValueError):
+    """A valid specialist response missed an expected fixture signal."""
+
+
+def evaluate_investigator_fixture(output: InvestigatorOutput) -> None:
+    if output.finding.severity.value not in {"HIGH", "CRITICAL"} or not output.observations:
+        raise SmokeEvaluationError("investigator missed the fixture threshold breach")
+    grounded_experiments = (
+        hypothesis.recommended_experiment
+        for hypothesis in output.hypotheses
+        if any(
+            evidence.source_ref == "infrastructure_metrics.db_connection_pool_utilization"
+            for evidence in hypothesis.evidence
+        )
+    )
+    if not any(
+        experiment
+        and experiment.variable_to_isolate.strip()
+        and experiment.change.strip()
+        and "p95" in experiment.expected_signal.lower()
+        for experiment in grounded_experiments
+    ):
+        raise SmokeEvaluationError("investigator missed a grounded, falsifiable experiment")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -68,9 +94,15 @@ def main(argv: list[str] | None = None) -> None:
                     .PerformanceInvestigator()
                     .analyze_generated(generate, typed_request, prompt=instruction)
                 )
+                evaluate_investigator_fixture(output)
             else:
                 output = build_report_generated(generate, typed_request, prompt=instruction)
-        except (AIConfigurationError, AIProviderError, StructuredOutputError) as exc:
+        except (
+            AIConfigurationError,
+            AIProviderError,
+            StructuredOutputError,
+            SmokeEvaluationError,
+        ) as exc:
             elapsed = monotonic() - started
             raise SystemExit(f"{agent}: failed after {elapsed:.1f}s ({exc})") from None
         print(
