@@ -29,6 +29,7 @@ def test_provider_selection_and_missing_credentials(monkeypatch):
     settings = Settings(api_auth_secret="test", ai_provider="ollama")
     config = AIConfig.from_settings(settings, "test_planner")
     assert (config.provider, config.model, config.api_key) == ("ollama", "qwen3:8b", "")
+    assert config.timeout_seconds == 600
     for provider, key_name in (("gemini", "GEMINI_API_KEY"), ("deepseek", "DEEPSEEK_API_KEY")):
         monkeypatch.delenv(key_name, raising=False)
         with pytest.raises(AIConfigurationError, match="API key is required"):
@@ -40,6 +41,26 @@ def test_provider_selection_and_missing_credentials(monkeypatch):
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434/other")
     with pytest.raises(AIConfigurationError, match="plain HTTP"):
         AIConfig.from_settings(settings, "test_planner")
+
+
+def test_ollama_timeout_is_independent_of_cloud_timeout(monkeypatch):
+    monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "720")
+    monkeypatch.setenv("AI_PROVIDER", "ollama")
+    get_settings.cache_clear()
+    assert AIConfig.from_settings(get_settings(), "reporting").timeout_seconds == 720
+    get_settings.cache_clear()
+
+    with pytest.raises(AIConfigurationError, match="request bounds"):
+        AIConfig.from_settings(
+            Settings(api_auth_secret="test", ai_provider="ollama", ollama_timeout_seconds=901),
+            "reporting",
+        )
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    with pytest.raises(AIConfigurationError, match="request bounds"):
+        AIConfig.from_settings(
+            Settings(api_auth_secret="test", ai_provider="gemini", ai_timeout_seconds=181),
+            "reporting",
+        )
 
 
 @pytest.mark.parametrize("provider", ["ollama", "deepseek", "gemini"])
@@ -113,6 +134,32 @@ def test_provider_errors_are_sanitized_and_not_retried(monkeypatch):
         service._request("prompt")
     assert "SECRET" not in str(exc.value)
     assert len(calls) == 1
+
+
+def test_reasoning_prompts_name_allowed_evidence_and_report_copy_rules(monkeypatch):
+    from agents.reporting.fixtures.investigation_states import demo_scenario_request
+    from evaluations.fixtures import investigator_request
+
+    captured = []
+
+    def capture(self, prompt):
+        captured.append(json.loads(prompt))
+        return {}
+
+    monkeypatch.setattr(AIService, "_request", capture)
+    service = AIService(AIConfig("ollama", "qwen3:8b"))
+    investigation = investigator_request()
+    service.generate("performance_investigator", investigation, "Analyze evidence")
+    investigator_rules = " ".join(captured[-1]["rules"])
+    assert str(investigation.test_run.metrics[0].id) in investigator_rules
+    assert "infrastructure_metrics.db_connection_pool_utilization" in investigator_rules
+    assert "observation.metric_ref" in investigator_rules
+
+    service.generate("reporting", demo_scenario_request(), "Report")
+    report_rules = " ".join(captured[-1]["rules"])
+    assert "input.capacity_estimate to output.capacity" in report_rules
+    assert "(source: <source_ref>)" in report_rules
+    assert captured[-1]["prompt_version"] == "2026-10-02.v2"
 
 
 def test_malformed_model_json_is_retried_by_validation_boundary(monkeypatch):
@@ -240,3 +287,15 @@ def test_live_smoke_can_select_reporting_fixture_without_other_agents(monkeypatc
     smoke.main(["--agent", "reporting"])
     assert calls == ["reporting"]
     assert "reporting: validated in" in capsys.readouterr().out
+
+
+def test_investigator_smoke_requires_breach_and_falsifiable_experiment():
+    from evaluations.fixtures import investigator_request, valid_investigation
+    from packages.ai.smoke import SmokeEvaluationError, evaluate_investigator_fixture
+
+    output = valid_investigation(investigator_request())
+    evaluate_investigator_fixture(output)
+    with pytest.raises(SmokeEvaluationError, match="grounded, falsifiable"):
+        evaluate_investigator_fixture(output.model_copy(update={"hypotheses": []}))
+    with pytest.raises(SmokeEvaluationError, match="threshold breach"):
+        evaluate_investigator_fixture(output.model_copy(update={"observations": []}))
