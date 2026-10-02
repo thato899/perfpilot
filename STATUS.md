@@ -3,12 +3,13 @@
 **2026-10-02 AI runtime update:** PR #81 merged the Python provider bridge
 for issues #70, #78, #79, and #80, with real planner/investigator/report
 dispatch, bounded calls, typed validation, sanitized audit records, and an
-opt-in fixture smoke runner. CI and affected-owner review passed. A short
-live Ollama adapter call and Docker worker connectivity passed. A subsequent
+opt-in fixture smoke runner. Main-branch CI and affected-owner review passed;
+#70 is closed. A short live Ollama adapter call and Docker worker connectivity
+passed. A subsequent
 `qwen3:8b` run validated the planner fixture on this CPU host; the
 investigator and report fixtures timed out at the 180-second request bound.
-Full Ollama evaluation and Gemini/DeepSeek live smoke remain, so the provider
-issues are still open. Post-merge offline verification passed (72 tests);
+Full Ollama evaluation and Gemini/DeepSeek live smoke remain, so #78, #79,
+and #80 are still open. Post-merge offline verification passed (72 tests);
 the database-backed API suite could not run locally because Docker Desktop's
 Linux engine was unavailable.
 See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).
