@@ -218,3 +218,25 @@ def test_orchestrator_uses_provider_and_retries_invalid_structure(monkeypatch):
     assert "failed validation" in calls[1]
     assert planner.last_ai_service.config.provider == "ollama"
     get_settings.cache_clear()
+
+
+def test_live_smoke_can_select_reporting_fixture_without_other_agents(monkeypatch, capsys):
+    from agents.reporting.report_builder import build_report
+    from packages.ai import smoke
+
+    monkeypatch.setenv("AI_LIVE_SMOKE", "1")
+    monkeypatch.setattr(
+        smoke,
+        "get_settings",
+        lambda: Settings(api_auth_secret="test", ai_provider_enabled=True, ai_provider="ollama"),
+    )
+    calls = []
+
+    def fake_generate(self, agent, typed_request, instruction):
+        calls.append(agent)
+        return build_report(typed_request).model_dump(mode="json")
+
+    monkeypatch.setattr(smoke.AIService, "generate", fake_generate)
+    smoke.main(["--agent", "reporting"])
+    assert calls == ["reporting"]
+    assert "reporting: validated in" in capsys.readouterr().out

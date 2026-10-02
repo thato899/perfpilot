@@ -1,14 +1,17 @@
 # PerfPilot status
 
-**2026-10-01 AI runtime update:** On `feature/ai-production-providers`, issues
-#70, #78, #79, and #80 have a Python provider bridge for Ollama, DeepSeek,
-and Gemini, with real planner/investigator/report dispatch, bounded calls,
-typed validation, sanitized audit records, and an opt-in fixture smoke runner.
-Offline tests, the Postgres-backed API suite, and CI passed. A short live
-Ollama adapter call and Docker worker connectivity passed; the complete local
-fixture timed out on this CPU within the 180-second bound. Gemini and DeepSeek
-live smoke, full Ollama fixture evaluation, affected-owner review, merge, and
-post-merge verification remain.
+**2026-10-02 AI runtime update:** PR #81 merged the Python provider bridge
+for issues #70, #78, #79, and #80, with real planner/investigator/report
+dispatch, bounded calls, typed validation, sanitized audit records, and an
+opt-in fixture smoke runner. Main-branch CI and affected-owner review passed;
+#70 is closed. A short live Ollama adapter call and Docker worker connectivity
+passed. A subsequent
+`qwen3:8b` run validated the planner fixture on this CPU host; the
+investigator and report fixtures timed out at the 180-second request bound.
+Full Ollama evaluation and Gemini/DeepSeek live smoke remain, so #78, #79,
+and #80 are still open. Post-merge offline verification passed (72 tests);
+the database-backed API suite could not run locally because Docker Desktop's
+Linux engine was unavailable.
 See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).
 
 **Last updated:** 2026-09-30 by Govenor

@@ -80,6 +80,10 @@ AI_LIVE_SMOKE=1 AI_PROVIDER_ENABLED=true AI_PROVIDER=ollama \
   python -m packages.ai.smoke
 ```
 
+Use `--agent test_planner`, `--agent performance_investigator`, or
+`--agent reporting` to run one fixture independently. The runner reports
+elapsed time and a sanitized failure reason for each selected case.
+
 Set provider and credentials for DeepSeek or Gemini. The command prints only
 the validated result status and provider/model. It performs no load test.
 For a Docker Desktop connectivity check, execute the same command in the
@@ -89,9 +93,14 @@ Live calls are excluded from normal CI. On 2026-10-01, the local
 adapter request, and the Docker worker reached the host service at
 `host.docker.internal:11434`. The full planner fixture timed out on this
 CPU-only host with both 60 and 180 second request bounds; no complete
-three-specialist local evaluation is claimed. Cloud smoke was unavailable
-because Gemini and DeepSeek credentials were absent. Run the command above
-on suitable hardware before promoting this draft PR.
+three-specialist local evaluation is claimed. On 2026-10-02, a repeat on the
+same CPU host with a 180-second per-request bound and 2048 output-token limit
+validated the planner fixture. The investigator then timed out, and an
+independent reporting fixture timed out after 182.1 seconds of wall time.
+These results verify one specialist's live structured output, while the full
+Ollama evaluation remains incomplete. Cloud smoke was unavailable because
+Gemini and DeepSeek credentials were absent. Run the remaining fixtures on
+suitable hardware before closing the provider issues.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),
