@@ -1,6 +1,6 @@
 # PerfPilot status
 
-**2026-10-02 AI runtime update:** PR #81 merged the Python provider bridge
+**2026-10-04 AI runtime update:** PR #81 merged the Python provider bridge
 for issues #70, #78, #79, and #80, with real planner/investigator/report
 dispatch, bounded calls, typed validation, sanitized audit records, and an
 opt-in fixture smoke runner. Main-branch CI and affected-owner review passed;
@@ -10,14 +10,16 @@ CPU host; the investigator and report fixtures timed out at 180 seconds.
 Allowing 600 seconds let both return, but their outputs failed semantic
 validation twice. With prompt version `2026-10-02.v2`, all three local Ollama
 fixtures validated within the 600-second bound; the investigator also passed
-the fixture's breach/evidence/experiment checks. #78 awaits review, merge,
-and post-merge verification; #79 and #80 still need live cloud smoke.
+the fixture's breach/evidence/experiment checks. Follow-up PRs #82, #83, and
+#84 merged the Ollama fixture work; #78 is closed. The provider implementations
+for #79 and #80 are in #81, but their live cloud smoke checks still need
+Gemini and DeepSeek credentials.
 Post-merge offline verification passed (75 tests);
 the database-backed API suite could not run locally because Docker Desktop's
 Linux engine was unavailable.
 See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).
 
-**Last updated:** 2026-09-30 by Govenor
+**Last updated:** 2026-10-04 by Thato
 
 ## UI/UX follow-up
 
