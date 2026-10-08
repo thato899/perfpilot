@@ -164,8 +164,10 @@ and reporting in 3.4s. PR #91 passed CI, received Kamogelo's affected-owner
 approval, and merged as `dc4f42a`. On merged `main`, the bounded three-fixture
 smoke validated planner in 2.6s, investigator in 2.3s, and reporting in 4.0s.
 Post-merge focused tests (72), Ruff, and Black passed. GitHub CI `py-test`
-passed with Postgres; local database-backed verification could not run because
-Docker Desktop's Linux engine was unavailable.
+passed with Postgres. On 2026-10-08, the Docker Linux engine was started and
+the local database-backed API suite passed 128 tests on a separate temporary
+database after isolating tests from the developer's live-provider `.env`. The
+temporary database was removed; the test-isolation change still needs review.
 
 ## Run and demo with Gemini
 
@@ -179,7 +181,9 @@ Docker Desktop's Linux engine was unavailable.
 3. Start Docker Desktop's Linux engine. From `infrastructure/docker`, run
    `docker compose --profile all up -d --build --force-recreate`, then
    `docker compose exec api python -m alembic -c apps/api/alembic.ini upgrade head`.
-   Check `http://localhost:8000/health` and open `http://localhost:3000`.
+   Run `docker compose port api 8000` and `docker compose port web 3000` to
+   find the published host ports; local Compose overrides can change them.
+   Check `/health` on the API host port and open the web host port in a browser.
 4. Register a controlled target you own or are authorized to test. Its host
    must appear in `ALLOWED_TARGET_HOSTS` and be reachable from the worker/k6
    container. Start a small investigation in the dashboard (for example,

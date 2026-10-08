@@ -5,9 +5,12 @@ the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
 issue #79 and Gemini issue #80 are both labeled `status:done` and closed. Their
 provider implementations, bounded live evaluations, review, CI, merge, and
 post-merge verification have passed. No GitHub issue remains open. Docker
-Desktop's Linux engine is unavailable: `docker info` could not open
-`//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
-database-backed API run is claimed. PR #77 integrated the UI polish. PR #87
+Desktop's Linux engine was started for local verification on 2026-10-08.
+The full Compose stack started, migrations applied, API and web returned HTTP
+200, and the API-to-worker ping returned `pong`. A local database-backed API
+suite passed 128 tests on the test-isolation branch using a separate temporary
+Postgres database; the temporary database was removed afterward. PR #77
+integrated the UI polish. PR #87
 merged status reconciliation at `72690be`, PR #88 merged the blocker record at
 `1b3d499`, PR #89 merged the `.env` configuration fix at `c081fa0`, and PR #90
 merged the DeepSeek closeout documentation at `11239d2`. PR #91 merged the
@@ -32,8 +35,7 @@ tokens) validated planner in 2.0s, investigator in 4.4s, and reporting in
 investigator fail after two attempts in 9.4s (`InvestigatorValidationError`);
 reporting was not reached. A standalone investigator fixture then validated
 in 4.2s before the final full pass. No prompts, responses, or credentials were
-recorded. GitHub CI `py-test` passed with its Postgres service; local database
-verification remains blocked by the unavailable Docker Linux engine. The
+recorded. GitHub CI `py-test` passed with its Postgres service. The
 untracked staging report in the local workspace is not part of this status
 update.
 
@@ -52,9 +54,15 @@ reporting 3.4s). PR #91 passed all CI checks and received Kamogelo's
 affected-owner approval. On merged `main` at `dc4f42a`, 72 focused tests,
 Ruff, and Black passed again; the bounded Gemini smoke validated planner in
 2.6s, investigator in 2.3s, and reporting in 4.0s. Issue #80 was then manually
-labeled `status:done` and closed. GitHub CI `py-test` passed with Postgres;
-local database-backed verification remains unclaimed while Docker's Linux
-engine is unavailable.
+labeled `status:done` and closed. GitHub CI `py-test` passed with Postgres.
+
+The first local API test run against a separate Postgres database revealed
+that an enabled provider in the developer's ignored `.env` could affect
+credential-free API tests. The run was stopped without claiming a pass. This
+branch isolates the API suite from the local `.env` and disables live provider
+calls by default; the repeated database-backed suite passed 128 tests with
+10 warnings. The temporary test database was dropped. Ruff and Black passed;
+CI and review of this test-isolation change remain pending.
 
 **Last updated:** 2026-10-08
 
