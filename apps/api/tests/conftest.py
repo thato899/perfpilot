@@ -92,6 +92,23 @@ if _HAVE_DEPS:
 AUTH = {"Authorization": f"Bearer {os.environ['API_AUTH_SECRET']}"}
 
 
+@pytest.fixture(autouse=True)
+def _ignore_local_provider_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> Iterator[None]:
+    """Keep API tests offline even when a developer has live keys in .env."""
+    from apps.api import config
+    from packages.ai import runtime
+
+    missing_env = tmp_path / ".missing-env"
+    monkeypatch.setattr(config, "_DOTENV_PATH", missing_env)
+    monkeypatch.setattr(runtime, "_DOTENV_PATH", missing_env)
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "false")
+    config.get_settings.cache_clear()
+    yield
+    config.get_settings.cache_clear()
+
+
 @functools.lru_cache(maxsize=1)
 def _database_reachable() -> bool:
     """Cached: without it, every fixture pays the connect timeout again.
