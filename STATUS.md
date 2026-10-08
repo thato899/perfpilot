@@ -1,25 +1,29 @@
 # PerfPilot status
 
-**Current as of 2026-10-08, on `main` at `c54b9e7`:** Phase 1, Phase 2, and
+**Current as of 2026-10-08, on `main` at `72690be`:** Phase 1, Phase 2, and
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. The only
 open GitHub issues are #79 (DeepSeek) and #80 (Gemini). Their Python provider
 implementations are merged, but each issue requires a bounded live evaluation
-of all three fixtures before it can close. Both evaluations are blocked on
-cloud credentials not present in this process environment. Docker Desktop's
-Linux engine is also unavailable, so no local database-backed API run is
-claimed. PR #77 integrated the UI polish; that branch is already contained in
-`main`. See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md) for
-commands, limits, and prior Ollama evidence.
+of all three fixtures before it can close. Both issues are labeled
+`status:blocked`: the required API keys are not present in this process
+environment, so neither live evaluation ran. Docker Desktop's Linux engine is
+also unavailable: `docker info` could not open
+`//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
+database-backed API run is claimed. PR #77
+integrated the UI polish; that branch is already contained in `main`. PR #87
+merged this status reconciliation at `72690be`. See
+[docs/phase3/ai-providers.md](docs/phase3/ai-providers.md) for commands, limits,
+and prior Ollama evidence.
 
 The provider bridge merged as PR #81 (`626494d`) with successful CI and
 affected-owner approval; Ollama follow-ups #82–#84 also merged. PR #86
 (`c54b9e7`) added URL-secret redaction and selected-cloud dispatch coverage,
 with successful CI and affected-owner approval. The documented credential-free
 provider suite passes locally (69 tests), Ruff passes, and repository-wide
-Black check passes (75 files). A repository-wide pytest attempt did not finish
-and was interrupted without a result; it is not counted as verification.
-GitHub currently shows no open PRs. The untracked staging report in the local
-workspace is not part of this status update.
+Black check passes (75 files). The local repository-wide pytest attempt did not
+finish and was interrupted without a result; it is not counted as verification.
+PR #87's CI `py-test` passed with its Postgres service. The untracked staging
+report in the local workspace is not part of this status update.
 
 **Last updated:** 2026-10-08
 

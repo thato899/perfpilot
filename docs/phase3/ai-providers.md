@@ -134,10 +134,11 @@ and reporting fixtures all validated in 185.3, 147.9, and 261.0 seconds,
 respectively. A stricter investigator fixture check also passed in 159.1
 seconds, confirming threshold interpretation and a grounded, falsifiable
 experiment. The cases used known fixtures and made no load-test calls.
-Cloud smoke remains blocked as of 2026-10-08 because Gemini and DeepSeek
-credentials are unavailable in the local process and `.env`. Issues #79 and
-#80 remain open until their respective bounded live fixture evaluations pass
-and the results receive the repository's review and post-merge verification.
+Cloud smoke remains blocked as of 2026-10-08 because `GEMINI_API_KEY` and
+`DEEPSEEK_API_KEY` are absent from the process environment. Issues #79 and #80
+are labeled `status:blocked` and remain open. Their bounded live fixture
+evaluations have not run; each ticket stays open until its own evaluation
+passes and the result receives the required review and post-merge verification.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),
