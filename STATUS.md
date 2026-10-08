@@ -4,8 +4,9 @@
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. The only
 open GitHub issues are #79 (DeepSeek) and #80 (Gemini). Their Python provider
 implementations are merged. #79's bounded live evaluation passed all three
-fixtures; it is `status:in-progress` pending review and merge of root `.env`
-support and post-merge verification. #80 remains `status:blocked` because
+fixtures; it is `status:in-progress` pending the required pre-merge
+team-channel notice, merge of root `.env` support, and post-merge verification.
+#80 remains `status:blocked` because
 `GEMINI_API_KEY` is absent from this process and local `.env`; its smoke did
 not run. Docker Desktop's Linux engine is also unavailable: `docker info` could not open
 `//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
@@ -42,14 +43,15 @@ current `main`; no UI polish integration remains outstanding.
 
 ## Current phase
 
-**Phase 1, Phase 2, and the original Phase 3 tickets are complete.** The
-separate cloud-provider evaluations in #79 and #80 remain open.
+**Phase 1, Phase 2, and the original Phase 3 tickets are complete.** Provider
+issues #79 and #80 remain open; the DeepSeek live evaluation passed, while
+Gemini remains blocked pending a credential and live evaluation.
 
 - Phase 1 implementation, backend/browser E2E, and formal sign-off: complete.
 - Exact DB-pool reference scenario: **not reproduced**.
 - Phase 2 tickets #32–#39: merged to `main`, verified, and closed.
 - #39: comparison UI and canonical outcome/threshold response merged in PR #66; all CI checks passed and the issue is closed.
-- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. Provider follow-ups #79 and #80 are separately tracked and remain open pending live cloud evaluations.
+- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. Provider follow-ups #79 and #80 remain open: #79 awaits integration of `.env` support and post-merge verification; #80 awaits Gemini credentials and its live evaluation.
 
 ## Phase 3 completion record
 
@@ -96,9 +98,9 @@ Shared contract: `packages/schemas/typescript/types.ts` gained four additive
 
 The original ticket order and rationale are retained here as history. All four
 are complete; see their merged PRs and closed issues for delivery details.
-Provider tickets #79 and #80 extend #70 and remain open for the required live
-evaluations. See [roadmap.md](docs/roadmap.md) and [PLANNING.md](PLANNING.md)
-for the original rationale and handoff constraints.
+Provider tickets #79 and #80 extend #70 and remain open until their separate
+Definitions of Done are met. See [roadmap.md](docs/roadmap.md) and
+[PLANNING.md](PLANNING.md) for the original rationale and handoff constraints.
 
 ### #71 — run-to-run noise
 

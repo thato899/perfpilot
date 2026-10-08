@@ -141,8 +141,9 @@ experiment. The cases used known fixtures and made no load-test calls.
 On 2026-10-08, the DeepSeek smoke passed all three fixtures using
 `deepseek-chat`, 60-second requests, and 2048 output tokens: planner 2.2s,
 investigator 9.2s, reporting 3.0s. The result is sanitized; prompts, responses,
-and credentials were not recorded. Issue #79 is `status:in-progress` while
-local `.env` loading is reviewed and merged, pending post-merge verification.
+and credentials were not recorded. Issue #79 is `status:in-progress` pending
+the required pre-merge team-channel notice, merge of reviewed local `.env`
+loading, and post-merge verification.
 Gemini smoke remains blocked because `GEMINI_API_KEY` is unavailable in the
 process environment and local `.env`; #80 is `status:blocked` and remains open.
 Run its three fixtures after a key is securely configured. Neither issue should
