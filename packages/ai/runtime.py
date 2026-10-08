@@ -118,12 +118,12 @@ def _redact(value: Any) -> Any:
         }
     if isinstance(value, list):
         return [_redact(item) for item in value]
-    if (
-        isinstance(value, str)
-        and "?" in value
-        and (value.startswith("http") or value.startswith("/"))
-    ):
-        return value.split("?", 1)[0]
+    if isinstance(value, str):
+        # Journeys may prefix a path with an HTTP method, so the URL need not
+        # begin the string. Remove URL userinfo and query values wherever a
+        # URL or path occurs.
+        without_userinfo = re.sub(r"(https?://)[^\s/@]+@", r"\1", value)
+        return re.sub(r"((?:https?://|/)[^\s?]+)\?[^\s]*", r"\1", without_userinfo)
     return value
 
 

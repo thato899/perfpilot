@@ -40,8 +40,9 @@ Prompts carry `2026-10-02.v2`, one typed request, the output JSON schema, and
 the specialist instruction. Typed requests contain target descriptions and
 journeys for planning; metric IDs, measured values, comparisons, thresholds,
 and prior hypotheses for investigation; and persisted state plus canonical
-capacity, regression, and key metrics for reporting. Credential-shaped fields
-and URL query strings are removed before transmission. This means a journey
+capacity, regression, and key metrics for reporting. Credential-shaped fields,
+URL userinfo, and URL query strings are removed before transmission. This
+means a journey
 requiring a secret query parameter cannot be generated as an identical plan;
 validation fails instead of disclosing the parameter. Target auth headers,
 raw credentials, load-engineer execution data, and unrelated investigations
@@ -92,8 +93,26 @@ investigator fixture additionally requires a high-severity threshold-breach
 finding, an observation, database-pool evidence, and an experiment whose
 expected signal names p95.
 
-Set provider and credentials for DeepSeek or Gemini. The command prints only
-the validated result status and provider/model. It performs no load test.
+For the pending cloud evaluations, export the relevant API key in the process
+environment before running either command. Do not put a key on the command
+line. Each command uses the three checked-in fixtures, a 60-second timeout
+and 2048-output-token limit per request, and at most one validation retry per
+fixture (six requests maximum):
+
+```sh
+AI_LIVE_SMOKE=1 AI_PROVIDER_ENABLED=true AI_PROVIDER=deepseek \
+  AI_TIMEOUT_SECONDS=60 AI_MAX_OUTPUT_TOKENS=2048 \
+  python -m packages.ai.smoke
+
+AI_LIVE_SMOKE=1 AI_PROVIDER_ENABLED=true AI_PROVIDER=gemini \
+  AI_TIMEOUT_SECONDS=60 AI_MAX_OUTPUT_TOKENS=2048 \
+  python -m packages.ai.smoke
+```
+
+The command prints only validated result status, elapsed time, and
+provider/model. It performs no load test. Run the three specialist fixtures
+for each provider and record any validation or provider failure without
+recording prompts, responses, or keys.
 For a Docker Desktop connectivity check, execute the same command in the
 worker container with `docker compose exec worker python -m packages.ai.smoke`.
 Live calls are excluded from normal CI. On 2026-10-01, the local
@@ -115,8 +134,10 @@ and reporting fixtures all validated in 185.3, 147.9, and 261.0 seconds,
 respectively. A stricter investigator fixture check also passed in 159.1
 seconds, confirming threshold interpretation and a grounded, falsifiable
 experiment. The cases used known fixtures and made no load-test calls.
-Cloud smoke was unavailable because Gemini and DeepSeek credentials were
-absent; their provider-specific issues still require live evaluation.
+Cloud smoke remains blocked as of 2026-10-08 because Gemini and DeepSeek
+credentials are unavailable in the local process and `.env`. Issues #79 and
+#80 remain open until their respective bounded live fixture evaluations pass
+and the results receive the repository's review and post-merge verification.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),

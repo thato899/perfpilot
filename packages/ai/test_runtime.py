@@ -98,7 +98,10 @@ def test_real_adapter_request_shape_and_redaction(monkeypatch, provider):
         {
             "target_description": {
                 "application_name": "demo",
-                "user_journeys": ["/health?token=PRIVATE"],
+                "user_journeys": [
+                    "GET /health?token=PRIVATE",
+                    "GET https://USER:PASS@example.test/status?key=PRIVATE",
+                ],
                 "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
                 "performance_requirements": {"p95_ms": 500, "max_error_rate": 0.01},
             },
@@ -110,7 +113,10 @@ def test_real_adapter_request_shape_and_redaction(monkeypatch, provider):
     payload = json.loads(req.data)
     assert timeout == 3
     assert "PRIVATE" not in req.data.decode()
+    assert "USER:PASS" not in req.data.decode()
     assert "SECRET" not in req.data.decode()
+    assert "GET /health" in req.data.decode()
+    assert "https://example.test/status" in req.data.decode()
     assert payload["stream"] is False if provider != "gemini" else "contents" in payload
     assert (
         req.full_url.startswith("https://")
@@ -134,6 +140,99 @@ def test_provider_errors_are_sanitized_and_not_retried(monkeypatch):
         service._request("prompt")
     assert "SECRET" not in str(exc.value)
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("provider", ["deepseek", "gemini"])
+def test_cloud_quota_errors_are_sanitized_and_not_retried(monkeypatch, provider):
+    from packages.ai import runtime
+
+    calls = []
+
+    def fail(req, timeout):
+        calls.append(req)
+        raise error.HTTPError(req.full_url, 429, "SECRET quota detail", {}, None)
+
+    monkeypatch.setattr(runtime.request, "urlopen", fail)
+    service = AIService(AIConfig(provider, "test-model", "SECRET", timeout_seconds=1))
+    with pytest.raises(AIProviderError, match=f"{provider} returned HTTP 429") as exc:
+        service._request("prompt")
+    assert "SECRET" not in str(exc.value)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "provider,key_name",
+    [
+        ("deepseek", "DEEPSEEK_API_KEY"),
+        ("gemini", "GEMINI_API_KEY"),
+    ],
+)
+def test_selected_cloud_provider_dispatches_all_specialists(monkeypatch, provider, key_name):
+    from agents.orchestrator.orchestrator import Orchestrator
+    from agents.reporting.fixtures.investigation_states import demo_scenario_request
+    from agents.reporting.report_builder import build_report
+    from apps.api import tasks
+    from evaluations.fixtures import investigator_request, valid_investigation, valid_plan
+    from packages.ai import runtime
+    from packages.schemas.python.agent_io import OrchestratorAction
+
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", provider)
+    monkeypatch.setenv(key_name, "test-only-key")
+    get_settings.cache_clear()
+    calls = []
+
+    def fake_generate(self, agent, typed_request, instruction):
+        calls.append((self.config.provider, self.config.model, agent))
+        if agent == "test_planner":
+            return valid_plan(typed_request).model_dump(mode="json")
+        if agent == "performance_investigator":
+            return valid_investigation(typed_request).model_dump(mode="json")
+        return build_report(typed_request).model_dump(mode="json")
+
+    monkeypatch.setattr(runtime.AIService, "generate", fake_generate)
+    try:
+        planner_request = TestPlanRequest.model_validate(
+            {
+                "target_description": {
+                    "application_name": "demo",
+                    "user_journeys": ["/health"],
+                    "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+                    "performance_requirements": {"p95_ms": 500, "max_error_rate": 0.01},
+                },
+                "objective": "determine_capacity",
+            }
+        )
+        assert Orchestrator().plan_test(planner_request).target_concurrency == 2
+
+        investigation = investigator_request()
+        run = SimpleNamespace(id=investigation.test_run.id, metrics=investigation.test_run.metrics)
+        plan = SimpleNamespace(thresholds=investigation.thresholds)
+        assert (
+            tasks._run_investigator(
+                run, run, plan, SimpleNamespace(hypotheses=[])
+            ).finding.severity.value
+            == "HIGH"
+        )
+
+        report_request = demo_scenario_request()
+        orchestrator = Orchestrator()
+        report = orchestrator.invoke_specialist(
+            OrchestratorAction.INVOKE_REPORTING_AGENT,
+            lambda prompt: orchestrator.generate_specialist("reporting", report_request, prompt),
+            report_request,
+            prompt="Report",
+        )
+        assert report.capacity == report_request.capacity_estimate
+        assert [agent for _, _, agent in calls] == [
+            "test_planner",
+            "performance_investigator",
+            "reporting",
+        ]
+        assert {selected for selected, _, _ in calls} == {provider}
+        assert all(model for _, model, _ in calls)
+    finally:
+        get_settings.cache_clear()
 
 
 def test_reasoning_prompts_name_allowed_evidence_and_report_copy_rules(monkeypatch):
