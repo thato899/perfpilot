@@ -15,10 +15,11 @@ dependency waves, and cross-owner handoff contracts.
 | Phase 3 planning | COMPLETE |
 | Phase 3 implementation | COMPLETE for #67, #68, #70, and #71; provider follow-ups #79 and #80 remain open |
 
-The original Phase 3 sequence is complete. The remaining GitHub work is the
-bounded live DeepSeek and Gemini evaluation required by #79 and #80. The UI
-polish branch was integrated by PR #77. See [STATUS.md](STATUS.md) for current
-CI, review, local verification, and environment-blocker evidence.
+The original Phase 3 sequence is complete. DeepSeek's bounded live evaluation
+passed; #79 remains in progress pending review and merge of local `.env`
+configuration support and post-merge verification. #80 remains blocked pending
+Gemini credentials and its live evaluation. The UI polish branch was integrated
+by PR #77. See [STATUS.md](STATUS.md) for current evidence.
 
 ## Phase 2 ownership and completion
 

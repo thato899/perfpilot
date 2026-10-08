@@ -7,6 +7,7 @@ black>=24.8.0
 pytest>=8.3.0
 mypy>=2.1.0
 pip-audit>=2.7.0
+python-dotenv>=1.0.1
 
 # pydantic is a dev pin here only because packages/schemas/python/tests needs
 # it to run the smoke tests against entities.py/agent_io.py. Once apps/api

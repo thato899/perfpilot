@@ -11,11 +11,23 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import urlparse
+
+from dotenv import dotenv_values
+
+_DOTENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+
+def _env(name: str, default: str | None = None) -> str | None:
+    """Use process configuration first, then the repository's local .env."""
+    if name in os.environ:
+        return os.environ[name]
+    return dotenv_values(_DOTENV_PATH).get(name, default)
 
 
 def _int_env(name: str, default: int) -> int:
-    raw = os.environ.get(name)
+    raw = _env(name)
     if raw is None or raw.strip() == "":
         return default
     try:
@@ -25,7 +37,7 @@ def _int_env(name: str, default: int) -> int:
 
 
 def _bool_env(name: str, default: bool) -> bool:
-    raw = os.environ.get(name)
+    raw = _env(name)
     if raw is None or raw.strip() == "":
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
@@ -70,9 +82,9 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
-        api_auth_secret=os.environ.get("API_AUTH_SECRET", ""),
+        api_auth_secret=_env("API_AUTH_SECRET", "") or "",
         allowed_target_hosts=_host_list(
-            os.environ.get("ALLOWED_TARGET_HOSTS", "localhost,demo.perfpilot.local")
+            _env("ALLOWED_TARGET_HOSTS", "localhost,demo.perfpilot.local") or ""
         ),
         max_virtual_users=_int_env("MAX_VIRTUAL_USERS", 5000),
         max_test_duration_seconds=_int_env("MAX_TEST_DURATION_SECONDS", 1800),
@@ -80,13 +92,14 @@ def get_settings() -> Settings:
         # self-initiated follow-up experiments. Defaulted here rather than
         # added to .env.example, which is a shared root file.
         max_experiments_per_investigation=_int_env("MAX_EXPERIMENTS_PER_INVESTIGATION", 3),
-        load_engineer_mode=os.environ.get("LOAD_ENGINEER_MODE", "real"),
+        load_engineer_mode=_env("LOAD_ENGINEER_MODE", "real") or "real",
         ai_provider_enabled=_bool_env("AI_PROVIDER_ENABLED", False),
-        ai_provider=(os.environ.get("AI_PROVIDER") or "gemini").strip() or "gemini",
-        ai_provider_model=(os.environ.get("AI_PROVIDER_MODEL") or "").strip(),
+        ai_provider=(_env("AI_PROVIDER", "gemini") or "gemini").strip() or "gemini",
+        ai_provider_model=(_env("AI_PROVIDER_MODEL", "") or "").strip(),
         ai_timeout_seconds=_int_env("AI_TIMEOUT_SECONDS", 60),
         ollama_timeout_seconds=_int_env("OLLAMA_TIMEOUT_SECONDS", 600),
         ai_max_output_tokens=_int_env("AI_MAX_OUTPUT_TOKENS", 2048),
-        k6_binary_path=os.environ.get("K6_BINARY_PATH", "k6"),
-        k6_results_dir=os.environ.get("K6_RESULTS_DIR", "./infrastructure/docker/k6/results"),
+        k6_binary_path=_env("K6_BINARY_PATH", "k6") or "k6",
+        k6_results_dir=_env("K6_RESULTS_DIR", "./infrastructure/docker/k6/results")
+        or "./infrastructure/docker/k6/results",
     )

@@ -26,12 +26,20 @@ class FakeResponse:
 
 
 def test_provider_selection_and_missing_credentials(monkeypatch):
+    from packages.ai import runtime
+
+    monkeypatch.setattr(runtime, "_DOTENV_PATH", ".missing-test-env")
     settings = Settings(api_auth_secret="test", ai_provider="ollama")
     config = AIConfig.from_settings(settings, "test_planner")
     assert (config.provider, config.model, config.api_key) == ("ollama", "qwen3:8b", "")
     assert config.timeout_seconds == 600
-    for provider, key_name in (("gemini", "GEMINI_API_KEY"), ("deepseek", "DEEPSEEK_API_KEY")):
+    for provider, key_name, aliases in (
+        ("gemini", "GEMINI_API_KEY", ()),
+        ("deepseek", "DEEPSEEK_API_KEY", ("DEEPSEEK_API",)),
+    ):
         monkeypatch.delenv(key_name, raising=False)
+        for alias in aliases:
+            monkeypatch.delenv(alias, raising=False)
         with pytest.raises(AIConfigurationError, match="API key is required"):
             AIConfig.from_settings(
                 Settings(api_auth_secret="test", ai_provider=provider), "reporting"
@@ -41,6 +49,56 @@ def test_provider_selection_and_missing_credentials(monkeypatch):
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434/other")
     with pytest.raises(AIConfigurationError, match="plain HTTP"):
         AIConfig.from_settings(settings, "test_planner")
+
+
+def test_settings_load_dotenv_with_process_environment_precedence(monkeypatch, tmp_path):
+    from apps.api import config
+
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text(
+        "API_AUTH_SECRET=dotenv-auth\n"
+        "AI_PROVIDER=deepseek\n"
+        "AI_PROVIDER_ENABLED=true\n"
+        "AI_TIMEOUT_SECONDS=60\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "_DOTENV_PATH", dotenv_path)
+    for name in ("API_AUTH_SECRET", "AI_PROVIDER", "AI_PROVIDER_ENABLED", "AI_TIMEOUT_SECONDS"):
+        monkeypatch.delenv(name, raising=False)
+    config.get_settings.cache_clear()
+
+    settings = config.get_settings()
+    assert settings.api_auth_secret == "dotenv-auth"
+    assert settings.ai_provider == "deepseek"
+    assert settings.ai_provider_enabled is True
+    assert settings.ai_timeout_seconds == 60
+
+    monkeypatch.setenv("AI_PROVIDER", "ollama")
+    config.get_settings.cache_clear()
+    assert config.get_settings().ai_provider == "ollama"
+    config.get_settings.cache_clear()
+
+
+def test_deepseek_key_loads_from_dotenv_alias_without_repr_leak(monkeypatch, tmp_path):
+    from packages.ai import runtime
+
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text("DEEPSEEK_API=dotenv-test-key\n", encoding="utf-8")
+    monkeypatch.setattr(runtime, "_DOTENV_PATH", dotenv_path)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API", raising=False)
+
+    config = AIConfig.from_settings(
+        Settings(api_auth_secret="test", ai_provider="deepseek"), "test_planner"
+    )
+    assert config.api_key == "dotenv-test-key"
+    assert "dotenv-test-key" not in repr(config)
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "process-test-key")
+    process_config = AIConfig.from_settings(
+        Settings(api_auth_secret="test", ai_provider="deepseek"), "test_planner"
+    )
+    assert process_config.api_key == "process-test-key"
 
 
 def test_ollama_timeout_is_independent_of_cloud_timeout(monkeypatch):
