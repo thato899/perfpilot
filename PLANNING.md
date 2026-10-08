@@ -13,7 +13,12 @@ dependency waves, and cross-owner handoff contracts.
 | Phase 1 formal sign-off | GRANTED by Govenor/Team Lead in PR #48 |
 | Phase 2 planning and implementation | COMPLETE; #32–#39 merged and closed |
 | Phase 3 planning | COMPLETE |
-| Phase 3 implementation | ASSIGNED; #67, #68, #70, and #71 |
+| Phase 3 implementation | COMPLETE for #67, #68, #70, and #71; provider follow-ups #79 and #80 remain open |
+
+The original Phase 3 sequence is complete. The remaining GitHub work is the
+bounded live DeepSeek and Gemini evaluation required by #79 and #80. The UI
+polish branch was integrated by PR #77. See [STATUS.md](STATUS.md) for current
+CI, review, local verification, and environment-blocker evidence.
 
 ## Phase 2 ownership and completion
 
@@ -36,23 +41,19 @@ and historical dependencies remain in [roadmap.md](docs/roadmap.md).
 | 3 | [#70](https://github.com/thato899/perfpilot/issues/70) | Thatayaone (`Thatayaone910`) | Wire production agent calls through AIService | #1 and #33 complete |
 | 4 | [#71](https://github.com/thato899/perfpilot/issues/71) | Govenor (`malumzz`) | Characterize repeat-run noise for k6 comparisons | #32, #34, and #36 complete |
 
-Thato's UI work is first and can start independently of #68. Kamogelo's API
-and data work follows as the next priority and fixes the documented risk that
-editing a plan can change compatibility for an already executed run. Thatayaone
-then owns the missing production connection to the already-built AIService;
-Govenor measures load-test variability before anyone changes comparison
-semantics. All four issues contain their own scope, security/failure behavior,
-tests, acceptance criteria, and Definition of Done. Their assignees and
-`status:in-progress` labels follow the repository's claim automation.
+This table records the original implementation sequence and ownership. All
+four tickets have since been merged and closed. Their scope, security/failure
+behavior, tests, acceptance criteria, and Definition of Done remain useful
+historical context; their completion evidence is summarized in [STATUS.md](STATUS.md).
 
-### Phase 3 shared-contract handoff
+### Phase 3 shared-contract handoff (original implementation constraints)
 
-- #68 must preserve the #34/#39 comparison response behavior and specify any
-  additive identity or availability field before implementation.
-- Thato reviews and signs off any API value consumed by the dashboard/export;
-  comparison arithmetic stays in the canonical metrics package.
-- Do not claim scenario identity for historical runs unless it can be proven
-  from immutable execution data.
+- #68 preserved the #34/#39 comparison response behavior and used an additive
+  identity availability field.
+- Dashboard/export consumers reviewed the API values; comparison arithmetic
+  remains in the canonical metrics package.
+- Historical runs do not claim scenario identity without proof from immutable
+  execution data.
 
 ## Shared contract changes
 
