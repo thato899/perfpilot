@@ -1,19 +1,17 @@
 # PerfPilot status
 
-**Current as of 2026-10-08, based on `main` at `11239d2`:** Phase 1, Phase 2, and
+**Current as of 2026-10-08, based on `main` at `dc4f42a`:** Phase 1, Phase 2, and
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
-issue #79 is complete and closed; its provider implementation, `.env` support,
-review, CI, and post-merge three-fixture smoke have passed. The only open
-GitHub issue is #80 (Gemini), labeled `status:in-progress`. Its credential is
-available in the ignored local `.env`, and a bounded three-fixture smoke passed
-on `main` with `gemini-3.5-flash-lite`. This branch updates the default model;
-#80 remains open until CI, affected-owner review, merge, and post-merge
-verification finish. Docker Desktop's Linux engine is unavailable: `docker
-info` could not open `//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
+issue #79 and Gemini issue #80 are both labeled `status:done` and closed. Their
+provider implementations, bounded live evaluations, review, CI, merge, and
+post-merge verification have passed. No GitHub issue remains open. Docker
+Desktop's Linux engine is unavailable: `docker info` could not open
+`//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
 database-backed API run is claimed. PR #77 integrated the UI polish. PR #87
 merged status reconciliation at `72690be`, PR #88 merged the blocker record at
 `1b3d499`, PR #89 merged the `.env` configuration fix at `c081fa0`, and PR #90
-merged the DeepSeek closeout documentation at `11239d2`. See
+merged the DeepSeek closeout documentation at `11239d2`. PR #91 merged the
+evaluated Gemini default at `dc4f42a`. See
 [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md) for commands, limits,
 and provider evidence.
 
@@ -48,10 +46,15 @@ planner in 12.2s, investigator in 3.9s, and reporting in 2.8s. The old
 `gemini-3.6-flash` returned HTTP 503 on planner. These failures were retained
 on [issue #80](https://github.com/thato899/perfpilot/issues/80); no provider
 fallback or transport retry occurred. No prompts, responses, or credentials
-were recorded. Credential-free tests, Ruff, and Black passed on `11239d2`;
-the default-model change passed 72 focused tests, Ruff, Black, and a bounded
-branch smoke using the default model (planner 1.9s, investigator 2.7s,
-reporting 3.4s). It still needs CI and affected-owner review.
+were recorded. The default-model branch passed 72 focused tests, Ruff, Black,
+and a bounded smoke using the default model (planner 1.9s, investigator 2.7s,
+reporting 3.4s). PR #91 passed all CI checks and received Kamogelo's
+affected-owner approval. On merged `main` at `dc4f42a`, 72 focused tests,
+Ruff, and Black passed again; the bounded Gemini smoke validated planner in
+2.6s, investigator in 2.3s, and reporting in 4.0s. Issue #80 was then manually
+labeled `status:done` and closed. GitHub CI `py-test` passed with Postgres;
+local database-backed verification remains unclaimed while Docker's Linux
+engine is unavailable.
 
 **Last updated:** 2026-10-08
 
@@ -65,15 +68,14 @@ current `main`; no UI polish integration remains outstanding.
 
 ## Current phase
 
-**Phase 1, Phase 2, and the original Phase 3 tickets are complete.** Provider
-issue #79 is closed; #80 remains open while its default-model change is
-reviewed and verified after merge.
+**Phase 1, Phase 2, and Phase 3 tickets are complete.** Provider issues #79
+and #80 are closed after live evaluation and post-merge verification.
 
 - Phase 1 implementation, backend/browser E2E, and formal sign-off: complete.
 - Exact DB-pool reference scenario: **not reproduced**.
 - Phase 2 tickets #32–#39: merged to `main`, verified, and closed.
 - #39: comparison UI and canonical outcome/threshold response merged in PR #66; all CI checks passed and the issue is closed.
-- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. DeepSeek follow-up #79 is complete and closed. Gemini follow-up #80 has passed its live evaluation and remains open pending review, merge, and post-merge verification.
+- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. DeepSeek follow-up #79 and Gemini follow-up #80 are complete and closed.
 
 ## Phase 3 completion record
 

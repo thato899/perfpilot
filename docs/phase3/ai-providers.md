@@ -158,10 +158,14 @@ Two bounded `gemini-3.8-flash` runs reached HTTP 503 after one or two fixtures,
 and `gemini-3.6-flash` returned HTTP 503 on planner. These outcomes are retained
 on [issue #80](https://github.com/thato899/perfpilot/issues/80). No automatic
 provider/model fallback or transport retry occurred. #80 is
-`status:in-progress` and remains open until the default-model change passes
-CI, affected-owner review, merge, and post-merge verification. On the
-default-model branch, the same bounded smoke without `AI_PROVIDER_MODEL`
-validated planner in 1.9s, investigator in 2.7s, and reporting in 3.4s.
+`status:done` and closed. On the default-model branch, the same bounded smoke
+without `AI_PROVIDER_MODEL` validated planner in 1.9s, investigator in 2.7s,
+and reporting in 3.4s. PR #91 passed CI, received Kamogelo's affected-owner
+approval, and merged as `dc4f42a`. On merged `main`, the bounded three-fixture
+smoke validated planner in 2.6s, investigator in 2.3s, and reporting in 4.0s.
+Post-merge focused tests (72), Ruff, and Black passed. GitHub CI `py-test`
+passed with Postgres; local database-backed verification could not run because
+Docker Desktop's Linux engine was unavailable.
 
 ## Run and demo with Gemini
 
