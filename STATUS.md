@@ -1,32 +1,38 @@
 # PerfPilot status
 
-**Current as of 2026-10-08, based on `main` at `1b3d499`:** Phase 1, Phase 2, and
-the original Phase 3 tickets #67, #68, #70, and #71 are complete. The only
-open GitHub issues are #79 (DeepSeek) and #80 (Gemini). Their Python provider
-implementations are merged. #79's bounded live evaluation passed all three
-fixtures; it is `status:in-progress` pending review and merge of root `.env`
-support and post-merge verification. #80 remains `status:blocked` because
-`GEMINI_API_KEY` is absent from this process and local `.env`; its smoke did
-not run. Docker Desktop's Linux engine is also unavailable: `docker info` could not open
-`//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
-database-backed API run is claimed. PR #77
-integrated the UI polish; that branch is already contained in `main`. PR #87
-merged the status reconciliation at `72690be`; PR #88 merged the blocker record
-at `1b3d499`. See
+**Current as of 2026-10-08, on `main` at `c081fa0`:** Phase 1, Phase 2, and
+the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
+issue #79 is complete and closed; its provider implementation, `.env` support,
+review, CI, and post-merge three-fixture smoke have passed. The only open
+GitHub issue is #80 (Gemini), labeled `status:blocked` because
+`GEMINI_API_KEY` is absent from the process and local `.env`; its smoke did
+not run. Docker Desktop's Linux engine is unavailable: `docker info` could not
+open `//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
+database-backed API run is claimed. PR #77 integrated the UI polish. PR #87
+merged status reconciliation at `72690be`, PR #88 merged the blocker record at
+`1b3d499`, and PR #89 merged the `.env` configuration fix at `c081fa0`. See
 [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md) for commands, limits,
 and prior Ollama evidence.
 
 The provider bridge merged as PR #81 (`626494d`) with successful CI and
 affected-owner approval; Ollama follow-ups #82–#84 also merged. PR #86
 (`c54b9e7`) added URL-secret redaction and selected-cloud dispatch coverage,
-with successful CI and affected-owner approval. The documented credential-free
-provider suite passes locally on the current branch (71 tests), Ruff passes,
-and repository-wide Black check passes (75 files). DeepSeek smoke on this
-branch validated `test_planner` in 2.2s, `performance_investigator` in 9.2s,
-and `reporting` in 3.0s with `deepseek-chat`, a 60-second request timeout, and
-2048 output tokens. No prompt, response, or credential was recorded. The local
-repository-wide pytest attempt did not finish and is not counted as
-verification. PR #87's CI `py-test` passed with its Postgres service. The
+with successful CI and affected-owner approval. PR #89 added process-first
+root `.env` configuration, DeepSeek's existing `DEEPSEEK_API` alias, and
+`AIConfig` repr redaction; Kamogelo approved and all CI checks passed.
+
+Post-merge local checks on `main`: `python -m pytest
+packages/ai/test_runtime.py packages/validation agents -q` — 71 passed, 5
+collection warnings; `python -m ruff check packages/ai apps/api agents
+packages/validation` — passed; `python -m black --check .` — 75 files
+unchanged. Final bounded DeepSeek smoke (`deepseek-chat`, 60 seconds, 2048
+tokens) validated planner in 2.0s, investigator in 4.4s, and reporting in
+3.3s. An earlier post-merge full attempt had planner validate in 2.2s and the
+investigator fail after two attempts in 9.4s (`InvestigatorValidationError`);
+reporting was not reached. A standalone investigator fixture then validated
+in 4.2s before the final full pass. No prompts, responses, or credentials were
+recorded. GitHub CI `py-test` passed with its Postgres service; local database
+verification remains blocked by the unavailable Docker Linux engine. The
 untracked staging report in the local workspace is not part of this status
 update.
 
@@ -42,14 +48,15 @@ current `main`; no UI polish integration remains outstanding.
 
 ## Current phase
 
-**Phase 1, Phase 2, and the original Phase 3 tickets are complete.** The
-separate cloud-provider evaluations in #79 and #80 remain open.
+**Phase 1, Phase 2, and the original Phase 3 tickets are complete.** Provider
+issue #79 is closed; #80 remains open and blocked pending a Gemini credential
+and live evaluation.
 
 - Phase 1 implementation, backend/browser E2E, and formal sign-off: complete.
 - Exact DB-pool reference scenario: **not reproduced**.
 - Phase 2 tickets #32–#39: merged to `main`, verified, and closed.
 - #39: comparison UI and canonical outcome/threshold response merged in PR #66; all CI checks passed and the issue is closed.
-- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. Provider follow-ups #79 and #80 are separately tracked and remain open pending live cloud evaluations.
+- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. DeepSeek follow-up #79 is complete and closed. Gemini follow-up #80 remains open and blocked pending credentials and live evaluation.
 
 ## Phase 3 completion record
 
@@ -96,9 +103,10 @@ Shared contract: `packages/schemas/typescript/types.ts` gained four additive
 
 The original ticket order and rationale are retained here as history. All four
 are complete; see their merged PRs and closed issues for delivery details.
-Provider tickets #79 and #80 extend #70 and remain open for the required live
-evaluations. See [roadmap.md](docs/roadmap.md) and [PLANNING.md](PLANNING.md)
-for the original rationale and handoff constraints.
+Provider tickets #79 and #80 extend #70. #79's Definition of Done is met; #80
+remains open until its separate Definition of Done is met. See
+[roadmap.md](docs/roadmap.md) and [PLANNING.md](PLANNING.md) for the original
+rationale and handoff constraints.
 
 ### #71 — run-to-run noise
 
