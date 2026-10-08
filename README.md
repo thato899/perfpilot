@@ -2,7 +2,7 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 1 and Phase 2 are complete. The original Phase 3 tickets (#67, #68, #70, and #71) are merged and closed. The remaining tracked work is bounded live smoke evaluation for the DeepSeek and Gemini providers (#79 and #80); both are blocked locally because cloud credentials are unavailable. PR #77's workspace and report polish is merged. See [STATUS.md](STATUS.md) for current evidence and environment blockers, and [PLANNING.md](PLANNING.md) for phase history.
+**Status:** Phase 1 and Phase 2 are complete. The original Phase 3 tickets (#67, #68, #70, and #71) are merged and closed. DeepSeek's three live fixtures passed; #79 is in progress pending review and merge of local `.env` support and post-merge verification. Gemini issue #80 remains blocked because its credential is unavailable. PR #77's workspace and report polish is merged. See [STATUS.md](STATUS.md) for current evidence and [PLANNING.md](PLANNING.md) for phase history.
 
 ---
 

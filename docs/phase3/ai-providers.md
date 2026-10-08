@@ -12,11 +12,15 @@ deterministic answer.
 
 Copy `.env.example` to `.env` and set `AI_PROVIDER_ENABLED=true`,
 `AI_PROVIDER=gemini|deepseek|ollama`, and optionally `AI_PROVIDER_MODEL`.
+Local Python configuration reads the repository-root `.env`; explicit process
+environment variables take precedence. Docker Compose passes `.env` values into
+the API and worker processes. Keep `.env` untracked.
 The defaults are `gemini-2.5-pro`, `deepseek-chat`, and `qwen3:8b` respectively.
 `AI_MODEL_TEST_PLANNER`, `AI_MODEL_PERFORMANCE_INVESTIGATOR`, and
 `AI_MODEL_REPORTING` override the model per specialist. Gemini requires
-`GEMINI_API_KEY`; DeepSeek requires `DEEPSEEK_API_KEY`; Ollama requires no cloud
-key. Secrets are read from the process environment, never from the database.
+`GEMINI_API_KEY`; DeepSeek accepts `DEEPSEEK_API_KEY` (preferred) and the
+existing `DEEPSEEK_API` name; Ollama requires no cloud key. API keys are sent
+only in provider authorization headers and are never persisted in the database.
 `AI_TIMEOUT_SECONDS` defaults to 60 and is limited to 1–180 for Gemini and
 DeepSeek. Ollama uses `OLLAMA_TIMEOUT_SECONDS`, which defaults to 600 seconds
 and is limited to 1–900 for slower local inference. Each response is
@@ -134,11 +138,16 @@ and reporting fixtures all validated in 185.3, 147.9, and 261.0 seconds,
 respectively. A stricter investigator fixture check also passed in 159.1
 seconds, confirming threshold interpretation and a grounded, falsifiable
 experiment. The cases used known fixtures and made no load-test calls.
-Cloud smoke remains blocked as of 2026-10-08 because `GEMINI_API_KEY` and
-`DEEPSEEK_API_KEY` are absent from the process environment. Issues #79 and #80
-are labeled `status:blocked` and remain open. Their bounded live fixture
-evaluations have not run; each ticket stays open until its own evaluation
-passes and the result receives the required review and post-merge verification.
+On 2026-10-08, the DeepSeek smoke passed all three fixtures using
+`deepseek-chat`, 60-second requests, and 2048 output tokens: planner 2.2s,
+investigator 9.2s, reporting 3.0s. The result is sanitized; prompts, responses,
+and credentials were not recorded. Issue #79 is `status:in-progress` while
+local `.env` loading is reviewed and merged, pending post-merge verification.
+Gemini smoke remains blocked because `GEMINI_API_KEY` is unavailable in the
+process environment and local `.env`; #80 is `status:blocked` and remains open.
+Run its three fixtures after a key is securely configured. Neither issue should
+close until its own Definition of Done, including review and post-merge
+verification, is complete.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),

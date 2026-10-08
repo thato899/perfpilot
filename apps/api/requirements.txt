@@ -11,6 +11,7 @@
 # --- HTTP layer (issue #12: docs/api/api-contract.md) ---
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.1
 
 # --- Contracts. packages/schemas/python is Pydantic v2. ---
 # NOTE: requirements-dev.txt carries a pydantic pin purely so

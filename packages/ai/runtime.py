@@ -7,12 +7,15 @@ the specialist validation boundary remains responsible for semantic checks.
 from __future__ import annotations
 
 import json
+import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from urllib import error, request
 from urllib.parse import quote, urlparse
 
+from dotenv import dotenv_values
 from pydantic import BaseModel
 
 from packages.schemas.python.agent_io import (
@@ -37,6 +40,26 @@ _DEFAULT_MODELS = {
     "deepseek": "deepseek-chat",
     "gemini": "gemini-2.5-pro",
 }
+_DOTENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+_API_KEY_ENV_NAMES = {
+    "gemini": ("GEMINI_API_KEY",),
+    "deepseek": ("DEEPSEEK_API_KEY", "DEEPSEEK_API"),
+    "ollama": (),
+}
+
+
+def _provider_api_key(provider: str) -> str:
+    names = _API_KEY_ENV_NAMES[provider]
+    for name in names:
+        value = os.environ.get(name)
+        if value and value.strip():
+            return value.strip()
+    local_values = dotenv_values(_DOTENV_PATH)
+    for name in names:
+        value = local_values.get(name)
+        if value and value.strip():
+            return value.strip()
+    return ""
 
 
 class AIConfigurationError(ValueError):
@@ -51,15 +74,13 @@ class AIProviderError(RuntimeError):
 class AIConfig:
     provider: str
     model: str
-    api_key: str = ""
+    api_key: str = field(default="", repr=False)
     base_url: str = ""
     timeout_seconds: int = 60
     max_output_tokens: int = 2048
 
     @classmethod
     def from_settings(cls, settings: Any, agent: str) -> AIConfig:
-        import os
-
         provider = settings.ai_provider.lower()
         if provider not in _DEFAULT_MODELS:
             raise AIConfigurationError(f"unsupported AI_PROVIDER: {provider}")
@@ -73,12 +94,7 @@ class AIConfig:
         ).strip()
         if not model or not re.fullmatch(r"[A-Za-z0-9._:/-]{1,128}", model):
             raise AIConfigurationError("invalid AI provider model")
-        key = (
-            os.environ.get(
-                {"gemini": "GEMINI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "ollama": ""}[provider]
-            )
-            or ""
-        ).strip()
+        key = _provider_api_key(provider)
         if provider != "ollama" and not key:
             raise AIConfigurationError(f"{provider} API key is required")
         base_url = (
