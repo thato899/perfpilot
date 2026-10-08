@@ -138,16 +138,20 @@ and reporting fixtures all validated in 185.3, 147.9, and 261.0 seconds,
 respectively. A stricter investigator fixture check also passed in 159.1
 seconds, confirming threshold interpretation and a grounded, falsifiable
 experiment. The cases used known fixtures and made no load-test calls.
-On 2026-10-08, the DeepSeek smoke passed all three fixtures using
-`deepseek-chat`, 60-second requests, and 2048 output tokens: planner 2.2s,
-investigator 9.2s, reporting 3.0s. The result is sanitized; prompts, responses,
-and credentials were not recorded. Issue #79 is `status:in-progress` while
-local `.env` loading is reviewed and merged, pending post-merge verification.
+On 2026-10-08, after PR #89 merged as `c081fa0`, the DeepSeek smoke passed all
+three fixtures using `deepseek-chat`, 60-second requests, and 2048 output
+tokens: planner 2.0s, investigator 4.4s, reporting 3.3s. An earlier post-merge
+full attempt had planner validate in 2.2s and investigator fail after two
+attempts in 9.4s (`InvestigatorValidationError`); reporting was not reached. A
+standalone investigator fixture later validated in 4.2s. The final full pass
+completed and issue #79 is labeled `status:done` and closed. These results are
+sanitized; prompts, responses, and credentials were not recorded.
+
 Gemini smoke remains blocked because `GEMINI_API_KEY` is unavailable in the
 process environment and local `.env`; #80 is `status:blocked` and remains open.
-Run its three fixtures after a key is securely configured. Neither issue should
-close until its own Definition of Done, including review and post-merge
-verification, is complete.
+Run its three fixtures after a key is securely configured. Do not close #80
+until its own Definition of Done, including review and post-merge verification,
+is complete.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),
