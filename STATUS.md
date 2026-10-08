@@ -1,5 +1,14 @@
 # PerfPilot status
 
+**2026-10-08 provider follow-up:** The credential-free provider checks pass,
+including cloud adapter and selected-provider dispatch tests. Journey URLs
+with a leading HTTP method now have query values removed before prompting.
+Neither `GEMINI_API_KEY` nor `DEEPSEEK_API_KEY` is configured locally, so no
+cloud smoke result is claimed. Issues #79 and #80 remain open pending their
+bounded three-fixture evaluations. Exact commands and limits are in
+[docs/phase3/ai-providers.md](docs/phase3/ai-providers.md). Docker Desktop's
+Linux engine is still unavailable for a fresh local database-backed API run.
+
 **2026-10-04 AI runtime update:** PR #81 merged the Python provider bridge
 for issues #70, #78, #79, and #80, with real planner/investigator/report
 dispatch, bounded calls, typed validation, sanitized audit records, and an
@@ -19,7 +28,7 @@ the database-backed API suite could not run locally because Docker Desktop's
 Linux engine was unavailable.
 See [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md).
 
-**Last updated:** 2026-10-04 by Thato
+**Last updated:** 2026-10-08
 
 ## UI/UX follow-up
 
