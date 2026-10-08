@@ -38,7 +38,7 @@ _CONTRACTS: dict[str, tuple[type[BaseModel], type[BaseModel]]] = {
 _DEFAULT_MODELS = {
     "ollama": "qwen3:8b",
     "deepseek": "deepseek-chat",
-    "gemini": "gemini-2.5-pro",
+    "gemini": "gemini-3.5-flash-lite",
 }
 _DOTENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 _API_KEY_ENV_NAMES = {

@@ -15,7 +15,10 @@ Copy `.env.example` to `.env` and set `AI_PROVIDER_ENABLED=true`,
 Local Python configuration reads the repository-root `.env`; explicit process
 environment variables take precedence. Docker Compose passes `.env` values into
 the API and worker processes. Keep `.env` untracked.
-The defaults are `gemini-2.5-pro`, `deepseek-chat`, and `qwen3:8b` respectively.
+The defaults are `gemini-3.5-flash-lite`, `deepseek-chat`, and `qwen3:8b`
+respectively. [Gemini 2.5 Pro access is limited for newer projects](https://ai.google.dev/gemini-api/docs/deprecations/);
+select it explicitly with `AI_PROVIDER_MODEL=gemini-2.5-pro` if your key
+supports it.
 `AI_MODEL_TEST_PLANNER`, `AI_MODEL_PERFORMANCE_INVESTIGATOR`, and
 `AI_MODEL_REPORTING` override the model per specialist. Gemini requires
 `GEMINI_API_KEY`; DeepSeek accepts `DEEPSEEK_API_KEY` (preferred) and the
@@ -97,11 +100,11 @@ investigator fixture additionally requires a high-severity threshold-breach
 finding, an observation, database-pool evidence, and an experiment whose
 expected signal names p95.
 
-For the pending cloud evaluations, export the relevant API key in the process
-environment before running either command. Do not put a key on the command
-line. Each command uses the three checked-in fixtures, a 60-second timeout
-and 2048-output-token limit per request, and at most one validation retry per
-fixture (six requests maximum):
+For cloud evaluations, configure the relevant API key in the process
+environment or in the ignored repository-root `.env`. Do not put a key on the
+command line. Each command uses the three checked-in fixtures, a 60-second
+timeout and 2048-output-token limit per request, and at most one validation
+retry per fixture (six requests maximum):
 
 ```sh
 AI_LIVE_SMOKE=1 AI_PROVIDER_ENABLED=true AI_PROVIDER=deepseek \
@@ -147,11 +150,41 @@ standalone investigator fixture later validated in 4.2s. The final full pass
 completed and issue #79 is labeled `status:done` and closed. These results are
 sanitized; prompts, responses, and credentials were not recorded.
 
-Gemini smoke remains blocked because `GEMINI_API_KEY` is unavailable in the
-process environment and local `.env`; #80 is `status:blocked` and remains open.
-Run its three fixtures after a key is securely configured. Do not close #80
-until its own Definition of Done, including review and post-merge verification,
-is complete.
+On 2026-10-08, on `main` at `11239d2`, the Gemini smoke with an explicitly
+selected `gemini-3.5-flash-lite`, 60-second requests, and 2048 output tokens
+validated planner in 12.2s, investigator in 3.9s, and reporting in 2.8s.
+The prior default `gemini-2.5-pro` returned HTTP 404 for planner in 1.4s.
+Two bounded `gemini-3.8-flash` runs reached HTTP 503 after one or two fixtures,
+and `gemini-3.6-flash` returned HTTP 503 on planner. These outcomes are retained
+on [issue #80](https://github.com/thato899/perfpilot/issues/80). No automatic
+provider/model fallback or transport retry occurred. #80 is
+`status:in-progress` and remains open until the default-model change passes
+CI, affected-owner review, merge, and post-merge verification. On the
+default-model branch, the same bounded smoke without `AI_PROVIDER_MODEL`
+validated planner in 1.9s, investigator in 2.7s, and reporting in 3.4s.
+
+## Run and demo with Gemini
+
+1. In the ignored root `.env`, set `GEMINI_API_KEY`, `AI_PROVIDER_ENABLED=true`,
+   and `AI_PROVIDER=gemini`. Optionally set `AI_PROVIDER_MODEL` to an available
+   model. Keep `AI_TIMEOUT_SECONDS=60` and `AI_MAX_OUTPUT_TOKENS=2048` for the
+   documented evaluation. `GEMINI_API` is not a configuration name.
+2. From the repository root, run the three fixtures. In PowerShell, use
+   `$env:AI_LIVE_SMOKE='1'; python -m packages.ai.smoke`. It prints only
+   provider/model, validated status, elapsed time, or a sanitized failure.
+3. Start Docker Desktop's Linux engine. From `infrastructure/docker`, run
+   `docker compose --profile all up -d --build --force-recreate`, then
+   `docker compose exec api python -m alembic -c apps/api/alembic.ini upgrade head`.
+   Check `http://localhost:8000/health` and open `http://localhost:3000`.
+4. Register a controlled target you own or are authorized to test. Its host
+   must appear in `ALLOWED_TARGET_HOSTS` and be reachable from the worker/k6
+   container. Start a small investigation in the dashboard (for example,
+   1 normal and 5 peak concurrent users), then show its measured results,
+   findings, and report. The [reference DB-pool scenario](../demo-scenario.md)
+   is illustrative and has not been reproduced locally.
+5. To show provider metadata without exposing prompt or response content, run
+   `docker compose exec db psql -U perfpilot -d perfpilot -c "SELECT agent, provider, model, decision FROM ai_execution ORDER BY timestamp DESC LIMIT 3;"`
+   from `infrastructure/docker`.
 
 Transport conventions follow the official [Gemini generateContent API](https://ai.google.dev/api/generate-content),
 [DeepSeek JSON output guide](https://api-docs.deepseek.com/guides/json_mode/),
