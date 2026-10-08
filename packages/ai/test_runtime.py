@@ -101,6 +101,28 @@ def test_deepseek_key_loads_from_dotenv_alias_without_repr_leak(monkeypatch, tmp
     assert process_config.api_key == "process-test-key"
 
 
+def test_gemini_default_model_and_explicit_override(monkeypatch, tmp_path):
+    from packages.ai import runtime
+
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text("GEMINI_API_KEY=dotenv-test-key\n", encoding="utf-8")
+    monkeypatch.setattr(runtime, "_DOTENV_PATH", dotenv_path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("AI_MODEL_TEST_PLANNER", raising=False)
+
+    settings = Settings(api_auth_secret="test", ai_provider="gemini")
+    config = AIConfig.from_settings(settings, "test_planner")
+    assert (config.provider, config.model) == ("gemini", "gemini-3.5-flash-lite")
+    assert config.api_key == "dotenv-test-key"
+    assert "dotenv-test-key" not in repr(config)
+
+    override = AIConfig.from_settings(
+        Settings(api_auth_secret="test", ai_provider="gemini", ai_provider_model="gemini-2.5-pro"),
+        "test_planner",
+    )
+    assert override.model == "gemini-2.5-pro"
+
+
 def test_ollama_timeout_is_independent_of_cloud_timeout(monkeypatch):
     monkeypatch.setenv("OLLAMA_TIMEOUT_SECONDS", "720")
     monkeypatch.setenv("AI_PROVIDER", "ollama")

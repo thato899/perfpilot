@@ -2,7 +2,9 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
-**Status:** Phase 1 and Phase 2 are complete. The original Phase 3 tickets (#67, #68, #70, and #71) are merged and closed. DeepSeek issue #79 is complete and closed after its bounded three-fixture smoke passed on main. Gemini issue #80 remains open and blocked because its credential is unavailable. PR #77's workspace and report polish is merged. See [STATUS.md](STATUS.md) for current evidence and [PLANNING.md](PLANNING.md) for phase history.
+**Status:** Phase 1 and Phase 2 are complete. The original Phase 3 tickets (#67, #68, #70, and #71) are merged and closed. DeepSeek issue #79 is complete and closed. Gemini issue #80 has passed its bounded three-fixture live evaluation on main and remains open while the default-model update, review, merge, and post-merge verification finish. PR #77's workspace and report polish is merged. See [STATUS.md](STATUS.md) for current evidence and [PLANNING.md](PLANNING.md) for phase history.
+
+For a local Gemini demo, follow [the provider setup and demo steps](docs/phase3/ai-providers.md#run-and-demo-with-gemini). Use a target you own or are authorized to test; the reference DB-pool degradation scenario is illustrative and has not been reproduced.
 
 ---
 

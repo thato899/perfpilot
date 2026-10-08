@@ -1,18 +1,21 @@
 # PerfPilot status
 
-**Current as of 2026-10-08, on `main` at `c081fa0`:** Phase 1, Phase 2, and
+**Current as of 2026-10-08, based on `main` at `11239d2`:** Phase 1, Phase 2, and
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
 issue #79 is complete and closed; its provider implementation, `.env` support,
 review, CI, and post-merge three-fixture smoke have passed. The only open
-GitHub issue is #80 (Gemini), labeled `status:blocked` because
-`GEMINI_API_KEY` is absent from the process and local `.env`; its smoke did
-not run. Docker Desktop's Linux engine is unavailable: `docker info` could not
-open `//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
+GitHub issue is #80 (Gemini), labeled `status:in-progress`. Its credential is
+available in the ignored local `.env`, and a bounded three-fixture smoke passed
+on `main` with `gemini-3.5-flash-lite`. This branch updates the default model;
+#80 remains open until CI, affected-owner review, merge, and post-merge
+verification finish. Docker Desktop's Linux engine is unavailable: `docker
+info` could not open `//./pipe/dockerDesktopLinuxEngine` (file not found), so no local
 database-backed API run is claimed. PR #77 integrated the UI polish. PR #87
 merged status reconciliation at `72690be`, PR #88 merged the blocker record at
-`1b3d499`, and PR #89 merged the `.env` configuration fix at `c081fa0`. See
+`1b3d499`, PR #89 merged the `.env` configuration fix at `c081fa0`, and PR #90
+merged the DeepSeek closeout documentation at `11239d2`. See
 [docs/phase3/ai-providers.md](docs/phase3/ai-providers.md) for commands, limits,
-and prior Ollama evidence.
+and provider evidence.
 
 The provider bridge merged as PR #81 (`626494d`) with successful CI and
 affected-owner approval; Ollama follow-ups #82–#84 also merged. PR #86
@@ -36,6 +39,20 @@ verification remains blocked by the unavailable Docker Linux engine. The
 untracked staging report in the local workspace is not part of this status
 update.
 
+Gemini evaluation on `main` at `11239d2`: with provider `gemini`, an explicit
+`gemini-3.5-flash-lite` model, 60-second request timeout, 2048-token limit,
+and at most one validation retry per fixture, the complete smoke validated
+planner in 12.2s, investigator in 3.9s, and reporting in 2.8s. The old
+`gemini-2.5-pro` default returned HTTP 404 on planner in 1.4s; two bounded
+`gemini-3.8-flash` attempts each reached a later HTTP 503, and
+`gemini-3.6-flash` returned HTTP 503 on planner. These failures were retained
+on [issue #80](https://github.com/thato899/perfpilot/issues/80); no provider
+fallback or transport retry occurred. No prompts, responses, or credentials
+were recorded. Credential-free tests, Ruff, and Black passed on `11239d2`;
+the default-model change passed 72 focused tests, Ruff, Black, and a bounded
+branch smoke using the default model (planner 1.9s, investigator 2.7s,
+reporting 3.4s). It still needs CI and affected-owner review.
+
 **Last updated:** 2026-10-08
 
 ## UI/UX follow-up
@@ -49,14 +66,14 @@ current `main`; no UI polish integration remains outstanding.
 ## Current phase
 
 **Phase 1, Phase 2, and the original Phase 3 tickets are complete.** Provider
-issue #79 is closed; #80 remains open and blocked pending a Gemini credential
-and live evaluation.
+issue #79 is closed; #80 remains open while its default-model change is
+reviewed and verified after merge.
 
 - Phase 1 implementation, backend/browser E2E, and formal sign-off: complete.
 - Exact DB-pool reference scenario: **not reproduced**.
 - Phase 2 tickets #32–#39: merged to `main`, verified, and closed.
 - #39: comparison UI and canonical outcome/threshold response merged in PR #66; all CI checks passed and the issue is closed.
-- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. DeepSeek follow-up #79 is complete and closed. Gemini follow-up #80 remains open and blocked pending credentials and live evaluation.
+- Original Phase 3 tickets #67, #68, #70, and #71 are merged and closed. DeepSeek follow-up #79 is complete and closed. Gemini follow-up #80 has passed its live evaluation and remains open pending review, merge, and post-merge verification.
 
 ## Phase 3 completion record
 
