@@ -167,7 +167,8 @@ Post-merge focused tests (72), Ruff, and Black passed. GitHub CI `py-test`
 passed with Postgres. On 2026-10-08, the Docker Linux engine was started and
 the local database-backed API suite passed 128 tests on a separate temporary
 database after isolating tests from the developer's live-provider `.env`. The
-temporary database was removed; the test-isolation change still needs review.
+temporary database was removed; [PR #92](https://github.com/thato899/perfpilot/pull/92)
+tracks review and merge of the test-isolation change.
 
 ## Run and demo with Gemini
 

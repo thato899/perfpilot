@@ -62,7 +62,8 @@ credential-free API tests. The run was stopped without claiming a pass. This
 branch isolates the API suite from the local `.env` and disables live provider
 calls by default; the repeated database-backed suite passed 128 tests with
 10 warnings. The temporary test database was dropped. Ruff and Black passed;
-CI and review of this test-isolation change remain pending.
+[PR #92](https://github.com/thato899/perfpilot/pull/92) tracks its CI, review,
+and merge state.
 
 **Last updated:** 2026-10-08
 
