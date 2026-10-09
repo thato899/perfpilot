@@ -100,7 +100,10 @@ export function ReportView({
       </section>
 
       {allRequestsFailed && (
-        <div role="note" className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm leading-relaxed text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
+        <div
+          role="note"
+          className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm leading-relaxed text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
+        >
           All measured requests failed. Latency here measures failed responses, and the error rate
           alone does not identify a cause. Check the exact request path and HTTP response from the
           load worker before testing more users.

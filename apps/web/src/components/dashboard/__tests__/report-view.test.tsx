@@ -51,5 +51,7 @@ it("warns that a historical all-failed run cannot establish cause or capacity", 
   render(<ReportView report={report} hasPreviousRun={false} />);
 
   expect(screen.getByText(/All measured requests failed\. Latency here/)).toBeInTheDocument();
-  expect(screen.getByText(/Resolve the endpoint failure before estimating capacity/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Resolve the endpoint failure before estimating capacity/),
+  ).toBeInTheDocument();
 });

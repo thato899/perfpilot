@@ -125,8 +125,8 @@ export function InvestigationForm({
               required
             />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Each simulated user repeats an unauthenticated GET to this path. Use a safe,
-              read-only page; /login.php tests the public login page, not a signed-in session.
+              Each simulated user repeats an unauthenticated GET to this path. Use a safe, read-only
+              page; /login.php tests the public login page, not a signed-in session.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">

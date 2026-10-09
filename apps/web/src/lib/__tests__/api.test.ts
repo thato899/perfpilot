@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createInvestigation, createTarget, getBaselines, getComparison, getInvestigation, getReport } from "../api";
+import {
+  createInvestigation,
+  createTarget,
+  getBaselines,
+  getComparison,
+  getInvestigation,
+  getReport,
+} from "../api";
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -15,14 +22,21 @@ afterEach(() => {
 
 describe("production API client", () => {
   it("sends the selected read-only path to the investigation planner", async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce(response({ id: "inv-1" }))
-      .mockResolvedValueOnce(response({
-        investigation_id: "inv-1",
-        target_id: "target-1",
-        status: "planning",
-        observations: [], findings: [], hypotheses: [], experiments: [], decisions: [],
-      }));
+      .mockResolvedValueOnce(
+        response({
+          investigation_id: "inv-1",
+          target_id: "target-1",
+          status: "planning",
+          observations: [],
+          findings: [],
+          hypotheses: [],
+          experiments: [],
+          decisions: [],
+        }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await createInvestigation({
