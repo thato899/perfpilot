@@ -158,10 +158,17 @@ Two bounded `gemini-3.8-flash` runs reached HTTP 503 after one or two fixtures,
 and `gemini-3.6-flash` returned HTTP 503 on planner. These outcomes are retained
 on [issue #80](https://github.com/thato899/perfpilot/issues/80). No automatic
 provider/model fallback or transport retry occurred. #80 is
-`status:in-progress` and remains open until the default-model change passes
-CI, affected-owner review, merge, and post-merge verification. On the
-default-model branch, the same bounded smoke without `AI_PROVIDER_MODEL`
-validated planner in 1.9s, investigator in 2.7s, and reporting in 3.4s.
+`status:done` and closed. On the default-model branch, the same bounded smoke
+without `AI_PROVIDER_MODEL` validated planner in 1.9s, investigator in 2.7s,
+and reporting in 3.4s. PR #91 passed CI, received Kamogelo's affected-owner
+approval, and merged as `dc4f42a`. On merged `main`, the bounded three-fixture
+smoke validated planner in 2.6s, investigator in 2.3s, and reporting in 4.0s.
+Post-merge focused tests (72), Ruff, and Black passed. GitHub CI `py-test`
+passed with Postgres. On 2026-10-08, the Docker Linux engine was started and
+the local database-backed API suite passed 128 tests on a separate temporary
+database after isolating tests from the developer's live-provider `.env`. The
+temporary database was removed; [PR #92](https://github.com/thato899/perfpilot/pull/92)
+tracks review and merge of the test-isolation change.
 
 ## Run and demo with Gemini
 
@@ -175,7 +182,9 @@ validated planner in 1.9s, investigator in 2.7s, and reporting in 3.4s.
 3. Start Docker Desktop's Linux engine. From `infrastructure/docker`, run
    `docker compose --profile all up -d --build --force-recreate`, then
    `docker compose exec api python -m alembic -c apps/api/alembic.ini upgrade head`.
-   Check `http://localhost:8000/health` and open `http://localhost:3000`.
+   Run `docker compose port api 8000` and `docker compose port web 3000` to
+   find the published host ports; local Compose overrides can change them.
+   Check `/health` on the API host port and open the web host port in a browser.
 4. Register a controlled target you own or are authorized to test. Its host
    must appear in `ALLOWED_TARGET_HOSTS` and be reachable from the worker/k6
    container. Start a small investigation in the dashboard (for example,

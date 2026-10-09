@@ -57,11 +57,17 @@ class K6LoadEngineer:
             output_path,
             request.target,
             allowed_hosts=set(self._settings.allowed_target_hosts),
-            timeout_seconds=self._settings.max_test_duration_seconds,
+            timeout_seconds=self._settings.max_test_duration_seconds + 30,
             k6_binary=self._settings.k6_binary_path,
         )
         summary = json.loads(output_path.read_text(encoding="utf-8"))
-        executed_vus = max(stage.target_vus for stage in prepared.test_plan.stages)
+        planned_vus = max(stage.target_vus for stage in prepared.test_plan.stages)
+        observed_vus = summary.get("metrics", {}).get("vus", {}).get("max")
+        executed_vus = (
+            min(int(observed_vus), planned_vus)
+            if isinstance(observed_vus, (int, float)) and observed_vus >= 1
+            else planned_vus
+        )
         metric = parse_k6_summary(
             summary,
             test_run_id=UUID(str(request.test_run_id)),

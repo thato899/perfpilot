@@ -13,12 +13,12 @@ dependency waves, and cross-owner handoff contracts.
 | Phase 1 formal sign-off | GRANTED by Govenor/Team Lead in PR #48 |
 | Phase 2 planning and implementation | COMPLETE; #32–#39 merged and closed |
 | Phase 3 planning | COMPLETE |
-| Phase 3 implementation | COMPLETE for #67, #68, #70, #71, and #79; provider follow-up #80 remains open during review and post-merge verification |
+| Phase 3 implementation | COMPLETE for #67, #68, #70, #71, #79, and #80; all closed |
 
 The original Phase 3 sequence is complete. Provider ticket #79 is complete and
 closed after its bounded DeepSeek evaluation, review, merge, and post-merge
-verification. #80's bounded Gemini evaluation now passes on `main`; the issue
-remains open pending the default-model update, CI, review, merge, and final
+verification. #80 is complete and closed after its bounded Gemini evaluation,
+default-model update in PR #91, CI, affected-owner review, merge, and
 post-merge verification. The UI polish branch was integrated by PR #77. See
 [STATUS.md](STATUS.md) for current evidence.
 

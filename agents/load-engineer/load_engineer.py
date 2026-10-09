@@ -108,7 +108,13 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
     ]
     thresholds = {
         "http_req_duration": [f"p(95)<{plan.thresholds['p95_ms']}"],
-        "http_req_failed": [f"rate<{plan.thresholds['max_error_rate']}"],
+        "http_req_failed": [
+            {
+                "threshold": f"rate<{plan.thresholds['max_error_rate']}",
+                "abortOnFail": True,
+                "delayAbortEval": "10s",
+            }
+        ],
     }
     options = {
         "stages": stages,
@@ -120,7 +126,7 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
     return "\n".join(
         [
             "import http from 'k6/http';",
-            "import { check } from 'k6';",
+            "import { check, sleep } from 'k6';",
             "",
             f"const target = {json.dumps(target.base_url.rstrip('/'))};",
             f"const path = {json.dumps(request_path)};",
@@ -130,6 +136,7 @@ def generate_k6_script(plan: TestPlanOutput, target: TargetRef) -> str:
             "export default function () {",
             "  const response = http.get(`${target}${path}`);",
             "  check(response, { 'status is successful': (res) => res.status < 400 });",
+            "  sleep(1);",
             "}",
         ]
     )
@@ -169,6 +176,10 @@ def run_k6(
         )
     except subprocess.TimeoutExpired as error:
         raise K6ExecutionError("k6 execution timed out") from error
+    # k6 uses 99 when a completed run breaches its thresholds. The summary is
+    # the evidence of that degradation, so keep it for deterministic analysis.
+    if result.returncode == 99 and output_path.is_file() and output_path.stat().st_size > 0:
+        return result
     if result.returncode != 0:
         raise K6ExecutionError(result.stderr.strip() or "k6 execution failed")
     return result

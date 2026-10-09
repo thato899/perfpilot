@@ -430,6 +430,51 @@ def test_live_mode_dispatches_all_three_specialists_and_audits(
         get_settings.cache_clear()
 
 
+def test_invalid_ai_report_uses_grounded_report(
+    client: TestClient, db_session, target: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from evaluations.fixtures import valid_investigation, valid_plan
+    from packages.ai.runtime import AIService
+
+    monkeypatch.setenv("AI_PROVIDER_ENABLED", "true")
+    monkeypatch.setenv("AI_PROVIDER", "ollama")
+    get_settings.cache_clear()
+
+    def fake_generate(self, agent, request, instruction):
+        if agent == "test_planner":
+            return valid_plan(request).model_dump(mode="json")
+        if agent == "performance_investigator":
+            return valid_investigation(request).model_dump(mode="json")
+        return {"invalid": True}
+
+    monkeypatch.setattr(AIService, "generate", fake_generate)
+    try:
+        response = client.post(
+            "/api/investigations",
+            json={
+                "target_id": target["id"],
+                "objective": "determine_capacity",
+                "expected_traffic": {"normal_concurrent_users": 1, "peak_concurrent_users": 2},
+            },
+            headers=AUTH,
+        )
+        assert response.status_code == 201, response.text
+        inv = response.json()
+        tasks.execute_test_run(inv["current_test_run_id"])
+        db_session.expire_all()
+        assert db_session.get(m.Investigation, inv["id"]).status is InvestigationStatus.COMPLETE
+        assert db_session.query(m.Report).filter_by(investigation_id=inv["id"]).count() == 1
+        reporting = (
+            db_session.query(m.AIExecution)
+            .filter_by(investigation_id=inv["id"], agent="reporting")
+            .first()
+        )
+        assert reporting is not None
+        assert reporting.decision == "fallback:invalid_report"
+    finally:
+        get_settings.cache_clear()
+
+
 def test_real_adapter_metrics_reach_persisted_investigator_output(
     client: TestClient,
     db_session,
