@@ -57,6 +57,7 @@ def test_real_adapter_generates_parses_and_returns_metrics(tmp_path, monkeypatch
                         "duration_seconds": 1,
                         "http_status_distribution": {"200": 2},
                         "metrics": {
+                            "vus": {"max": 1},
                             "http_reqs": {"values": {"count": 2, "rate": 2}},
                             "http_req_duration": {
                                 "values": {"med": 10, "p(90)": 20, "p(95)": 30, "p(99)": 40}
@@ -78,7 +79,7 @@ def test_real_adapter_generates_parses_and_returns_metrics(tmp_path, monkeypatch
     ).execute(request)
     assert result.status.value == "succeeded"
     assert result.metrics[0].p95_ms == 30
-    assert result.metrics[0].concurrency == 2
+    assert result.metrics[0].concurrency == 1
 
     investigator = tasks._load_investigator_module()
     analysis_request = InvestigationAnalysisRequest(

@@ -72,6 +72,8 @@ def test_generate_k6_script_contains_stages_and_thresholds():
     assert '"target":1000' in script
     assert "p(95)<500.0" in script
     assert "rate<0.02" in script
+    assert '"abortOnFail":true' in script
+    assert "sleep(1);" in script
     assert '"summaryTrendStats":["avg","min","med","max","p(90)","p(95)","p(99)"]' in script
 
 
@@ -123,4 +125,38 @@ def test_run_k6_surfaces_process_failures(tmp_path):
             allowed_hosts={"demo.perfpilot.local"},
             timeout_seconds=60,
             runner=fake_runner,
+        )
+
+
+def test_run_k6_keeps_completed_threshold_breach_summary(tmp_path):
+    summary = tmp_path / "summary.json"
+
+    def threshold_runner(command, **kwargs):
+        summary.write_text('{"metrics": {}}', encoding="utf-8")
+        return subprocess.CompletedProcess(command, 99, stdout="", stderr="thresholds failed")
+
+    result = run_k6(
+        tmp_path / "script.js",
+        summary,
+        agent_io.TargetRef(base_url="https://demo.perfpilot.local"),
+        allowed_hosts={"demo.perfpilot.local"},
+        timeout_seconds=60,
+        runner=threshold_runner,
+    )
+
+    assert result.returncode == 99
+
+
+def test_run_k6_rejects_threshold_exit_without_summary(tmp_path):
+    def threshold_runner(command, **kwargs):
+        return subprocess.CompletedProcess(command, 99, stdout="", stderr="thresholds failed")
+
+    with pytest.raises(K6ExecutionError, match="thresholds failed"):
+        run_k6(
+            tmp_path / "script.js",
+            tmp_path / "summary.json",
+            agent_io.TargetRef(base_url="https://demo.perfpilot.local"),
+            allowed_hosts={"demo.perfpilot.local"},
+            timeout_seconds=60,
+            runner=threshold_runner,
         )

@@ -47,6 +47,7 @@ from packages.schemas.python.entities import (
     TestRunStatus,
     TestType,
 )
+from packages.validation import StructuredOutputError
 
 from .ai_audit import record_ai_execution
 from .celery_app import celery_app
@@ -664,21 +665,33 @@ def _persist_report(
                 if service_out is not None and orchestrator.last_ai_service is not None:
                     service_out.append(orchestrator.last_ai_service)
 
-        report = orchestrator.invoke_specialist(
-            OrchestratorAction.INVOKE_REPORTING_AGENT,
-            generate,
-            request,
-            prompt=(
-                "Write a grounded executive summary and recommendations using only "
-                "the supplied metrics and investigation state."
-            ),
-        )
+        try:
+            report = orchestrator.invoke_specialist(
+                OrchestratorAction.INVOKE_REPORTING_AGENT,
+                generate,
+                request,
+                prompt=(
+                    "Write a grounded executive summary and recommendations using only "
+                    "the supplied metrics and investigation state."
+                ),
+            )
+        except StructuredOutputError:
+            log.warning(
+                "reporting output failed validation for investigation %s; using grounded report",
+                investigation.id,
+            )
+            report = build_report(request)
+            outcome = "fallback:invalid_report"
+        else:
+            outcome = "validated"
         record_ai_execution(
             session,
             orchestrator.last_ai_service,
             AgentName.REPORTING,
             investigation_id=investigation.id,
             test_run_id=current.id,
+            outcome=outcome,
+            settings=get_settings(),
         )
     else:
         report = build_report(request)
