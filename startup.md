@@ -105,7 +105,7 @@ PerfPilot has agent components for planning, load execution, investigation, and 
 
 The default `AI_PROVIDER_ENABLED=false` mode uses deterministic specialist behavior. To observe the live planner, investigator, and reporter reasoning, obtain an approved provider key and change `.env` to `AI_PROVIDER_ENABLED=true`, set `AI_PROVIDER` to `gemini` or `deepseek`, and fill the matching `GEMINI_API_KEY` or `DEEPSEEK_API_KEY`. Save the file and rerun the start command in step 2. Keep the key private; provider calls may incur cost.
 
-Run the same small, authorized target and compare the **Findings**, **hypotheses**, **recommendations**, and **Timeline** with the measured metrics. Look for claims that cite actual evidence and for clear uncertainty when server-side telemetry is missing. A fluent explanation alone is not proof of cause. If AI configuration or provider calls fail, record the error and return `AI_PROVIDER_ENABLED=false` for a measurement-only run. See [AI provider setup](docs/phase3/ai-providers.md) for model options and provider details.
+Run the same small, authorized target and compare the **Findings**, **hypotheses**, **recommendations**, and **Timeline** with the measured metrics. Look for claims that cite actual evidence and for clear uncertainty when server-side telemetry is missing. A fluent explanation alone is not proof of cause. If the Reporting Agent's answer cannot pass validation, PerfPilot may save a deterministic report; do not present that as live-model reasoning. If AI configuration or provider calls fail, record the error and return `AI_PROVIDER_ENABLED=false` for a measurement-only run. See [AI provider setup](docs/phase3/ai-providers.md) for model options and provider details.
 
 ## Emergency stop
 

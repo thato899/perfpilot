@@ -3,6 +3,8 @@
 Next.js + TypeScript + Tailwind CSS + shadcn/ui dashboard for the PerfPilot
 Phase 1 investigation API.
 
+For the operator's browser steps, target setup, load levels, and result interpretation, see [startup.md](../../startup.md).
+
 ## Production path
 
 The browser uses `src/lib/api.ts`, which calls same-origin

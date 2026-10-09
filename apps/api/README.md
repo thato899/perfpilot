@@ -4,6 +4,8 @@
 
 FastAPI backend: HTTP layer, auth, persistence, background job dispatch. Invokes the Orchestrator (`agents/orchestrator`) but contains no agent reasoning itself.
 
+For running the complete stack and testing an authorized target without API commands, see [startup.md](../../startup.md).
+
 ## Layout
 
 ```text

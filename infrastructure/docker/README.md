@@ -4,6 +4,8 @@
 
 Container definitions for: `web` (Next.js), `api` (FastAPI), `worker` (Celery), `db` (PostgreSQL), `redis`, and `k6-runner`. See [docs/development/local-development.md](../../docs/development/local-development.md#service-layout-infrastructuredocker) for the layout and [Running the pieces](../../docs/development/local-development.md#running-the-pieces) for the commands.
 
+For a complete operator walkthrough, including target authorization, starting the stack, running controlled load, interpreting results, and stopping safely, use [startup.md](../../startup.md).
+
 ## What's here
 
 ```text
@@ -26,6 +28,6 @@ local subprocess invocation is executable.
 The end-to-end k6 smoke still requires an authorized controlled target and a
 host/port configuration without conflicts.
 
-`k6-runner` is owned by Developer 2/Govenor and builds from the pinned local image definition at `infrastructure/docker/k6/Dockerfile`. The service runs idle and the worker invokes k6 with `docker compose exec`; the alternative of spawning a fresh container per run would require mounting the Docker socket into the worker.
+`k6-runner` is owned by Developer 2/Govenor and builds from the pinned local image definition at `infrastructure/docker/k6/Dockerfile`. The service runs idle for direct validation; product runs invoke the same pinned k6 binary as a local subprocess inside the worker. Spawning a fresh container per run would require mounting the Docker socket into the worker.
 
 No production infrastructure is defined here; deployment is `render.yaml` (see [docs/roadmap.md](../../docs/roadmap.md)).

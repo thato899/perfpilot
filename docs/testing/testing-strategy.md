@@ -2,6 +2,8 @@
 
 This describes how the Phase 1 and Phase 2 implementation is tested. Phase 2 adds live-model evaluation and multi-hypothesis end-to-end coverage; those tests are introduced only within their owner-specific tickets and remain bounded by the issue contracts.
 
+To run PerfPilot against an authorized external or local system as an operator, follow [startup.md](../../startup.md). The suites below verify PerfPilot's own implementation.
+
 ## Unit tests
 
 Target the deterministic core first — it's the highest-value, lowest-flakiness layer:

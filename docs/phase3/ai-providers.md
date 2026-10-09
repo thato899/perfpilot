@@ -1,12 +1,16 @@
 # Production AI reasoning (#70, #78, #79, #80)
 
+For the full operator workflow, start with [startup.md](../../startup.md); this document covers live provider configuration and evaluation.
+
 The Python API and Celery worker use `packages/ai/runtime.py` for live reasoning.
 `AI_PROVIDER_ENABLED=false` is the default and keeps local demos and CI deterministic.
 Setting it to `true` makes the initial Test Planner call in the API process and
 the Investigator and Reporting Agent calls in the worker use the selected
-provider. A missing key, unavailable service, timeout, or invalid response
-fails the investigation; the runtime never substitutes another provider or a
-deterministic answer.
+provider. A missing key, unavailable service, or timeout can fail the
+investigation. Invalid planner or investigator output can also fail it. If the
+Reporting Agent's output still fails structured validation after retry, the
+worker persists a grounded deterministic report and records the fallback in
+the AI audit. The runtime never silently switches providers.
 
 ## Configuration
 

@@ -1,5 +1,7 @@
 # PerfPilot status
 
+For current operator setup and authorized target testing steps, see [startup.md](startup.md).
+
 **Current as of 2026-10-08, based on `main` at `dc4f42a`:** Phase 1, Phase 2, and
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
 issue #79 and Gemini issue #80 are both labeled `status:done` and closed. Their
