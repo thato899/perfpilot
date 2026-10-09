@@ -57,9 +57,7 @@ function HypothesisCard({
           Hypothesis
         </h4>
         <Badge variant="outline">{stateLabel(hypothesis.status)}</Badge>
-        <span className="text-sm text-muted-foreground">
-          AI confidence: {hypothesis.confidence}
-        </span>
+        <span className="text-sm text-muted-foreground">Confidence: {hypothesis.confidence}</span>
       </div>
       <p className="mt-2 text-sm">{hypothesis.statement}</p>
       <div className="mt-3 border-l-2 pl-3 text-sm">
@@ -148,7 +146,7 @@ function FindingCard({
       </section>
       <section className="mt-4" aria-labelledby={`interpretation-${finding.id}`}>
         <h4 id={`interpretation-${finding.id}`} className="text-sm font-medium">
-          AI interpretation — hypotheses
+          Interpretation — hypotheses
         </h4>
         <div className="mt-2 flex flex-col gap-3">
           {hypotheses.length ? (
@@ -161,7 +159,9 @@ function FindingCard({
             ))
           ) : (
             <p className="text-sm text-muted-foreground">
-              No AI hypothesis was generated for this finding.
+              {finding.severity === "INFO"
+                ? "No causal hypothesis is needed for this informational finding."
+                : "No causal hypothesis is supported by the available evidence. Collect HTTP failure status codes, server and database metrics, and edge or access logs before assigning a cause."}
             </p>
           )}
         </div>
@@ -179,8 +179,8 @@ export function FindingsPanel({ investigation }: { investigation: InvestigationS
       <CardHeader>
         <CardTitle>Findings and hypotheses</CardTitle>
         <CardDescription>
-          Measurements are deterministic API observations. Hypotheses and confidence are AI
-          interpretations.
+          Measurements come from the recorded run. Hypotheses are interpretations that need
+          supporting evidence and validation.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

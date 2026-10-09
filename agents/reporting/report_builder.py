@@ -141,20 +141,22 @@ def _recommendation_statement(hypothesis: Hypothesis) -> str:
 
 
 def _executive_summary(request: ReportRequest, ranked_findings: list[Finding]) -> str:
-    # BLOCKED-ON: #1 — templated placeholder; real AIService prose later.
     capacity = request.capacity_estimate
-    if not ranked_findings:
-        # Failure states table: a fully healthy run is valid output, not an error.
+    peak = request.key_metrics.get("peak_concurrency_tested", "unreported")
+    if not ranked_findings or all(finding.severity is Severity.INFO for finding in ranked_findings):
         return (
-            "The application handled the tested load cleanly, with no findings raised. "
-            f"Estimated sustainable capacity: ~{capacity.sustainable_concurrency} concurrent "
+            f"The run completed cleanly at a tested peak of {peak} simulated users, "
+            "with no findings raised. This only establishes behavior at the tested load. "
+            f"Estimated sustainable capacity: ~{capacity.sustainable_concurrency} simulated "
             f"users (recommended operating level: {capacity.recommended_operating_concurrency})."
         )
     top = ranked_findings[0]
     return (
-        "The application remained healthy up to approximately "
-        f"{capacity.recommended_operating_concurrency} concurrent users. "
-        f"Most significant finding ({top.severity.value}): {top.summary}"
+        f"At a tested peak of {peak} simulated users, the run recorded a finding. "
+        f"Most significant finding ({top.severity.value}): {top.summary} "
+        f"The recommended operating estimate is {capacity.recommended_operating_concurrency} "
+        "simulated users and needs confirmation with a comparable run. "
+        "The measurements alone do not establish a root cause."
     )
 
 

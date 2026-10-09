@@ -214,6 +214,12 @@ export function ComparisonView({ state }: { state: ComparisonState }) {
             Download JSON
           </Button>
         </div>
+        {state.status !== "available" && (
+          <p className="text-sm text-muted-foreground">
+            Comparison exports require a completed baseline and a separate compatible experiment.
+            For one completed run, use Download report CSV in Summary.
+          </p>
+        )}
         {exportError && (
           <p role="alert" className="text-sm text-destructive">
             {exportError}

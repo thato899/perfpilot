@@ -14,7 +14,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createInvestigation } from "@/lib/api";
+import { ApiRequestError, createInvestigation } from "@/lib/api";
+
+export function investigationErrorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError && error.code === "vus_over_limit") {
+    const requested = error.detail.requested_vus;
+    const maximum = error.detail.max_virtual_users;
+    if (typeof requested === "number" && typeof maximum === "number") {
+      return `Requested ${requested} simulated users; this instance permits at most ${maximum}. For an approved larger test, update MAX_VIRTUAL_USERS in .env and restart PerfPilot.`;
+    }
+  }
+  if (error instanceof ApiRequestError && error.code === "duration_over_limit") {
+    const requested = error.detail.requested_seconds;
+    const maximum = error.detail.max_test_duration_seconds;
+    if (typeof requested === "number" && typeof maximum === "number") {
+      return `The planned run needs ${requested} seconds; this instance permits at most ${maximum}. For an approved longer test, update MAX_TEST_DURATION_SECONDS in .env and restart PerfPilot.`;
+    }
+  }
+  return error instanceof Error ? error.message : "Failed to start investigation.";
+}
 
 const OBJECTIVES: { value: InvestigationObjective; label: string }[] = [
   { value: "determine_capacity", label: "Determine capacity — “what can this handle?”" },
@@ -56,7 +74,7 @@ export function InvestigationForm({
       });
       onCreated(investigation);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start investigation.");
+      setError(investigationErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -127,7 +145,11 @@ export function InvestigationForm({
               placeholder="Product launch, registration window..."
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <Button type="submit" disabled={submitting}>
             {submitting ? "Starting…" : "Start investigation"}
           </Button>

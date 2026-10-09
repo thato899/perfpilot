@@ -1,9 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import type { Report } from "@perfpilot/schemas/types";
 
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
+import { downloadReportCsv } from "@/components/dashboard/report-export";
 
 const KEY_METRIC_LABELS: Record<keyof Report["keyMetrics"], string> = {
   throughputRps: "Throughput",
@@ -51,6 +56,7 @@ export function ReportView({
   report: Report;
   hasPreviousRun?: boolean;
 }) {
+  const [exportError, setExportError] = useState<string | null>(null);
   const peakConcurrency = report.keyMetrics.peakConcurrencyTested;
   const capacityEstablished = peakConcurrency > 1;
 
@@ -68,6 +74,26 @@ export function ReportView({
           </CardHeader>
           <CardContent className="px-5 py-5 sm:px-6">
             <p className="max-w-4xl text-sm leading-7 sm:text-base">{report.executiveSummary}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              onClick={() => {
+                setExportError(null);
+                try {
+                  downloadReportCsv(report, hasPreviousRun);
+                } catch {
+                  setExportError("Could not download the report CSV. Please try again.");
+                }
+              }}
+            >
+              Download report CSV
+            </Button>
+            {exportError && (
+              <p role="alert" className="mt-2 text-sm text-destructive">
+                {exportError}
+              </p>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -238,6 +264,22 @@ export function ReportView({
           </CardContent>
         </Card>
       )}
+
+      {report.findings.some((finding) => finding.severity !== "INFO") &&
+        report.bottleneckAnalysis.length === 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cause not established</CardTitle>
+              <CardDescription>
+                The run measured degradation, but its evidence does not identify a bottleneck.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Collect HTTP failure status codes, server and database metrics, and edge or access
+              logs during an approved repeat test before assigning a cause.
+            </CardContent>
+          </Card>
+        )}
 
       {report.recommendations.length > 0 && (
         <Card>

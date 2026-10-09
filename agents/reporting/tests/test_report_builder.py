@@ -49,6 +49,8 @@ def test_demo_scenario_produces_a_valid_grounded_report():
 
     expected_operating_level = str(request.capacity_estimate.recommended_operating_concurrency)
     assert expected_operating_level in report.executive_summary
+    assert "remained healthy" not in report.executive_summary
+    assert "do not establish a root cause" in report.executive_summary
 
     assert validate_report(report, request) == []
 
@@ -64,6 +66,17 @@ def test_healthy_run_produces_valid_empty_report_not_an_error():
     summary = report.executive_summary.lower()
     assert "healthy" in summary or "cleanly" in summary
     assert validate_report(report, request) == []
+
+
+def test_informational_finding_does_not_claim_a_causal_failure():
+    request = demo_scenario_request()
+    request.investigation_state.findings[0].severity = Severity.INFO
+    request.investigation_state.hypotheses = []
+
+    report = build_report(request)
+
+    assert "completed cleanly" in report.executive_summary
+    assert "root cause" not in report.executive_summary
 
 
 def test_recommendations_only_include_supported_hypotheses():
