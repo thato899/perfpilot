@@ -66,6 +66,8 @@ The dashboard stores its target list in this browser's local storage. Keep using
 
 The **Peak concurrent users** field is a requested ceiling, not proof that that many complete user sessions ran. The report's **Peak concurrency** describes simulated k6 workers reached. For this browser workflow, each worker repeats one unauthenticated GET to `/` with a one-second pause.
 
+If the form says **“Requested concurrency exceeds the configured safety ceiling”**, the requested peak is above `MAX_VIRTUAL_USERS` in `.env`. A 100-user built-in plan also needs about 180 seconds, so a `MAX_TEST_DURATION_SECONDS` value below 180 will reject it even after the user limit is raised. Change either ceiling only within the target owner's approved limits, save `.env`, rerun the start command in step 2, and submit a new investigation. A rejected request has no completed test or report to export.
+
 ## 5. Increase load only after reviewing the previous run
 
 For each approved load level, first change `MAX_VIRTUAL_USERS` in `.env` if needed, save it, and rerun the start command in step 2 so the worker reads the new ceiling. Then start a **new investigation** on the same target.
@@ -83,9 +85,11 @@ For another system, repeat steps 1, 3, 4, and 5 with that system's **own** autho
 ## 6. Read the result
 
 - **Summary** shows throughput (requests per second), p95/p99 latency (slow-end response times), error rate, and peak concurrency. Smaller latency and error rate are generally better, but compare them with the system owner's targets and the same test conditions.
+- **Download report CSV** in Summary exports one completed investigation's metrics, findings, hypotheses, and recommendations. It works without a second run. Save the CSV with the results-page URL and target team's monitoring notes.
 - **Findings** lists measured observations and any hypotheses. A hypothesis or “likely cause” is an interpretation, not a confirmed diagnosis. Ask the system team to compare it with server, database, and application monitoring before changing the system.
 - **Timeline** shows what PerfPilot actually did and whether it completed. If the report is missing or the run failed, record the status; do not present a partial result as a pass.
 - **Comparison** may show a linked baseline and follow-up experiment when both exist and are compatible. If it says no baseline or comparison is available, do not infer improvement from two unrelated summaries.
+- **Download CSV/JSON** in Comparison is enabled only when that compatible baseline and experiment pair exists. A first completed run can use **Download report CSV** instead.
 
 The browser investigation uses default success limits of **p95 under 500 ms** and **HTTP error rate under 1%**. The form does not let an operator change these yet. Record the system owner's real limits separately; a PerfPilot “pass” against these defaults may not meet that system's requirements. A 1-user run establishes behavior only at that load, not total capacity. Keep the results-page URL, screenshots or exported comparison, the approved load, and the target team's monitoring notes together.
 

@@ -21,6 +21,10 @@ supports multiple hypotheses per finding, and displays persisted evidence,
 experiment state, and experiment budget. It does not recompute metrics,
 confidence, capacity, regression values, or budget state.
 
+A completed report can be downloaded as a single-run CSV from Summary. The
+separate Comparison CSV/JSON controls require a compatible baseline and
+experiment; they remain disabled for a first run.
+
 The API has no target-list endpoint, so targets returned by FastAPI are cached
 locally only to let the dashboard select them after a refresh. The cached
 records are not used as investigation or report data; those always come from

@@ -9,6 +9,7 @@ Convert a complete investigation (test runs, metrics, findings, hypotheses, expe
 ## Responsibilities
 
 - Executive summary in plain language (e.g. "The application remained healthy up to ~500 concurrent users; degradation began around 750").
+- A deterministic fallback summary must describe the tested peak and any recorded finding without calling a degraded run healthy. Capacity estimates need a clear qualification, and a run without a supported causal hypothesis must say the root cause is undetermined.
 - Capacity section: estimated sustainable capacity and a recommended operating capacity, both taken from `packages/metrics`' deterministic capacity estimate (see below) — the agent explains and contextualizes this number, it does not derive it.
 - Key metrics table: throughput, p50/p95/p99, error rate, peak concurrency tested.
 - Findings, ranked `CRITICAL → INFO`, each carrying the Investigator's observations/hypotheses/evidence/confidence verbatim (the Reporting Agent may rephrase for readability but must not alter the substance, the confidence number, or invent new evidence).
@@ -70,3 +71,4 @@ Note for whoever wires `apps/api`'s persistence/response mapping (issue #12): `p
 | Output recommendation is not traceable to any finding/hypothesis in the input | Rejected by validation (recommendations must reference a `finding_id`); generic advice with no grounding is not accepted output. |
 | Output alters a confidence value or metric present in the input | Rejected — these are compared programmatically against the input on validation, since they must pass through unchanged. |
 | Investigation has no findings at all (fully healthy run) | Valid output: a positive executive summary and capacity section with an empty findings/recommendations list — not an error. |
+| Degradation is measured but no causal hypothesis is supported | Report the finding and the available measurements; state that the root cause is undetermined and do not invent a bottleneck or recommendation. |
