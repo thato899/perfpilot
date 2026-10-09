@@ -3,11 +3,12 @@ import uuid
 import pytest
 
 from packages.schemas.python.agent_io import (
+    HypothesisOutput,
     InfrastructureMetrics,
     InvestigationAnalysisRequest,
     TestRunMetricsRef,
 )
-from packages.schemas.python.entities import Metric
+from packages.schemas.python.entities import Evidence, Metric
 
 from .investigator import InvestigatorValidationError, PerformanceInvestigator, validate_output
 
@@ -76,3 +77,37 @@ def test_experiment_comparison_strengthens_hypothesis():
         )
     )
     assert output.hypotheses[0].confidence == pytest.approx(0.87)
+
+
+def test_total_failure_without_status_or_telemetry_cannot_claim_a_cause():
+    current = metric(uuid.uuid4())
+    current.error_rate = 1.0
+    current.http_status_distribution = {}
+    req = request([current])
+    output = PerformanceInvestigator().analyze(req)
+    output.hypotheses = [
+        HypothesisOutput(
+            id="guess",
+            statement="The service is unavailable",
+            evidence=[Evidence(statement="100% failed", source_ref=str(current.id))],
+            confidence=0.9,
+        )
+    ]
+    with pytest.raises(InvestigatorValidationError, match="cannot support a cause"):
+        validate_output(output, req)
+
+
+def test_metric_only_evidence_cannot_mark_cause_supported():
+    current = metric(uuid.uuid4(), p95=1000)
+    req = request([current])
+    output = PerformanceInvestigator().analyze(req)
+    output.hypotheses = [
+        HypothesisOutput(
+            id="guess",
+            statement="The database is saturated",
+            evidence=[Evidence(statement="p95 breached", source_ref=str(current.id))],
+            confidence=0.9,
+        )
+    ]
+    with pytest.raises(InvestigatorValidationError, match="independent service telemetry"):
+        validate_output(output, req)

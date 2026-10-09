@@ -7,7 +7,7 @@ This guide is for an operator who does not write code. Follow the steps in order
 - A computer with Docker Desktop installed and running, with the Linux container engine enabled. Docker Compose version 2.24 or newer is required. The first start downloads and builds images and may take several minutes.
 - A copy of this PerfPilot folder and permission to edit its `.env` file.
 - The system owner's explicit permission for performance testing, the exact hostname allowed, a safe testing window, an approved maximum number of simulated users, and someone who can watch the target's health during the test. Prefer a staging system.
-- A target that can be reached from the Docker worker and has a **public, read-only home page** at `/` for this version's browser workflow. See [What this version can test](#what-this-version-can-test) before using a login or API system.
+- A target that can be reached from the Docker worker and has a **safe, public, read-only GET path**. See [What this version can test](#what-this-version-can-test) before using a login or API system.
 
 Do not use a test account or password in the PerfPilot form. Do not start a larger run until the owner agrees to the load and the smaller run has finished without harming the service.
 
@@ -49,7 +49,7 @@ On later days, use the same commands. The migration is safe to rerun. The `--for
 1. Open the PerfPilot browser address from step 2. The dashboard creates a local project automatically.
 2. Select **Add an application** or **Add target**.
 3. Enter a clear **Application name**, such as `Shop staging`.
-4. In **Base URL**, enter the approved origin, such as `https://shop.example.org`. Include `https://` (or `http://` for an approved local service); leave off `/login`, `/api`, query strings, and credentials. For the browser workflow, PerfPilot sends `GET` requests to the root `/` of this URL.
+4. In **Base URL**, enter the approved origin, such as `https://shop.example.org`. Include `https://` (or `http://` for an approved local service); leave off `/login`, `/api`, query strings, and credentials. You choose the request path separately when starting an investigation.
 5. Enter your name, tick the ownership/permission confirmation only when it is true, and select **Add application**.
 6. If the target is rejected, check that its hostname exactly matches an entry in `ALLOWED_TARGET_HOSTS`, then restart the containers. If the worker cannot reach it, the system owner may need to allow the Docker host's network access. A site on your own computer is **not** reached by using `localhost` from inside the worker container; on Docker Desktop, the owner may need to expose it through `host.docker.internal` and allow that hostname.
 
@@ -59,12 +59,13 @@ The dashboard stores its target list in this browser's local storage. Keep using
 
 1. Select the intended target on the dashboard. Check its name and Base URL before every run.
 2. Under **Start an investigation**, choose an **Objective**. Use **Baseline — record current performance** for the first run. The other choices describe the question PerfPilot should investigate; they do not change the target endpoint.
-3. Set **Normal concurrent users** and **Peak concurrent users** to `1` for the first run. You may add a plain-language **Peak description**, such as `Quiet staging check`.
-4. Select **Start investigation** once. This sends real load. Avoid clicking again because that creates another run.
-5. Keep the results page open. The **Timeline** shows planning, execution, analysis, and reporting progress. Wait for **Complete** or **Failed**. Copy the page URL and record the date, target, objective, requested users, and any error shown.
-6. Check the target's own monitoring and normal user experience during and after the run. If the target degrades, follow [Emergency stop](#emergency-stop).
+3. In **Request path**, enter a safe page path beginning with `/`. The default `/` may be forbidden even when the site is available. For an authorized public login-page check at EduQuest, enter `/login.php`. Do not enter the full URL, a query string, or credentials. This checks the public page; it does not sign in.
+4. Set **Normal concurrent users** and **Peak concurrent users** to `1` for the first run. You may add a plain-language **Peak description**, such as `Quiet staging check`.
+5. Select **Start investigation** once. This sends real load. Avoid clicking again because that creates another run.
+6. Keep the results page open. The **Timeline** shows planning, execution, analysis, and reporting progress. Wait for **Complete** or **Failed**. Copy the page URL and record the date, target, objective, request path, requested users, and any error shown.
+7. Check the target's own monitoring and normal user experience during and after the run. If the target degrades, follow [Emergency stop](#emergency-stop).
 
-The **Peak concurrent users** field is a requested ceiling, not proof that that many complete user sessions ran. The report's **Peak concurrency** describes simulated k6 workers reached. For this browser workflow, each worker repeats one unauthenticated GET to `/` with a one-second pause.
+The **Peak concurrent users** field is a requested ceiling, not proof that that many complete user sessions ran. The report's **Peak concurrency** describes simulated k6 workers reached. For this browser workflow, each worker repeats one unauthenticated GET to the selected path with a one-second pause.
 
 If the form says **“Requested concurrency exceeds the configured safety ceiling”**, the requested peak is above `MAX_VIRTUAL_USERS` in `.env`. A 100-user built-in plan also needs about 180 seconds, so a `MAX_TEST_DURATION_SECONDS` value below 180 will reject it even after the user limit is raised. Change either ceiling only within the target owner's approved limits, save `.env`, rerun the start command in step 2, and submit a new investigation. A rejected request has no completed test or report to export.
 
@@ -97,10 +98,10 @@ The browser investigation uses default success limits of **p95 under 500 ms** an
 
 | System | What the browser workflow measures | Operator action |
 |---|---|---|
-| Public website with a safe root page | Repeated unauthenticated `GET /` requests | Follow this guide, with the owner's permission. |
-| Website whose root redirects to a login page | The redirect and/or public login page | Label the result **login-page traffic only**. It does not test logged-in work. |
+| Public website with a safe page | Repeated unauthenticated GET requests to the selected path | Follow this guide, with the owner's permission. |
+| Website with a public login page | The selected public login page | Select its path, such as `/login.php`, and label the result **login-page traffic only**. It does not test logged-in work. |
 | Authenticated site, checkout, search, write API, or multi-step journey | The browser workflow cannot represent the real user actions or sign in | Ask the PerfPilot team to add a reviewed journey and secure credential handling before claiming to test that workflow. Never put passwords in a URL or form field intended for a target name. |
-| API with no useful public `/` endpoint | Only the root response, which may be a 404 | Arrange a supported endpoint/journey configuration first. A root-page result is not an API capacity result. |
+| API with a safe public GET endpoint | Only that selected endpoint | Enter the approved path. A result for `/` says nothing about another API endpoint. |
 | Private or local system | Only if the worker container can reach its address | Have the system owner arrange access and verify the correct Docker-visible hostname. |
 
 PerfPilot has agent components for planning, load execution, investigation, and reporting, but this version's generated browser test uses **only the first journey** and one GET endpoint. It does not simulate independent logged-in users, browser rendering, or a whole customer journey. Do not treat “100 virtual users” as 100 authenticated accounts.
@@ -132,6 +133,7 @@ Tell the target owner immediately and wait for recovery. The current PerfPilot r
 | Target is forbidden or not allowed | Check the exact hostname in `.env` and restart the containers. Authorization must also be confirmed in the Add application form. |
 | Run stays queued | Check that `worker` and `redis` are running. Do not submit the same test repeatedly. Ask the maintainer to inspect worker logs and the saved results-page URL. |
 | Run fails or stops early | Note the Timeline status, target health, requested load, and error. Check worker logs. Lower the approved load or correct the target/network problem before retrying. |
+| Report shows 100% errors | Check the saved request path first. A website can return 403 or 404 for `/` while another page works. Ask the owner to verify the exact path and HTTP response from the Docker worker. A successful PerfPilot test run means the load tool finished; it does not mean the target requests succeeded. Do not increase load until the one-user result is understood. |
 | Report is missing after Complete | Save the results-page URL and ask the maintainer to inspect the API and worker logs. Treat the report as unavailable. |
 
 The log command above is for collecting an error. Logs can contain target details, so share them only with the authorized PerfPilot team. Never paste `.env`, passwords, or provider keys into a support message.

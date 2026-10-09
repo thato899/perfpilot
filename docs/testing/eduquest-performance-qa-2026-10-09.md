@@ -51,6 +51,14 @@ These changes have focused automated coverage. A separate controlled local end-t
 
 A second local k6 smoke deliberately breached a 0.001 ms p95 threshold. k6 exited 99, and the production Load Engineer adapter returned `succeeded` with a parsed p95 of 1.383 ms and observed concurrency 1. This confirms that a completed threshold breach now remains usable evidence.
 
+## Follow-up: 100% error report for investigation `8bf039e9-242e-451d-b07c-1524561a7c77`
+
+The operator's later 1-user PerfPilot investigation saved run `68879c46-614a-439d-93b8-82e6b32a3974`. Its plan contained only `/`, and the generated traffic was an unauthenticated GET to `https://eduquesttutors.co.za/`. The k6 summary records 11 requests, all failed, and p95 346.393 ms. The persisted HTTP status distribution is empty. The run's `succeeded` state means k6 completed and supplied metrics; it does not mean the website responded successfully.
+
+On 2026-10-09, a single read-only request from the same Docker worker network returned **HTTP 403** for `/` and **HTTP 200** for `/login.php`. A matching host-side check returned the same statuses. This identifies the tested root endpoint as currently forbidden from this environment while the public login page is reachable. It does **not** identify why `/` is forbidden, establish site-wide health, or measure an authenticated tutor session. The previous report's 90%-confidence cause (misconfiguration or service unavailability) cited only the aggregate error-rate metric and was not supported by diagnostic evidence.
+
+The browser investigation now accepts an explicit request path and sends it to the planner. Choosing `/login.php` would measure only the public login page. The investigator rejects a causal hypothesis for complete failures when both response status distribution and service telemetry are absent; invalid AI output falls back to a grounded measurement-only analysis. No new external load run was performed while making this correction.
+
 ## Remaining product work
 
 PerfPilot needs first-class authenticated, multi-step, read-only journeys with secret references, explicit pacing and ramp controls, and per-stage metrics. Until then, a login-page GET cannot establish EduQuest's authenticated capacity. Repeat the 100-user test only after EduQuest access is healthy, the QA account/session behavior is understood, and the target's server logs can be observed alongside k6 metrics.

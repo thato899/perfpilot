@@ -143,6 +143,13 @@ def _recommendation_statement(hypothesis: Hypothesis) -> str:
 def _executive_summary(request: ReportRequest, ranked_findings: list[Finding]) -> str:
     capacity = request.capacity_estimate
     peak = request.key_metrics.get("peak_concurrency_tested", "unreported")
+    if request.key_metrics.get("error_rate") == 1 and not request.investigation_state.hypotheses:
+        return (
+            f"Every measured request failed at a tested peak of {peak} simulated users. "
+            "This report does not establish the HTTP status or root cause. "
+            "Verify the exact request path and response from the load worker before "
+            "testing more users. Capacity is not established."
+        )
     if not ranked_findings or all(finding.severity is Severity.INFO for finding in ranked_findings):
         return (
             f"The run completed cleanly at a tested peak of {peak} simulated users, "

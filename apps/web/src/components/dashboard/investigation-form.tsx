@@ -55,17 +55,24 @@ export function InvestigationForm({
   const [normalUsers, setNormalUsers] = useState("1");
   const [peakUsers, setPeakUsers] = useState("1");
   const [peakDescription, setPeakDescription] = useState("");
+  const [requestPath, setRequestPath] = useState("/");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    const path = requestPath.trim();
+    if (!/^\/(?!\/)[^\s?#]*$/.test(path)) {
+      setError("Enter a path beginning with /, without a query, fragment, or spaces.");
+      return;
+    }
     setSubmitting(true);
     try {
       const investigation = await createInvestigation({
         targetId: target.id,
         objective,
+        userJourneys: [path],
         expectedTraffic: {
           normalConcurrentUsers: Number(normalUsers),
           peakConcurrentUsers: Number(peakUsers),
@@ -107,6 +114,20 @@ export function InvestigationForm({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="request-path">Request path</Label>
+            <Input
+              id="request-path"
+              value={requestPath}
+              onChange={(e) => setRequestPath(e.target.value)}
+              placeholder="/login.php"
+              required
+            />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Each simulated user repeats an unauthenticated GET to this path. Use a safe,
+              read-only page; /login.php tests the public login page, not a signed-in session.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
