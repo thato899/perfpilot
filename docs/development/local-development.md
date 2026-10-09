@@ -2,6 +2,8 @@
 
 **Status:** verified Phase 1 local stack. `infrastructure/docker/docker-compose.yml` stands up the real `db`, `redis`, `web`, `api`, `worker`, and pinned `k6-runner` services. The real Orchestrator/specialists, persistence, Celery execution, k6 metrics, and browser result path have been verified together against a controlled target. See [Running the pieces](#running-the-pieces).
 
+For someone operating PerfPilot without a development setup, use the step-by-step [startup and authorized-target testing guide](../../startup.md). This document covers developer workflows and individual services.
+
 ## Prerequisites
 
 - Node.js (LTS) + a package manager (pnpm recommended for workspace support across `apps/web` and any shared TS packages)

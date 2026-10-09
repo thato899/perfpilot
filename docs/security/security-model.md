@@ -1,5 +1,7 @@
 # Security Model
 
+Operators should follow the authorization, load-limit, and emergency-stop steps in [startup.md](../../startup.md) when testing a real system.
+
 PerfPilot's core function — generating real load against a real application — is the single most dangerous thing this system does. Every safeguard in this document exists to make sure that capability is never pointed somewhere it shouldn't be, or scaled beyond what was intended.
 
 ## Target authorization
@@ -15,7 +17,7 @@ PerfPilot's core function — generating real load against a real application �
 
 **Rule: the system's own configuration bounds how much load it can ever generate, independent of what any test plan or agent requests.**
 
-- `MAX_VIRTUAL_USERS` and `MAX_TEST_DURATION_SECONDS` (`.env.example`) are enforced by the Load Engineer at execution time. A `TestPlan` requesting more is clamped, not silently honored and not silently rejected — the run proceeds at the ceiling and is flagged `clamped` in its result (see [load-engineer.md](../agents/load-engineer.md#output-schema)).
+- `MAX_VIRTUAL_USERS` and `MAX_TEST_DURATION_SECONDS` (`.env.example`) bound execution. The API rejects a plan that exceeds either ceiling before queuing a run. The Load Engineer also enforces the limits when invoked directly and marks a clamped request in its result (see [load-engineer.md](../agents/load-engineer.md#output-schema)).
 - `MAX_EXPERIMENTS_PER_INVESTIGATION` bounds how many follow-up load tests a single investigation can trigger on its own initiative, so a mis-calibrated confidence loop can't keep generating load indefinitely (see [orchestrator.md](../agents/orchestrator.md#continuation-policy)).
 - The continuation budget is enforced by deterministic server-side code; an AI response cannot raise the VU ceiling, duration ceiling, or experiment budget, and the system does not permit uncontrolled recursive load execution.
 - `POST /api/investigations/{id}/experiments` is a human-in-the-loop confirmation point: the Orchestrator/Investigator can *recommend* an experiment, but nothing generates additional load until that recommendation is explicitly approved (a human today; potentially a configurable auto-approve policy later, documented as a future decision, not a default).

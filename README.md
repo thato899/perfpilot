@@ -2,9 +2,11 @@
 
 > An AI Performance Engineer that designs performance experiments, generates realistic workloads, investigates bottlenecks, and determines what an application can actually handle.
 
+**Want to run PerfPilot against an authorized system?** Start with [startup.md](startup.md). It gives a non-coding operator the setup, 1/10/100-user test steps, result checks, limits, and shutdown procedure.
+
 **Status:** Phase 1, Phase 2, and the original Phase 3 tickets (#67, #68, #70, and #71) are complete. DeepSeek issue #79 and Gemini issue #80 passed their bounded three-fixture live evaluations, review, CI, merge, and post-merge verification; both are labeled `status:done` and closed. PR #77's workspace and report polish is merged. See [STATUS.md](STATUS.md) for current evidence and [PLANNING.md](PLANNING.md) for phase history.
 
-For a local Gemini demo, follow [the provider setup and demo steps](docs/phase3/ai-providers.md#run-and-demo-with-gemini). Use a target you own or are authorized to test; the reference DB-pool degradation scenario is illustrative and has not been reproduced.
+For a local Gemini demo, first follow [the operator guide](startup.md), then [the provider setup and demo steps](docs/phase3/ai-providers.md#run-and-demo-with-gemini). Use a target you own or are authorized to test; the reference DB-pool degradation scenario is illustrative and has not been reproduced.
 
 ---
 
@@ -123,6 +125,7 @@ perfpilot/
 │   ├── docker/         # Container definitions (frontend, backend, db, redis, k6 runner)
 │   └── deployment/
 ├── .env.example
+├── startup.md          # Operator setup and authorized target testing
 ├── README.md
 └── CONTRIBUTING.md
 ```
@@ -133,6 +136,7 @@ Full rationale for this layout — in particular why it's optimized for four peo
 
 | Area | Document |
 |---|---|
+| **Start here — run and test an authorized system** | [startup.md](startup.md) |
 | **Live status — read this first each session** | [STATUS.md](STATUS.md) |
 | **Plan — phases, timeline, Definition of Done** | [PLANNING.md](PLANNING.md) |
 | Phase 1 closeout and sign-off request | [docs/phase1-closeout.md](docs/phase1-closeout.md) |
