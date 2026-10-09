@@ -59,7 +59,7 @@ The dashboard stores its target list in this browser's local storage. Keep using
 
 1. Select the intended target on the dashboard. Check its name and Base URL before every run.
 2. Under **Start an investigation**, choose an **Objective**. Use **Baseline — record current performance** for the first run. The other choices describe the question PerfPilot should investigate; they do not change the target endpoint.
-3. In **Request path**, enter a safe page path beginning with `/`. The default `/` may be forbidden even when the site is available. For an authorized public login-page check at EduQuest, enter `/login.php`. Do not enter the full URL, a query string, or credentials. This checks the public page; it does not sign in.
+3. In **Request path or same-site URL**, enter a safe path beginning with `/`, such as `/login.php`, or paste a URL on the selected target. PerfPilot extracts the path from same-target URLs and rejects URLs to other sites. Do not include a query string, fragment, or credentials. This checks the public login page; it does not sign in.
 4. Set **Normal concurrent users** and **Peak concurrent users** to `1` for the first run. You may add a plain-language **Peak description**, such as `Quiet staging check`.
 5. Select **Start investigation** once. This sends real load. Avoid clicking again because that creates another run.
 6. Keep the results page open. The **Timeline** shows planning, execution, analysis, and reporting progress. Wait for **Complete** or **Failed**. Copy the page URL and record the date, target, objective, request path, requested users, and any error shown.

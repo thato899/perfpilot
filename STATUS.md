@@ -2,7 +2,7 @@
 
 For current operator setup and authorized target testing steps, see [startup.md](startup.md).
 
-**2026-10-09 follow-up (PR pending):** Investigation `8bf039e9-242e-451d-b07c-1524561a7c77` measured 11/11 failed requests because the browser investigation targeted `/`; a read-only worker check returned HTTP 403 there and HTTP 200 at `/login.php`. The cause of the 403 remains undetermined. This branch adds a selectable GET path, guards against unsupported causal claims for aggregate-only failures, shows a warning on historical 100%-error reports, and records the evidence in the EduQuest QA report. Focused Python and web tests and the web build passed. The local Compose web, API, and worker were rebuilt; web and API returned HTTP 200. No new external load test was run. Next: CI and affected-owner review, then merge.
+**2026-10-09 follow-up (PR #96 merged):** Investigation `8bf039e9-242e-451d-b07c-1524561a7c77` measured 11/11 failed requests because the browser investigation targeted `/`; a read-only worker check returned HTTP 403 there and HTTP 200 at `/login.php`. The cause of the 403 remains undetermined. PR #96 added a selectable GET path, guarded against unsupported causal claims for aggregate-only failures, and added a warning to historical 100%-error reports. The follow-up investigation `82739980-2f9f-4247-b17f-e2b13e900b24` entered the full login URL into the path field; it sent `/https://eduquesttutors.co.za/login.php`. This follow-up accepts same-target URLs and extracts their path while rejecting other origins. No new external load test was run.
 
 **Current as of 2026-10-08, based on `main` at `dc4f42a`:** Phase 1, Phase 2, and
 the original Phase 3 tickets #67, #68, #70, and #71 are complete. DeepSeek
