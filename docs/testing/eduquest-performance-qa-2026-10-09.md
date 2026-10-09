@@ -61,6 +61,8 @@ The browser investigation now accepts an explicit request path and sends it to t
 
 The next investigation, `82739980-2f9f-4247-b17f-e2b13e900b24`, still had 100% errors because the operator pasted the full login URL into the path field. The saved journey was `/https://eduquesttutors.co.za/login.php`, not `/login.php`; the run stored no HTTP status distribution. The form now accepts a URL only when its origin matches the selected target and extracts its pathname before planning. URLs to other origins and URLs containing query strings or fragments are rejected.
 
+The one-user UI validation run `e5c707b4-3b43-4830-a2ed-400ec898a4dd` entered the same full URL into the updated form. Its saved journey was `/login.php`, the TestRun succeeded, error rate was 0%, p95 was 84.889 ms, p99 was 144.895 ms, and throughput was 0.959 requests/s. This validates same-target URL normalization and reachability of the public login page at one virtual user. It does not test login submission, signed-in behavior, or application capacity.
+
 ## Remaining product work
 
 PerfPilot needs first-class authenticated, multi-step, read-only journeys with secret references, explicit pacing and ramp controls, and per-stage metrics. Until then, a login-page GET cannot establish EduQuest's authenticated capacity. Repeat the 100-user test only after EduQuest access is healthy, the QA account/session behavior is understood, and the target's server logs can be observed alongside k6 metrics.
