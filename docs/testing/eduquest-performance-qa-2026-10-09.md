@@ -59,6 +59,8 @@ On 2026-10-09, a single read-only request from the same Docker worker network re
 
 The browser investigation now accepts an explicit request path and sends it to the planner. Choosing `/login.php` would measure only the public login page. The investigator rejects a causal hypothesis for complete failures when both response status distribution and service telemetry are absent; invalid AI output falls back to a grounded measurement-only analysis. No new external load run was performed while making this correction.
 
+The next investigation, `82739980-2f9f-4247-b17f-e2b13e900b24`, still had 100% errors because the operator pasted the full login URL into the path field. The saved journey was `/https://eduquesttutors.co.za/login.php`, not `/login.php`; the run stored no HTTP status distribution. The form now accepts a URL only when its origin matches the selected target and extracts its pathname before planning. URLs to other origins and URLs containing query strings or fragments are rejected.
+
 ## Remaining product work
 
 PerfPilot needs first-class authenticated, multi-step, read-only journeys with secret references, explicit pacing and ramp controls, and per-stage metrics. Until then, a login-page GET cannot establish EduQuest's authenticated capacity. Repeat the 100-user test only after EduQuest access is healthy, the QA account/session behavior is understood, and the target's server logs can be observed alongside k6 metrics.

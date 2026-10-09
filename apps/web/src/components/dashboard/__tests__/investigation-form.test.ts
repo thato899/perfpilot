@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import { ApiRequestError } from "@/lib/api";
-import { investigationErrorMessage } from "../investigation-form";
+import { investigationErrorMessage, normalizeRequestPath } from "../investigation-form";
 
 it("explains the configured concurrency and duration limits", () => {
   const concurrency = new ApiRequestError(
@@ -21,4 +21,17 @@ it("explains the configured concurrency and duration limits", () => {
   );
   expect(investigationErrorMessage(duration)).toContain("180 seconds");
   expect(investigationErrorMessage(duration)).toContain("MAX_TEST_DURATION_SECONDS in .env");
+});
+
+it("normalizes a same-target URL and rejects an off-target URL or query string", () => {
+  const baseUrl = "https://eduquesttutors.co.za";
+
+  expect(normalizeRequestPath("https://eduquesttutors.co.za/login.php", baseUrl)).toBe(
+    "/login.php",
+  );
+  expect(normalizeRequestPath("https://other.example/login.php", baseUrl)).toBeNull();
+  expect(
+    normalizeRequestPath("https://eduquesttutors.co.za/login.php?token=x", baseUrl),
+  ).toBeNull();
+  expect(normalizeRequestPath("/login.php", baseUrl)).toBe("/login.php");
 });

@@ -34,6 +34,23 @@ export function investigationErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to start investigation.";
 }
 
+export function normalizeRequestPath(value: string, targetBaseUrl: string): string | null {
+  const input = value.trim();
+  if (/^https?:\/\//i.test(input)) {
+    try {
+      const url = new URL(input);
+      const target = new URL(targetBaseUrl);
+      if (url.origin !== target.origin || url.username || url.password || url.search || url.hash) {
+        return null;
+      }
+      return url.pathname || "/";
+    } catch {
+      return null;
+    }
+  }
+  return /^\/(?!\/)[^\s?#]*$/.test(input) ? input : null;
+}
+
 const OBJECTIVES: { value: InvestigationObjective; label: string }[] = [
   { value: "determine_capacity", label: "Determine capacity — “what can this handle?”" },
   { value: "diagnose_regression", label: "Diagnose regression — “why did this get slower?”" },
@@ -62,9 +79,11 @@ export function InvestigationForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
-    const path = requestPath.trim();
-    if (!/^\/(?!\/)[^\s?#]*$/.test(path)) {
-      setError("Enter a path beginning with /, without a query, fragment, or spaces.");
+    const path = normalizeRequestPath(requestPath, target.baseUrl);
+    if (!path) {
+      setError(
+        "Enter a path beginning with /, or paste a URL on this target without a query or fragment.",
+      );
       return;
     }
     setSubmitting(true);
@@ -116,17 +135,18 @@ export function InvestigationForm({
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="request-path">Request path</Label>
+            <Label htmlFor="request-path">Request path or same-site URL</Label>
             <Input
               id="request-path"
               value={requestPath}
               onChange={(e) => setRequestPath(e.target.value)}
-              placeholder="/login.php"
+              placeholder="/login.php or https://example.org/login.php"
               required
             />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Each simulated user repeats an unauthenticated GET to this path. Use a safe, read-only
-              page; /login.php tests the public login page, not a signed-in session.
+              Each simulated user repeats an unauthenticated GET to this path. You may enter a path
+              or paste a URL on this target. Use a safe, read-only page; /login.php tests the public
+              login page, not a signed-in session.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
