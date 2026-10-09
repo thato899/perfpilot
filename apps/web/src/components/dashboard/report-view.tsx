@@ -58,7 +58,8 @@ export function ReportView({
 }) {
   const [exportError, setExportError] = useState<string | null>(null);
   const peakConcurrency = report.keyMetrics.peakConcurrencyTested;
-  const capacityEstablished = peakConcurrency > 1;
+  const allRequestsFailed = report.keyMetrics.errorRate >= 1;
+  const capacityEstablished = peakConcurrency > 1 && !allRequestsFailed;
 
   return (
     <div id="report" className="scroll-mt-6 flex flex-col gap-6">
@@ -97,6 +98,17 @@ export function ReportView({
           </CardContent>
         </Card>
       </section>
+
+      {allRequestsFailed && (
+        <div
+          role="note"
+          className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm leading-relaxed text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100"
+        >
+          All measured requests failed. Latency here measures failed responses, and the error rate
+          alone does not identify a cause. Check the exact request path and HTTP response from the
+          load worker before testing more users.
+        </div>
+      )}
 
       {peakConcurrency <= 1 && (
         <div
@@ -170,8 +182,9 @@ export function ReportView({
               <>
                 <p className="text-lg font-semibold">Not established</p>
                 <p className="leading-relaxed text-muted-foreground">
-                  The run reached {formatMetric("peakConcurrencyTested", peakConcurrency)}. A higher
-                  load test is needed to estimate capacity.
+                  {allRequestsFailed
+                    ? "All measured requests failed. Resolve the endpoint failure before estimating capacity."
+                    : `The run reached ${formatMetric("peakConcurrencyTested", peakConcurrency)}. A higher load test is needed to estimate capacity.`}
                 </p>
               </>
             )}

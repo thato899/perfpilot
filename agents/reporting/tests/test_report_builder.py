@@ -68,6 +68,20 @@ def test_healthy_run_produces_valid_empty_report_not_an_error():
     assert validate_report(report, request) == []
 
 
+def test_total_failure_without_diagnostics_does_not_claim_cause_or_capacity():
+    request = demo_scenario_request()
+    request.investigation_state.hypotheses = []
+    request.key_metrics["error_rate"] = 1.0
+
+    report = build_report(request)
+
+    assert "Every measured request failed" in report.executive_summary
+    assert "does not establish the HTTP status or root cause" in report.executive_summary
+    assert "Capacity is not established" in report.executive_summary
+    assert report.bottleneck_analysis == []
+    assert report.recommendations == []
+
+
 def test_informational_finding_does_not_claim_a_causal_failure():
     request = demo_scenario_request()
     request.investigation_state.findings[0].severity = Severity.INFO

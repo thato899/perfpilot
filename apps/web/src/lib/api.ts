@@ -585,6 +585,7 @@ export interface CreateInvestigationInput {
   targetId: string;
   objective: InvestigationObjective;
   expectedTraffic: ExpectedTraffic;
+  userJourneys?: string[];
 }
 
 export async function createInvestigation(
@@ -595,6 +596,7 @@ export async function createInvestigation(
     body: JSON.stringify({
       target_id: input.targetId,
       objective: input.objective,
+      user_journeys: input.userJourneys ?? ["/"],
       expected_traffic: {
         normal_concurrent_users: input.expectedTraffic.normalConcurrentUsers,
         peak_concurrent_users: input.expectedTraffic.peakConcurrentUsers,

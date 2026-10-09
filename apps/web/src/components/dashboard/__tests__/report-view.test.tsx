@@ -42,3 +42,16 @@ it("states when a degraded run has no supported causal analysis", () => {
   expect(screen.getByText("Cause not established")).toBeInTheDocument();
   expect(screen.getByText(/Collect HTTP failure status codes/)).toBeInTheDocument();
 });
+
+it("warns that a historical all-failed run cannot establish cause or capacity", () => {
+  const report = buildDemoReport("degraded-run");
+  report.keyMetrics.errorRate = 1;
+  report.keyMetrics.peakConcurrencyTested = 10;
+
+  render(<ReportView report={report} hasPreviousRun={false} />);
+
+  expect(screen.getByText(/All measured requests failed\. Latency here/)).toBeInTheDocument();
+  expect(
+    screen.getByText(/Resolve the endpoint failure before estimating capacity/),
+  ).toBeInTheDocument();
+});

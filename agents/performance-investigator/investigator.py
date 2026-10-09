@@ -37,11 +37,32 @@ def validate_output(output: InvestigatorOutput, request: InvestigationAnalysisRe
     for hypothesis in output.hypotheses:
         if not hypothesis.evidence:
             raise InvestigatorValidationError(f"hypothesis {hypothesis.id} has no evidence")
+        # An error-rate aggregate says how often a request failed, not why.
+        # With no response codes or service telemetry, a 100% failure cannot
+        # support any causal hypothesis about the target application.
+        unexplained_total_failure = (
+            any(
+                metric.error_rate >= 1 and not metric.http_status_distribution
+                for metric in request.test_run.metrics
+            )
+            and request.infrastructure_metrics is None
+        )
+        if unexplained_total_failure:
+            raise InvestigatorValidationError(
+                "100% failures without response codes or service telemetry cannot support a cause"
+            )
         for evidence in hypothesis.evidence:
             if evidence.source_ref not in source_refs:
                 raise InvestigatorValidationError(f"invalid source_ref: {evidence.source_ref}")
         if not 0 <= hypothesis.confidence <= 1:
             raise InvestigatorValidationError(f"invalid confidence: {hypothesis.confidence}")
+        if hypothesis.confidence >= 0.8 and not any(
+            evidence.source_ref.startswith("infrastructure_metrics.")
+            for evidence in hypothesis.evidence
+        ):
+            raise InvestigatorValidationError(
+                "supported causal hypotheses require independent service telemetry"
+            )
         if hypothesis.recommended_experiment and not hypothesis.id:
             raise InvestigatorValidationError("experiment recommendation needs a hypothesis id")
 

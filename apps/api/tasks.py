@@ -489,15 +489,26 @@ def _run_investigator(
                 if service_out is not None and orchestrator.last_ai_service is not None:
                     service_out.append(orchestrator.last_ai_service)
 
-        output = orchestrator.invoke_specialist(
-            OrchestratorAction.INVOKE_INVESTIGATOR,
-            generate,
-            request,
-            prompt=(
-                "Analyze the supplied performance evidence and ground every finding "
-                "in the provided metrics."
-            ),
-        )
+        try:
+            output = orchestrator.invoke_specialist(
+                OrchestratorAction.INVOKE_INVESTIGATOR,
+                generate,
+                request,
+                prompt=(
+                    "Analyze the supplied performance evidence. Error rate alone does not "
+                    "identify an HTTP status or root cause. Do not propose a causal hypothesis "
+                    "for complete failure without response codes or service telemetry."
+                ),
+            )
+        except StructuredOutputError:
+            log.warning(
+                "investigator output failed validation for run %s; using grounded analysis",
+                current.id,
+            )
+            output = module.PerformanceInvestigator().analyze(request)
+            outcome = "fallback:invalid_investigation"
+        else:
+            outcome = "validated"
         if session is not None:
             record_ai_execution(
                 session,
@@ -505,6 +516,8 @@ def _run_investigator(
                 AgentName.PERFORMANCE_INVESTIGATOR,
                 investigation_id=investigation_id,
                 test_run_id=current.id,
+                outcome=outcome,
+                settings=get_settings(),
             )
         return output
     return module.PerformanceInvestigator().analyze(request)
@@ -655,7 +668,25 @@ def _persist_report(
             "peak_concurrency_tested": current_metric.concurrency,
         },
     )
-    if get_settings().ai_provider_enabled:
+    if (
+        current_metric.error_rate >= 1
+        and not current_metric.http_status_distribution
+        and not request.investigation_state.hypotheses
+    ):
+        # Do not let prose invent a root cause when k6 only supplied an
+        # aggregate failure rate. This report explicitly states the limit.
+        report = build_report(request)
+        if get_settings().ai_provider_enabled:
+            record_ai_execution(
+                session,
+                None,
+                AgentName.REPORTING,
+                investigation_id=investigation.id,
+                test_run_id=current.id,
+                outcome="skipped:insufficient_diagnostics",
+                settings=get_settings(),
+            )
+    elif get_settings().ai_provider_enabled:
         orchestrator = get_orchestrator()
 
         def generate(prompt):
