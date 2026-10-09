@@ -198,7 +198,7 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://perfpilot:perfpilot@localhost:5432/perfpilot
       API_AUTH_SECRET: ci-test-secret-not-a-real-credential
-      ALLOWED_TARGET_HOSTS: localhost,demo.perfpilot.local
+      ALLOWED_TARGET_HOSTS: ${{ vars.ALLOWED_TARGET_HOSTS || 'localhost,demo.perfpilot.local' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
